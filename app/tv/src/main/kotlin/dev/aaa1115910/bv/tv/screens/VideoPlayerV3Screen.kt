@@ -109,7 +109,34 @@ fun VideoPlayerV3Screen(
             danmakuPlayer = playerViewModel.danmakuPlayer,
             onSendHeartbeat = playerViewModel::uploadHistory,
             onClearBackToHistoryData = { playerViewModel.lastPlayed = 0 },
-            onLoadNextVideo = playerViewModel::playNextVideo,
+            onLoadNextVideo = {
+                val currentIndex = playerViewModel.availableVideoList
+                    .indexOfFirst {
+                        when (it) {
+                            is VideoListItemData -> it.cid == playerViewModel.currentCid
+                            else -> false
+                        }
+                    }
+                if (currentIndex + 1 < playerViewModel.availableVideoList.size) {
+                    val nextVideos = playerViewModel.availableVideoList.subList(
+                        currentIndex + 1,
+                        playerViewModel.availableVideoList.size
+                    )
+                    val nextVideo =
+                        nextVideos.firstOrNull { it is VideoListItemData }!! as VideoListItemData
+                    logger.info { "Play next video: $nextVideo" }
+                    playerViewModel.partTitle = nextVideo.title
+                    playerViewModel.loadPlayUrl(
+                        avid = nextVideo.aid,
+                        cid = nextVideo.cid,
+                        epid = nextVideo.epid,
+                        seasonId = nextVideo.seasonId,
+                        continuePlayNext = true
+                    )
+                } else if (Prefs.playerExitWhenAllIsPlayed) {
+                    (context as Activity).finish()
+                }
+            },
             onExit = { (context as Activity).finish() },
             onLoadNewVideo = { videoListItem ->
                 when (videoListItem) {

@@ -319,6 +319,18 @@ object Prefs {
             PlayMode.entries[dsm.getPreferenceFlow(PrefKeys.prefPlayModeRequest).first()]
         }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayModeKey, value.ordinal) }
+
+    var portraitVideoQualityLimitMax1080P: Boolean
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefportraitVideoQualityLimitMax1080PRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefportraitVideoQualityLimitMax1080PKey, value) }
+
+    var playerShowDebugInfo: Boolean
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPlayerShowDebugInfoRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayerShowDebugInfoKey, value) }
+
+    var playerExitWhenAllIsPlayed: Boolean
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPlayerExitWhenAllIsPlayedRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayerExitWhenAllIsPlayedKey, value) }
 }
 
 object PrefKeys {
@@ -365,6 +377,10 @@ object PrefKeys {
     val prefBlacklistUserKey = booleanPreferencesKey("blacklist_user")
     val prefThemeTypeKey = intPreferencesKey("theme_type")
     val prefPlayModeKey = intPreferencesKey("play_mode")
+    val prefportraitVideoQualityLimitMax1080PKey = booleanPreferencesKey("portrait_video_default_use_1080p_quality")
+    val prefPlayerShowDebugInfoKey = booleanPreferencesKey("player_show_debug_info")
+    val prefPlayerExitWhenAllIsPlayedKey = booleanPreferencesKey("player_exit_when_all_is_played")
+
 
     val prefIsLoginRequest = PreferenceRequest(prefIsLoginKey, false)
     val prefUidRequest = PreferenceRequest(prefUidKey, 0)
@@ -384,7 +400,7 @@ object PrefKeys {
     val prefDefaultDanmakuEnabledRequest = PreferenceRequest(prefDefaultDanmakuEnabledKey, true)
     val prefDefaultDanmakuTypesRequest =
         PreferenceRequest(prefDefaultDanmakuTypesKey, "0,1,2,3")
-    val prefDefaultDanmakuAreaRequest = PreferenceRequest(prefDefaultDanmakuAreaKey, 1f)
+    val prefDefaultDanmakuAreaRequest = PreferenceRequest(prefDefaultDanmakuAreaKey, 0.5f)
     val prefDefaultVideoCodecRequest =
         PreferenceRequest(prefDefaultVideoCodecKey, VideoCodec.AVC.ordinal)
     val prefEnabledFirebaseCollectionRequest =
@@ -423,4 +439,7 @@ object PrefKeys {
     val prefBlacklistUserRequest = PreferenceRequest(prefBlacklistUserKey, false)
     val prefThemeTypeRequest = PreferenceRequest(prefThemeTypeKey, ThemeType.Auto.ordinal)
     val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.Sequential.ordinal)
+    val prefportraitVideoQualityLimitMax1080PRequest = PreferenceRequest(prefportraitVideoQualityLimitMax1080PKey, false)
+    val prefPlayerShowDebugInfoRequest = PreferenceRequest(prefPlayerShowDebugInfoKey, false)
+    val prefPlayerExitWhenAllIsPlayedRequest = PreferenceRequest(prefPlayerExitWhenAllIsPlayedKey, true)
 }
