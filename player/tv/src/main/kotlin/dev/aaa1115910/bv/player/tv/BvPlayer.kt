@@ -67,6 +67,7 @@ import dev.aaa1115910.bv.util.countDownTimer
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.formatHourMinSec
 import dev.aaa1115910.bv.util.ifElse
+import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.util.timeTask
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
@@ -344,7 +345,7 @@ fun BvPlayer(
     }
 
     LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+        focusRequester.requestFocus(scope)
     }
 
     LaunchedEffect(danmakuPlayer) {
@@ -461,9 +462,7 @@ fun BvPlayer(
         hideLogsTimer?.cancel()
         showLogs = true
         hideLogsTimer = countDownTimer(3000, 1000, "hideLogsTimer") {
-            scope.launch(Dispatchers.Main) {
-                showLogs = false
-            }
+            showLogs = false
         }
     }
 
@@ -484,9 +483,7 @@ fun BvPlayer(
                 val hour = calendar.get(Calendar.HOUR_OF_DAY)
                 val minute = calendar.get(Calendar.MINUTE)
                 val second = calendar.get(Calendar.SECOND)
-                scope.launch(Dispatchers.Main) {
-                    clock = Triple(hour, minute, second)
-                }
+                clock = Triple(hour, minute, second)
             }
         )
         onDispose {
@@ -656,7 +653,7 @@ fun BvPlayer(
                 logger.info { "On play mode change: $playMode" }
                 onPlayModeChange(playMode)
             },
-            onRequestFocus = { focusRequester.requestFocus() },
+            onRequestFocus = { focusRequester.requestFocus(scope) },
         ) {
             LaunchedEffect(Unit) {
                 videoPlayer.setOptions()
