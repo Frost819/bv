@@ -126,6 +126,7 @@ fun VideoPlayerController(
                 delay(1000)
                 if (showSeekController) {
                     onGoTime(goTime)
+                    if (!videoPlayer.isPlaying) onPlay()
                     withContext(Dispatchers.Main) {
                         moveState = SeekMoveState.Idle
                         showSeekController = false
@@ -217,6 +218,7 @@ fun VideoPlayerController(
                         if (showSeekController) {
                             if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
                             onGoTime(goTime)
+                            if (!videoPlayer.isPlaying) onPlay()
                             scope.launch(Dispatchers.Main) {
                                 moveState = SeekMoveState.Idle
                                 showSeekController = false
