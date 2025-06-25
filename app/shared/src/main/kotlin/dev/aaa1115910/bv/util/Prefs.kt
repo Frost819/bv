@@ -404,7 +404,7 @@ object PrefKeys {
     val prefDefaultVideoCodecRequest =
         PreferenceRequest(prefDefaultVideoCodecKey, VideoCodec.AVC.ordinal)
     val prefEnabledFirebaseCollectionRequest =
-        PreferenceRequest(prefEnabledFirebaseCollectionKey, true)
+        PreferenceRequest(prefEnabledFirebaseCollectionKey, false)
     val prefIncognitoModeRequest = PreferenceRequest(prefIncognitoModeKey, false)
     val prefDefaultSubtitleFontSizeRequest = PreferenceRequest(prefDefaultSubtitleFontSizeKey, 24)
     val prefDefaultSubtitleBackgroundOpacityRequest =
@@ -435,7 +435,7 @@ object PrefKeys {
         PreferenceRequest(prefShowedRemoteControllerPanelDemoKey, false)
     val prefPreferOfficialCdnRequest = PreferenceRequest(prefPreferOfficialCdn, false)
     val prefDefaultDanmakuMaskRequest = PreferenceRequest(prefDefaultDanmakuMask, false)
-    val prefEnableFfmpegEndererRequest = PreferenceRequest(prefEnableFfmpegAudioRenderer, false)
+    val prefEnableFfmpegEndererRequest = PreferenceRequest(prefEnableFfmpegAudioRenderer, true)
     val prefBlacklistUserRequest = PreferenceRequest(prefBlacklistUserKey, false)
     val prefThemeTypeRequest = PreferenceRequest(prefThemeTypeKey, ThemeType.Auto.ordinal)
     val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.Sequential.ordinal)
