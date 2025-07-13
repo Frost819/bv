@@ -678,7 +678,7 @@ object BiliHttpApi {
         }
         
         // 发起请求
-        val response: BiliResponse<VideoMoreInfo> = client.get("/x/player/v2") {
+        val response: BiliResponse<VideoMoreInfo> = client.get("/x/player/wbi/v2") {
             parameter("aid", avid)
             parameter("cid", cid)
             header("Cookie", "buvid3=$buvid3; SESSDATA=$sessData;")
