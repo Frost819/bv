@@ -82,6 +82,8 @@ fun BvPlayer(
     modifier: Modifier = Modifier,
     videoPlayer: AbstractVideoPlayer,
     danmakuPlayer: DanmakuPlayer?,
+    playerSeekStep: Int = 10,
+    showBottomProgressBar: Boolean = false,
     onSendHeartbeat: suspend (Int) -> Unit,
     onClearBackToHistoryData: () -> Unit,
     onLoadNextVideo: () -> Unit,
@@ -133,7 +135,7 @@ fun BvPlayer(
     var bufferedPercentage by remember { mutableStateOf(0) }
     var currentVideoAspectRatio by remember { mutableStateOf(VideoAspectRatio.Default) }
     var currentPosition by remember { mutableLongStateOf(0L) }
-    var currentPlaySpeed by remember { mutableFloatStateOf(1f) }
+    var currentPlaySpeed by remember { mutableFloatStateOf(videoPlayerConfigData.currentVideoSpeed) }
     var aspectRatioValue by remember { mutableFloatStateOf(16f / 9f) }
     val aspectRatio by animateFloatAsState(
         targetValue = aspectRatioValue,
@@ -524,6 +526,8 @@ fun BvPlayer(
             modifier = modifier
                 .focusRequester(focusRequester),
             videoPlayer = videoPlayer,
+            playerSeekStep = playerSeekStep,
+            showBottomProgressBar = showBottomProgressBar,
 
             onPlay = { videoPlayer.start() },
             onPause = {

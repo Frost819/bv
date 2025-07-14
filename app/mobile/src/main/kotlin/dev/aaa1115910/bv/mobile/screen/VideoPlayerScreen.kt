@@ -329,7 +329,7 @@ fun VideoPlayerScreen(
                             },
                             onChangeSpeed = { speed ->
                                 playerViewModel.currentPlaySpeed = speed
-                                Prefs.defaultPlaySpeed = speed
+                                // Prefs.defaultPlaySpeed = speed
                             },
                             onToggleDanmaku = { enabled ->
                                 playerViewModel.currentDanmakuEnabled = enabled

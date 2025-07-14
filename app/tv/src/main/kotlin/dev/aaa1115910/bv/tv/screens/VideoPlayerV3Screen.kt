@@ -140,6 +140,8 @@ fun VideoPlayerV3Screen(
                     .fillMaxSize(),
                 videoPlayer = playerViewModel.videoPlayer!!,
                 danmakuPlayer = playerViewModel.danmakuPlayer,
+                playerSeekStep = Prefs.playerSeekStep,
+                showBottomProgressBar = Prefs.playerShowBottomProgressBar,
                 onSendHeartbeat = playerViewModel::uploadHistory,
                 onClearBackToHistoryData = { playerViewModel.lastPlayed = 0 },
                 onLoadNextVideo = {
@@ -233,10 +235,9 @@ fun VideoPlayerV3Screen(
                 },
                 onResolutionChange = { resolutionCode, afterChange ->
                     scope.launch(Dispatchers.Default) {
-                        playerViewModel.currentQuality = resolutionCode
-                        playerViewModel.updateAvailableCodec()
                         playerViewModel.playQuality(resolutionCode)
                         afterChange()
+                        playerViewModel.currentQuality = resolutionCode
                     }
                 },
                 onCodecChange = { videoCodec, afterChange ->
@@ -253,7 +254,7 @@ fun VideoPlayerV3Screen(
                     playerViewModel.currentVideoAspectRatio = aspectRatio
                 },
                 onPlaySpeedChange = { speed ->
-                    Prefs.defaultPlaySpeed = speed
+                    // Prefs.defaultPlaySpeed = speed
                     playerViewModel.currentPlaySpeed = speed
                 },
                 onAudioChange = { audio, afterChange ->
