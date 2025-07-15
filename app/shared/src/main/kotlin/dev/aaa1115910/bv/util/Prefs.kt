@@ -320,6 +320,10 @@ object Prefs {
         }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayModeKey, value.ordinal) }
 
+    var defaultHomeTab: Int
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefDefaultHomeTabRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefDefaultHomeTabKey, value) }
+
     var portraitVideoQualityLimitMax1080P: Boolean
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefportraitVideoQualityLimitMax1080PRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefportraitVideoQualityLimitMax1080PKey, value) }
@@ -393,6 +397,7 @@ object PrefKeys {
     val prefBlacklistUserKey = booleanPreferencesKey("blacklist_user")
     val prefThemeTypeKey = intPreferencesKey("theme_type")
     val prefPlayModeKey = intPreferencesKey("play_mode")
+    val prefDefaultHomeTabKey = intPreferencesKey("default_home_tab")
     val prefportraitVideoQualityLimitMax1080PKey = booleanPreferencesKey("portrait_video_default_use_1080p_quality")
     val prefPlayerShowDebugInfoKey = booleanPreferencesKey("player_show_debug_info")
     val prefPlayerExitWhenAllIsPlayedKey = booleanPreferencesKey("player_exit_when_all_is_played")
@@ -459,6 +464,7 @@ object PrefKeys {
     val prefBlacklistUserRequest = PreferenceRequest(prefBlacklistUserKey, false)
     val prefThemeTypeRequest = PreferenceRequest(prefThemeTypeKey, ThemeType.Auto.ordinal)
     val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.Sequential.ordinal)
+    val prefDefaultHomeTabRequest = PreferenceRequest(prefDefaultHomeTabKey, 0)
     val prefportraitVideoQualityLimitMax1080PRequest = PreferenceRequest(prefportraitVideoQualityLimitMax1080PKey, false)
     val prefPlayerShowDebugInfoRequest = PreferenceRequest(prefPlayerShowDebugInfoKey, false)
     val prefPlayerExitWhenAllIsPlayedRequest = PreferenceRequest(prefPlayerExitWhenAllIsPlayedKey, true)
