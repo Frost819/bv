@@ -38,7 +38,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ViewModule
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -201,6 +200,8 @@ fun SeasonInfoScreen(
     }
 
     LaunchedEffect(Unit) {
+        videoInfoRepository.relatedVideos.clear()
+        
         val epId = intent.getIntExtra("epid", 0)
         val seasonId = intent.getIntExtra("seasonid", 0)
         val proxyAreaIndex = intent.getIntExtra("proxy_area", 0)
@@ -586,7 +587,7 @@ fun SeasonInfoPart(
 ) {
     Row(
         modifier = modifier
-            .padding(horizontal = 50.dp, vertical = 16.dp),
+            .padding(horizontal = 32.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -862,7 +863,7 @@ fun SeasonEpisodeRow(
             modifier = Modifier
                 .padding(top = 15.dp)
                 .focusRestorer(focusRequester),
-            contentPadding = PaddingValues(horizontal = 50.dp),
+            contentPadding = PaddingValues(horizontal = 32.dp),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             item {
