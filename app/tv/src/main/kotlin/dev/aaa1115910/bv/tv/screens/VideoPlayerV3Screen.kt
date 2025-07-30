@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -169,7 +170,8 @@ fun VideoPlayerV3Screen(
                     .fillMaxSize(),
                 videoPlayer = playerViewModel.videoPlayer!!,
                 danmakuPlayer = playerViewModel.danmakuPlayer,
-                playerSeekStep = Prefs.playerSeekStep,
+                playerSeekForwardStep = Prefs.playerSeekForwardStep,
+                playerSeekBackwardStep = Prefs.playerSeekBackwardStep,
                 showBottomProgressBar = Prefs.playerShowBottomProgressBar,
                 showRelatedVideos = showRelatedVideos,
                 onToggleRelatedVideos = { state ->
@@ -213,6 +215,7 @@ fun VideoPlayerV3Screen(
                                         VideoInfoActivity.actionStart(
                                             context = context,
                                             aid = nextVideo.aid,
+                                            cid = nextVideo.cid,
                                             fromPlayer = true
                                         )
                                     } else {
@@ -268,6 +271,7 @@ fun VideoPlayerV3Screen(
                                 VideoInfoActivity.actionStart(
                                     context = context,
                                     aid = videoListItem.aid,
+                                    cid = videoListItem.cid,
                                     fromPlayer = true
                                 )
                             } else {
@@ -366,7 +370,8 @@ fun VideoPlayerV3Screen(
             if (showRelatedVideos) {
                 VideosRow(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter),
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth(),
                     header = stringResource(R.string.video_info_related_video_title),
                     videos = playerViewModel.relatedVideos,
                     showMore = {},

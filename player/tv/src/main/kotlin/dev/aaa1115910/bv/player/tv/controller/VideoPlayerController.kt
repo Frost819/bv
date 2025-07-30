@@ -62,7 +62,8 @@ import kotlinx.coroutines.withContext
 fun VideoPlayerController(
     modifier: Modifier = Modifier,
     videoPlayer: AbstractVideoPlayer,
-    playerSeekStep: Int = 10,
+    playerSeekForwardStep: Int = 10,
+    playerSeekBackwardStep: Int = 5,
     showBottomProgressBar: Boolean = false,
     
     showRelatedVideos: Boolean = false,
@@ -158,7 +159,7 @@ fun VideoPlayerController(
     }
 
     val onTimeForward = {
-        val baseTime = playerSeekStep * 1000L // 转换为毫秒
+        val baseTime = playerSeekForwardStep * 1000L // 转换为毫秒
         val targetTime = goTime + (baseTime + calCoefficient() * 5000)
         goTime =
             if (targetTime > videoPlayerSeekData.duration) videoPlayerSeekData.duration else targetTime
@@ -168,7 +169,7 @@ fun VideoPlayerController(
         logger.info { "onTimeForward: [current=${videoPlayer.currentPosition}, goTime=$goTime]" }
     }
     val onTimeBack = {
-        val baseTime = playerSeekStep * 1000L // 转换为毫秒
+        val baseTime = playerSeekBackwardStep * 1000L // 转换为毫秒
         val targetTime = goTime - (baseTime + calCoefficient() * 5000)
         goTime = if (targetTime < 0) 0 else targetTime
         lastSeekChangeTime = System.currentTimeMillis()
