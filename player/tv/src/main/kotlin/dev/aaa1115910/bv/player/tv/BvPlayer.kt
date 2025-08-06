@@ -104,8 +104,10 @@ fun BvPlayer(
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
     onSubtitleBottomPadding: (Dp) -> Unit,
     onPlayModeChange: (PlayMode) -> Unit
-    showRelatedVideos: Boolean = false,
     onToggleRelatedVideos: (Boolean) -> Unit = {},
+    onOpenUpSpace: () -> Unit = {},
+    onShowDanmakuChange: (Boolean) -> Unit = {},
+    onLoopPlayModeChange: (Boolean) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger("BvPlayer")
@@ -118,6 +120,7 @@ fun BvPlayer(
     val videoPlayerVideoInfoData = LocalVideoPlayerVideoInfoData.current
 
     val focusRequester = remember { FocusRequester() }
+//    println("isLoop: ${videoPlayerConfigData.isLoop}, showDanmaku: ${videoPlayerConfigData.showDanmaku}")
 
     // 直接调用 danmakuPlayer 会始终为 null
     var mDanmakuPlayer: DanmakuPlayer? by remember { mutableStateOf(null) }
@@ -180,7 +183,8 @@ fun BvPlayer(
         danmakuConfig = danmakuConfig.copy(
             retainerPolicy = RETAINER_BILIBILI,
             textSizeScale = videoPlayerConfigData.currentDanmakuScale,
-            dataFilter = listOf(typeFilter)
+            dataFilter = listOf(typeFilter),
+            visibility = videoPlayerConfigData.showDanmaku
         )
         danmakuConfig.updateFilter()
         logger.info { "Init danmaku config: $danmakuConfig" }
@@ -323,6 +327,16 @@ fun BvPlayer(
         }
 
         override fun onEnd() {
+            if (videoPlayerConfigData.isLoop) {
+                logger.info { "onEnd: replay" }
+                scope.launch(Dispatchers.Main) {
+                    videoPlayer.seekTo(0)
+                    mDanmakuPlayer?.seekTo(0)
+                    videoPlayer.start()
+                }
+                return
+            }
+
             logger.info { "onEnd" }
             mDanmakuPlayer?.pause()
             scope.launch(Dispatchers.Main) {
@@ -348,6 +362,10 @@ fun BvPlayer(
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus(scope)
+    }
+
+    LaunchedEffect(videoPlayerConfigData.isLoop) {
+        videoPlayer.setPlayerEventListener(videoPlayerListener)
     }
 
     LaunchedEffect(danmakuPlayer) {
@@ -529,7 +547,7 @@ fun BvPlayer(
             playerSeekForwardStep = playerSeekForwardStep,
             playerSeekBackwardStep = playerSeekBackwardStep,
             showBottomProgressBar = showBottomProgressBar,
-            showRelatedVideos = showRelatedVideos,
+            showRelatedVideos = videoPlayerConfigData.showRelatedVideos,
             onToggleRelatedVideos = onToggleRelatedVideos,
 
             onPlay = { videoPlayer.start() },
@@ -661,6 +679,41 @@ fun BvPlayer(
                 onPlayModeChange(playMode)
             },
             onRequestFocus = { focusRequester.requestFocus(scope) },
+            onOpenUpSpace = onOpenUpSpace,
+            onRefreshVideo = {
+                val time = videoPlayer.currentPosition
+                logger.fInfo { "Reload video and back to time: ${time.formatHourMinSec()}" }
+
+                videoPlayer.seekTo(time)
+                mDanmakuPlayer?.seekTo(time)
+                mDanmakuPlayer?.pause()
+
+                videoPlayer.start()
+            },
+            onOpenDanmaku = {
+                onShowDanmakuChange(true)
+                videoPlayerConfigData.showDanmaku = true
+                danmakuConfig = danmakuConfig.copy(
+                    visibility = true
+                )
+                danmakuConfig.updateVisibility()
+                logger.info { "Update danmaku config: $danmakuConfig" }
+                mDanmakuPlayer?.updateConfig(danmakuConfig)
+            },
+            onHideDanmaku = {
+                onShowDanmakuChange(false)
+                videoPlayerConfigData.showDanmaku = false
+                danmakuConfig = danmakuConfig.copy(
+                    visibility = false
+                )
+                danmakuConfig.updateVisibility()
+                logger.info { "Update danmaku config: $danmakuConfig" }
+                mDanmakuPlayer?.updateConfig(danmakuConfig)
+            },
+            onLoopPlayModeChange = {
+                videoPlayerConfigData.isLoop = it
+                onLoopPlayModeChange(it)
+            },
         ) {
             LaunchedEffect(Unit) {
                 videoPlayer.setOptions()
