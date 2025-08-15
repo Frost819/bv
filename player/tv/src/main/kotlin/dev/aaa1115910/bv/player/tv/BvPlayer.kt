@@ -365,7 +365,7 @@ fun BvPlayer(
         focusRequester.requestFocus(scope)
     }
 
-    LaunchedEffect(videoPlayerConfigData.isLoop) {
+    LaunchedEffect(videoPlayerConfigData.isLoop, videoPlayerConfigData.showDanmaku) {
         videoPlayer.setPlayerEventListener(videoPlayerListener)
     }
 

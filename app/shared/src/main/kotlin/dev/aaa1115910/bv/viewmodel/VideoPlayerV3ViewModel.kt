@@ -159,7 +159,7 @@ class VideoPlayerV3ViewModel(
     var playerIconIdle by mutableStateOf("")
     var playerIconMoving by mutableStateOf("")
 
-    private var currentAid = 0L
+    var currentAid = 0L
     var currentCid by mutableLongStateOf(0L)
     private var currentEpid = 0
 
@@ -201,7 +201,7 @@ class VideoPlayerV3ViewModel(
 
             updateSubtitle()
             loadPlayUrl(avid, cid, epid ?: 0, preferApi = Prefs.apiType, proxyArea = proxyArea)
-            addLogs("加载弹幕中")
+            // addLogs("加载弹幕中")
             loadDanmaku(cid)
             updateDanmakuMask()
 
