@@ -397,9 +397,7 @@ fun VideoPlayerV3Screen(
             )
 
             // 显示跳过提示
-            AnimatedVisibility(
-                visible=autoActionTipVisible
-            ){
+            if (autoActionTipVisible) {
                 SkipTip(
                     show = true,
                     text = autoActionTipText,
