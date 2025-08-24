@@ -109,6 +109,7 @@ fun BvPlayer(
     onShowDanmakuChange: (Boolean) -> Unit = {},
     onLoopPlayModeChange: (Boolean) -> Unit = {},
     onRefreshVideo: () -> Unit = {},
+    userActionContent: @Composable (focusMap: Map<String, FocusRequester>, onFocus: (String) -> Unit, onPauseAutoHide: (Boolean) -> Unit) -> Unit = { _, _, _ -> }
 ) {
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger("BvPlayer")
@@ -706,6 +707,7 @@ fun BvPlayer(
                 videoPlayerConfigData.isLoop = it
                 onLoopPlayModeChange(it)
             },
+            userActionContent = userActionContent
         ) {
             LaunchedEffect(Unit) {
                 videoPlayer.setOptions()

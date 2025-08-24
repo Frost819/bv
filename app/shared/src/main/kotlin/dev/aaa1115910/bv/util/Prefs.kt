@@ -487,7 +487,7 @@ object PrefKeys {
     val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.Sequential.ordinal)
     val prefDefaultHomeTabRequest = PreferenceRequest(prefDefaultHomeTabKey, 0)
     val prefportraitVideoQualityLimitMax1080PRequest = PreferenceRequest(prefportraitVideoQualityLimitMax1080PKey, false)
-    val prefPlayerShowDebugInfoRequest = PreferenceRequest(prefPlayerShowDebugInfoKey, false)
+    val prefPlayerShowDebugInfoRequest = PreferenceRequest(prefPlayerShowDebugInfoKey, true)
     val prefPlayerExitWhenAllIsPlayedRequest = PreferenceRequest(prefPlayerExitWhenAllIsPlayedKey, true)
     val prefPlayerAutoPlayNextVideoRequest = PreferenceRequest(prefPlayerAutoPlayNextVideoKey, true)
     val prefPlayerSeekForwardStepRequest = PreferenceRequest(prefPlayerSeekForwardStepKey, 10)
