@@ -364,7 +364,7 @@ fun ControllerVideoInfoBottom(
         cancelHideJob()
         if (show && !showSpeedDialog && !pauseAutoHide) {
             hideVideoInfoJob = scope.launch {
-                delay(5000)
+                delay(4000)
                 withContext(Dispatchers.Main) { onHideInfo() }
             }
         }
@@ -466,7 +466,7 @@ fun ControllerVideoInfoBottom(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 32.dp, end = 32.dp, top = 0.dp, bottom = 12.dp)
+                .padding(start = 32.dp, end = 32.dp, top = 0.dp, bottom = 10.dp)
                 .onPreviewKeyEvent { event ->
                     if (event.type == KeyEventType.KeyDown) {
                         val currentIndex = buttons.indexOfFirst { it.id == focusedButtonId }
