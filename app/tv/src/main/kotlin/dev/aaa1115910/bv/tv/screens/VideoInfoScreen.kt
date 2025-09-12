@@ -6,10 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -44,7 +41,6 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Done
 import androidx.compose.material.icons.rounded.ViewModule
 import androidx.compose.material.icons.rounded.Warning
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -64,7 +60,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.focus.focusRequester
@@ -78,9 +73,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -96,7 +89,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
-import androidx.tv.material3.Glow
 import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.LocalTextStyle
@@ -108,8 +100,6 @@ import androidx.tv.material3.Tab
 import androidx.tv.material3.TabRow
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
-import coil.compose.rememberAsyncImagePainter
-import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import coil.transform.BlurTransformation
 import dev.aaa1115910.biliapi.entity.ApiType
@@ -156,7 +146,6 @@ import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.util.swapList
 import dev.aaa1115910.bv.util.swapListWithMainContext
 import dev.aaa1115910.bv.util.toast
-import dev.aaa1115910.bv.util.unifiedGlow
 import dev.aaa1115910.bv.viewmodel.video.VideoDetailViewModel
 import dev.aaa1115910.bv.viewmodel.video.VideoInfoState
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -1056,26 +1045,19 @@ fun VideoInfoData(
 //                    heightIs = with(localDensity) { coordinates.size.height.toDp() }
 //                }
                 .onFocusChanged { coverHasFocus = it.hasFocus }
-                .padding(4.dp)
-                .unifiedGlow(
-                    enabled = coverHasFocus,
-                    shape = MaterialTheme.shapes.large,
-                    glowColor = MaterialTheme.colorScheme.onSurface,
-                    glowRadius = 12.dp,
-                    glowAlpha = 0.5f
-                ),
+                .padding(4.dp),
             onClick = onClickCover,
             shape = ClickableSurfaceDefaults.shape(
-                shape = MaterialTheme.shapes.large,
+                shape = MaterialTheme.shapes.medium,
             ),
             scale = ClickableSurfaceDefaults.scale(scale = 1f, focusedScale = 1.05f),
             border = ClickableSurfaceDefaults.border(
                 focusedBorder = Border(
                     border = BorderStroke(
-                        width = 2.dp,
+                        width = 3.dp,
                         color = MaterialTheme.colorScheme.border
                     ),
-                    shape = MaterialTheme.shapes.large
+                    shape = MaterialTheme.shapes.medium
                 )
             )
         ) {
@@ -1096,8 +1078,8 @@ fun VideoInfoData(
                         RoundedCornerShape(
                             topStart = 0.dp,
                             topEnd = 0.dp,
-                            bottomStart = 16.dp,
-                            bottomEnd = 16.dp
+                            bottomStart = 12.dp,
+                            bottomEnd = 12.dp
                         )
                     )
                     .background(
