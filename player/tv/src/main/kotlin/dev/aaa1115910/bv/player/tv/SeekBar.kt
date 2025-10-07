@@ -1,12 +1,15 @@
 package dev.aaa1115910.bv.player.tv
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.SliderColors
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
@@ -31,15 +34,14 @@ fun VideoSeekBar(
     idleIcon: String = "",
     movingIcon: String = "",
     moveState: SeekMoveState = SeekMoveState.Idle,
-    playing: Boolean = true,
-    showPosition: Boolean = false
+    showPosition: Boolean = false,
+    isFocused: Boolean = false,
 ) {
     VideoSeekBar(
         modifier = modifier,
         duration = duration,
         position = position,
         bufferedPercentage = bufferedPercentage,
-        playing = playing,
         useDefaultThumb = idleIcon.isBlank(),
         showPosition = showPosition,
         thumb = { thumbModifier ->
@@ -49,7 +51,8 @@ fun VideoSeekBar(
                 idleJsonUrl = idleIcon,
                 movingJsonUrl = movingIcon
             )
-        }
+        },
+        isFocused = isFocused
     )
 }
 
@@ -60,10 +63,10 @@ private fun VideoSeekBar(
     position: Long,
     bufferedPercentage: Int,
     colors: SliderColors = SliderDefaults.colors(),
-    playing: Boolean = true,
     useDefaultThumb: Boolean = false,
     showPosition: Boolean = false,
-    thumb: (@Composable (Modifier) -> Unit)? = null
+    thumb: (@Composable (Modifier) -> Unit)? = null,
+    isFocused: Boolean = false,
 ) {
     BoxWithConstraints(
         modifier = modifier
@@ -82,10 +85,16 @@ private fun VideoSeekBar(
                         end.linkTo(parent.end)
                         bottom.linkTo(parent.bottom, 8.dp)
                     }
-                    .padding(horizontal = 16.dp),
+                    .border(
+                        width = 1.dp,
+                        color = if (isFocused) Color.White.copy(alpha = 0.35f) else Color.Transparent,
+                        shape = RoundedCornerShape(6.dp)
+                    )
+                    .padding(horizontal = 6.dp, vertical = 1.dp),
                 duration = duration,
                 position = position,
                 bufferedPercentage = bufferedPercentage,
+                showThumb = useDefaultThumb,
                 colors = colors
             )
             thumb?.invoke(
