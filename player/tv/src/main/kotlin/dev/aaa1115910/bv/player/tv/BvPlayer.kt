@@ -21,7 +21,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.Dp
@@ -35,19 +34,18 @@ import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuMaskFrame
 import dev.aaa1115910.biliapi.entity.video.Subtitle
 import dev.aaa1115910.bv.player.AbstractVideoPlayer
-import dev.aaa1115910.bv.player.AkDanmakuPlayer
 import dev.aaa1115910.bv.player.BvVideoPlayer
 import dev.aaa1115910.bv.player.VideoPlayerListener
 import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.DanmakuType
-import dev.aaa1115910.bv.player.entity.LocalVideoPlayerClockData
+import dev.aaa1115910.bv.player.entity.LocalVideoPlayerClockState
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerDanmakuMasksData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerDebugInfoData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerHistoryData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerLoadStateData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerLogsData
-import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekData
+import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekState
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerStateData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerVideoInfoData
 import dev.aaa1115910.bv.player.entity.PlayMode
@@ -56,20 +54,21 @@ import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoAspectRatio
 import dev.aaa1115910.bv.player.entity.VideoCodec
 import dev.aaa1115910.bv.player.entity.VideoListItem
-import dev.aaa1115910.bv.player.entity.VideoPlayerClockData
+import dev.aaa1115910.bv.player.entity.VideoPlayerClockState
 import dev.aaa1115910.bv.player.entity.VideoPlayerDebugInfoData
-import dev.aaa1115910.bv.player.entity.VideoPlayerSeekData
+import dev.aaa1115910.bv.player.entity.VideoPlayerSeekState
 import dev.aaa1115910.bv.player.entity.VideoPlayerStateData
 import dev.aaa1115910.bv.player.tv.controller.VideoPlayerController
-import dev.aaa1115910.bv.player.util.danmakuMask
 import dev.aaa1115910.bv.util.countDownTimer
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.formatHourMinSec
-import dev.aaa1115910.bv.util.ifElse
 import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.util.timeTask
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Calendar
@@ -111,6 +110,13 @@ fun BvPlayer(
     onRefreshVideo: () -> Unit = {},
     userActionContent: @Composable (focusMap: Map<String, FocusRequester>, onFocus: (String) -> Unit, onPauseAutoHide: (Boolean) -> Unit) -> Unit = { _, _, _ -> }
 ) {
+//    // 调试重组次数: AtomicInteger，不被 Compose 追踪，只记录真实由外部状态引起的重组次数。
+//    val recomposeCounter = remember { java.util.concurrent.atomic.AtomicInteger(0) }
+//    SideEffect {
+//        val value = recomposeCounter.incrementAndGet()
+//        println("Recompose(BvPlayer): $value")
+//    }
+
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger("BvPlayer")
     //val tvVideoPlayerData = LocalTvVideoPlayerData.current
@@ -138,10 +144,8 @@ fun BvPlayer(
     val typeFilter by remember { mutableStateOf(TypeFilter()) }
     var danmakuConfig by remember { mutableStateOf(DanmakuConfig()) }
 
-    var duration by remember { mutableLongStateOf(0L) }
-    var bufferedPercentage by remember { mutableStateOf(0) }
+    val seekState = remember { VideoPlayerSeekState() }
     var currentVideoAspectRatio by remember { mutableStateOf(VideoAspectRatio.Default) }
-    var currentPosition by remember { mutableLongStateOf(0L) }
     var currentPlaySpeed by remember { mutableFloatStateOf(videoPlayerConfigData.currentVideoSpeed) }
     var aspectRatioValue by remember { mutableFloatStateOf(16f / 9f) }
     val aspectRatio by animateFloatAsState(
@@ -153,7 +157,7 @@ fun BvPlayer(
     var defaultAspectRatio by remember { mutableFloatStateOf(16 / 9f) }
     var showInfoProvider: () -> Boolean by remember { mutableStateOf({ false }) }
 
-    var clock: Triple<Int, Int, Int> by remember { mutableStateOf(Triple(0, 0, 0)) }
+    val clockState = remember { VideoPlayerClockState() }
 
     var hideLogsTimer: CountDownTimer? by remember { mutableStateOf(null) }
     var clockRefreshTimer: CountDownTimer? by remember { mutableStateOf(null) }
@@ -161,11 +165,8 @@ fun BvPlayer(
 
     var currentDanmakuMaskFrame: DanmakuMaskFrame? by remember { mutableStateOf(null) }
 
-    val updateSeek = {
-        currentPosition = videoPlayer.currentPosition.coerceAtLeast(0L)
-        duration = videoPlayer.duration.coerceAtLeast(0L)
-        bufferedPercentage = videoPlayer.bufferedPercentage
-    }
+    // 独立弹幕层句柄（Stable），父级重组频率降低
+    val danmakuLayerHandle = remember { DanmakuLayerHandle() }
 
     val initDanmakuConfig: () -> Unit = {
         val danmakuTypes = videoPlayerConfigData.currentDanmakuEnabledList
@@ -358,12 +359,12 @@ fun BvPlayer(
         }
 
         override fun onSeekBack(seekBackIncrementMs: Long) {
-            mDanmakuPlayer?.seekTo(currentPosition)
+            mDanmakuPlayer?.seekTo(seekState.position)
             mDanmakuPlayer?.pause()
         }
 
         override fun onSeekForward(seekForwardIncrementMs: Long) {
-            mDanmakuPlayer?.seekTo(currentPosition)
+            mDanmakuPlayer?.seekTo(seekState.position)
             mDanmakuPlayer?.pause()
         }
     }
@@ -379,6 +380,7 @@ fun BvPlayer(
     LaunchedEffect(danmakuPlayer) {
         logger.debug { "update mDanmakuPlayer" }
         mDanmakuPlayer = danmakuPlayer
+        danmakuLayerHandle.updateDanmakuPlayer(danmakuPlayer)
     }
 
     LaunchedEffect(videoPlayerLoadStateData.loadState) {
@@ -394,12 +396,15 @@ fun BvPlayer(
         }
     }
 
-    DisposableEffect(Unit) {
-        val updateSeekTimer = timeTask(0, 200, "updateSeekTimer", false) {
-            scope.launch { updateSeek() }
-        }
-        onDispose {
-            updateSeekTimer.cancel()
+    LaunchedEffect(videoPlayer) {
+        while (currentCoroutineContext().isActive) {
+            val pos = videoPlayer.currentPosition.coerceAtLeast(0L)
+            val dur = videoPlayer.duration.coerceAtLeast(0L)
+            val buf = videoPlayer.bufferedPercentage
+            if (seekState.position != pos) seekState.position = pos
+            if (seekState.duration != dur) seekState.duration = dur
+            if (seekState.bufferedPercentage != buf) seekState.bufferedPercentage = buf
+            delay(200)
         }
     }
 
@@ -408,7 +413,7 @@ fun BvPlayer(
         var resetTimer: ((Long) -> Unit)? = null
 
         val updateMask: suspend () -> Unit = {
-            val currentPosition = currentPosition
+            val currentPosition = seekState.position
             val danmakuMasks = videoPlayerDanmakuMaskData.danmakuMasks.firstOrNull {
                 currentPosition in it.range
             }?.frames?.firstOrNull { currentPosition in it.range }
@@ -424,7 +429,7 @@ fun BvPlayer(
         }
 
         val timerTask: () -> Unit = {
-            val currentPosition = currentPosition
+            val currentPosition = seekState.position
             scope.launch(Dispatchers.IO) {
                 if (videoPlayerDanmakuMaskData.danmakuMasks.isNotEmpty()) {
                     if (currentDanmakuMaskFrame == null) {
@@ -511,25 +516,17 @@ fun BvPlayer(
                 val hour = calendar.get(Calendar.HOUR_OF_DAY)
                 val minute = calendar.get(Calendar.MINUTE)
                 val second = calendar.get(Calendar.SECOND)
-                clock = Triple(hour, minute, second)
+                if (clockState.hour != hour) clockState.hour = hour
+                if (clockState.minute != minute) clockState.minute = minute
+                if (clockState.second != second) clockState.second = second
             }
         )
-        onDispose {
-            clockRefreshTimer?.cancel()
-        }
+        onDispose { clockRefreshTimer?.cancel() }
     }
 
     CompositionLocalProvider(
-        LocalVideoPlayerSeekData provides VideoPlayerSeekData(
-            duration = duration,
-            position = currentPosition,
-            bufferedPercentage = bufferedPercentage
-        ),
-        LocalVideoPlayerClockData provides VideoPlayerClockData(
-            hour = clock.first,
-            minute = clock.second,
-            second = clock.third
-        ),
+        LocalVideoPlayerSeekState provides seekState,
+        LocalVideoPlayerClockState provides clockState,
         //LocalVideoPlayerHistoryData provides LocalVideoPlayerHistoryData.current.copy(
         //    showBackToHistory = showBackToHistory
         //),
@@ -693,22 +690,20 @@ fun BvPlayer(
             onOpenDanmaku = {
                 onShowDanmakuChange(true)
                 videoPlayerConfigData.showDanmaku = true
-                danmakuConfig = danmakuConfig.copy(
-                    visibility = true
-                )
+                danmakuConfig = danmakuConfig.copy(visibility = true)
                 danmakuConfig.updateVisibility()
                 logger.info { "Update danmaku config: $danmakuConfig" }
                 mDanmakuPlayer?.updateConfig(danmakuConfig)
+                danmakuLayerHandle.update(visible = true)
             },
             onHideDanmaku = {
                 onShowDanmakuChange(false)
                 videoPlayerConfigData.showDanmaku = false
-                danmakuConfig = danmakuConfig.copy(
-                    visibility = false
-                )
+                danmakuConfig = danmakuConfig.copy(visibility = false)
                 danmakuConfig.updateVisibility()
                 logger.info { "Update danmaku config: $danmakuConfig" }
                 mDanmakuPlayer?.updateConfig(danmakuConfig)
+                danmakuLayerHandle.update(visible = false)
             },
             onLoopPlayModeChange = {
                 videoPlayerConfigData.isLoop = it
@@ -720,6 +715,15 @@ fun BvPlayer(
                 videoPlayer.setOptions()
             }
 
+            // 将弹幕层副作用独立到子树，保证父级其它状态变化不导致 handle 以外的重组
+            DanmakuLayerSideEffects(
+                danmakuLayerHandle = danmakuLayerHandle,
+                area = videoPlayerConfigData.currentDanmakuArea,
+                opacity = videoPlayerConfigData.currentDanmakuOpacity,
+                visible = videoPlayerConfigData.showDanmaku,
+                maskFrame = currentDanmakuMaskFrame.takeIf { videoPlayerConfigData.currentDanmakuMask }
+            )
+
             BvVideoPlayer(
                 modifier = Modifier
                     .fillMaxHeight()
@@ -729,17 +733,9 @@ fun BvPlayer(
                 playerListener = videoPlayerListener,
             )
 
-            AkDanmakuPlayer(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .fillMaxHeight(videoPlayerConfigData.currentDanmakuArea)
-                    .alpha(videoPlayerConfigData.currentDanmakuOpacity)
-                    .ifElse(
-                        { videoPlayerConfigData.currentDanmakuMask },
-                        Modifier.danmakuMask(currentDanmakuMaskFrame)
-                    ),
-                danmakuPlayer = mDanmakuPlayer
+            DanmakuLayer(
+                modifier = Modifier.align(Alignment.TopCenter),
+                handle = danmakuLayerHandle
             )
 
             if (showLogs) {
@@ -750,5 +746,24 @@ fun BvPlayer(
                 }
             }
         }
+    }
+}
+
+// 同步弹幕层 UI 相关的独立副作用（区域/透明度/蒙版/可见性）
+@Composable
+private fun DanmakuLayerSideEffects(
+    danmakuLayerHandle: DanmakuLayerHandle,
+    area: Float,
+    opacity: Float,
+    visible: Boolean,
+    maskFrame: DanmakuMaskFrame?,
+) {
+    LaunchedEffect(area, opacity, visible, maskFrame) {
+        danmakuLayerHandle.update(
+            area = area,
+            opacity = opacity,
+            mask = maskFrame,
+            visible = visible,
+        )
     }
 }
