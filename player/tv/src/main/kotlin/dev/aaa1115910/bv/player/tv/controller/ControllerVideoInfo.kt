@@ -250,7 +250,7 @@ fun ControllerVideoInfoBottom(
     stateData: VideoPlayerStateData,
     idleIcon: String,
     movingIcon: String,
-    play: Int,
+    play: Long,
     danmaku: Int,
     like: Int,
     coin: Int,
