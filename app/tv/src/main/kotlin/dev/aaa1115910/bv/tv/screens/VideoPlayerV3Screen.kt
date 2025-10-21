@@ -165,6 +165,7 @@ fun VideoPlayerV3Screen(
             currentResolution = playerViewModel.currentQuality,
             currentVideoCodec = playerViewModel.currentVideoCodec,
             currentVideoAspectRatio = playerViewModel.currentVideoAspectRatio,
+            currentVideoRotation = playerViewModel.currentVideoRotation,
             currentVideoSpeed = playerViewModel.currentPlaySpeed,
             currentAudio = playerViewModel.currentAudio,
             currentDanmakuEnabled = playerViewModel.currentDanmakuEnabled,
@@ -356,6 +357,9 @@ fun VideoPlayerV3Screen(
                 },
                 onAspectRatioChange = { aspectRatio ->
                     playerViewModel.currentVideoAspectRatio = aspectRatio
+                },
+                onRotationChange = { rotation ->
+                    playerViewModel.currentVideoRotation = rotation
                 },
                 onPlaySpeedChange = { speed ->
                     Prefs.currentPlaySpeed = speed
