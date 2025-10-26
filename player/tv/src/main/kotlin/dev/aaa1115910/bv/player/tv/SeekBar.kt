@@ -92,7 +92,7 @@ private fun VideoSeekBar(
                 showThumb = useDefaultThumb,
                 colors = colors,
                 height = 10.dp,
-                strokeWidth = if (isFocused != false) 10.dp else 3.dp
+                strokeWidth = if (isFocused != false) 10.dp else 4.dp
             )
             thumb?.invoke(
                 Modifier
