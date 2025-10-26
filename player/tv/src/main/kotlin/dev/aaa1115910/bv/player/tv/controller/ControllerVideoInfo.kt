@@ -327,7 +327,7 @@ fun ControllerVideoInfoBottom(
             ControlButton(
                 id = "upSpace",
                 painterId = upSpaceIconId,
-                scale = 0.73f,
+                scale = 0.72f,
                 onClick = onOpenUpSpace,
                 visible = !fromSeason
             ),
@@ -345,6 +345,7 @@ fun ControllerVideoInfoBottom(
             ControlButton(
                 id = "subtitle",
                 painterId = subtitleIconId,
+                scale = 0.97f,
                 onClick = { showSubtitleDialog = true },
                 visible = availableSubtitleTracks.count() > 1
             ),
@@ -708,9 +709,9 @@ private fun SpeedDialog(
                         .focusable()
                         .fillMaxWidth()
                         .onPreviewKeyEvent {
-                            if (it.key == Key.DirectionUp || it.key == Key.DirectionDown) {
+                            if (it.key == Key.DirectionUp || it.key == Key.DirectionDown || it.key == Key.DirectionLeft || it.key == Key.DirectionRight) {
                                 if (it.type == KeyEventType.KeyDown) {
-                                    var newValue = if (it.key == Key.DirectionUp)
+                                    var newValue = if (it.key == Key.DirectionUp || it.key == Key.DirectionRight)
                                         speed + step
                                     else
                                         speed - step
