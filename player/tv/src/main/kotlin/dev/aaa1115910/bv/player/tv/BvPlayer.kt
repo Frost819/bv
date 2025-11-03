@@ -81,6 +81,7 @@ fun BvPlayer(
     playerSeekForwardStep: Int = 10,
     playerSeekBackwardStep: Int = 5,
     showBottomProgressBar: Boolean = false,
+    useTextureViewFixPortraitVideo: Boolean = false,
     onSendHeartbeat: suspend (Int) -> Unit,
     onClearBackToHistoryData: () -> Unit,
     onLoadNextVideo: () -> Unit,
@@ -246,7 +247,7 @@ fun BvPlayer(
                 } else if (currentTime >= totalTime - 1) {
                     -1 // 播放完后上报的时间应为 -1
                 } else {
-                    currentTime // 播放中上报单签时间
+                    currentTime // 播放中上报当前时间
                 }
             }
             if (time > -2) {
@@ -769,7 +770,8 @@ fun BvPlayer(
                 videoPlayer = videoPlayer,
                 playerListener = videoPlayerListener,
                 rotationDegrees = currentVideoRotation.degrees,
-                danmakuPlayer = danmakuPlayer
+                danmakuPlayer = danmakuPlayer,
+                forceUseTextureView = useTextureViewFixPortraitVideo
             )
 
             DanmakuLayer(
