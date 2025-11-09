@@ -132,6 +132,7 @@ fun ControllerVideoInfo(
     onSeekBack: () -> Unit,
     onSeekForward: () -> Unit,
     onSubtitleChange: (Subtitle) -> Unit,
+    onLoadNextVideo: (Boolean) -> Unit
 ) {
     val videoPlayerClockState = LocalVideoPlayerClockState.current
     val videoPlayerSeekState = LocalVideoPlayerSeekState.current
@@ -227,7 +228,9 @@ fun ControllerVideoInfo(
                     val track = videoPlayerConfigData.availableSubtitleTracks.firstOrNull { it.id == id }
                     track?.let { onSubtitleChange(it) }
                 },
-                isFollowingUp = videoPlayerVideoInfoData.isFollowingUp
+                isFollowingUp = videoPlayerVideoInfoData.isFollowingUp,
+                showNextVideoBtn = videoPlayerConfigData.showNextVideoBtn,
+                onLoadNextVideo = onLoadNextVideo
             )
         }
     }
@@ -306,7 +309,9 @@ fun ControllerVideoInfoBottom(
     onSeekForward: () -> Unit,
     availableSubtitleTracks: List<Subtitle> = emptyList(),
     currentSubtitleId: Long,
-    onSubtitleChange: (Long) -> Unit
+    onSubtitleChange: (Long) -> Unit,
+    showNextVideoBtn: Boolean = false,
+    onLoadNextVideo: (Boolean) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     var hideVideoInfoJob by remember { mutableStateOf<Job?>(null) }
@@ -320,6 +325,13 @@ fun ControllerVideoInfoBottom(
     val upSpaceIconId = if (isFollowingUp) R.drawable.person_following else R.drawable.person
     val buttons = remember(fromSeason, showDanmaku, isPlaying, isLoop, speed, rotation, currentSubtitleId, isFollowingUp) {
         listOf(
+            ControlButton(
+                id = "nextVideo",
+                painterId = R.drawable.next_play_fill,
+                scale = 0.7f,
+                onClick = { onLoadNextVideo(true) },
+                visible = showNextVideoBtn
+            ),
             ControlButton(
                 id = "speed",
                 text = formatSpeed(speed),
@@ -469,26 +481,14 @@ fun ControllerVideoInfoBottom(
             modifier = Modifier
                 .padding(top = 32.dp)
         )
-        if (title.isNotEmpty() && partTitle.isNotEmpty() && title != partTitle) {
-            Text(
-                modifier = Modifier
-                    .padding(horizontal = 32.dp),
-                text = title,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.headlineSmall,
-            )
-        }
         Text(
             modifier = Modifier
-                .padding(horizontal = 32.dp)
-                .fillMaxWidth(),
-            text = if (partTitle.isEmpty() || title == partTitle) title else partTitle,
+                .padding(horizontal = 32.dp),
+            text = "$title${if(title.contains(partTitle)) "" else " | $partTitle"}",
             color = Color.White,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            style = if (partTitle.isEmpty() || title == partTitle) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.headlineSmall,
         )
         if (upName.isNotEmpty()) {
             Text(
@@ -540,7 +540,7 @@ fun ControllerVideoInfoBottom(
                 }
                 .focusProperties {
                     up = userActionFocusRequesters.value["like"] ?: FocusRequester()
-                    down = focusRequesters["speed"] ?: FocusRequester()
+                    down = focusRequesters[if (showNextVideoBtn) "nextVideo" else "speed"] ?: FocusRequester()
                 }
                 .focusable()
                 .onPreviewKeyEvent {
@@ -1020,7 +1020,8 @@ private fun ControllerVideoInfoPreview() {
                 },
                 onSeekBack = {},
                 onSeekForward = {},
-                onSubtitleChange = {}
+                onSubtitleChange = {},
+                onLoadNextVideo = {}
             )
         }
     }

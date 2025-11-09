@@ -116,7 +116,9 @@ data class WebSpaceVideoData(
             @SerialName("attribute")
             val attribute: Int,
             @SerialName("is_charging_arc")
-            val isChargingArc: Boolean = false
+            val isChargingArc: Boolean = false,
+            @SerialName("elec_arc_badge")
+            val elecArcBadge: String = ""
         ) {
             /**
              * 合集信息

@@ -96,7 +96,7 @@ fun SmallVideoCard(
                 play = data.playString,
                 danmaku = data.danmakuString,
                 time = data.timeString,
-                badge = if(data.isChargingArc) "⚡充电" else data.badgeText ?: ""
+                badge = "${if(data.isChargingArc) "⚡" else ""}${if(data.badgeText.isEmpty() && data.isChargingArc) "充电专属" else data.badgeText}"
             )
             Spacer(modifier = Modifier.height(8.dp))
             CardInfo(

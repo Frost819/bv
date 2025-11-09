@@ -120,10 +120,15 @@ object GithubApi {
             else release.assets.firstOrNull { it.name.contains("alpha") || it.name.contains("release") }?.browserDownloadUrl
         downloadUrl ?: throw IllegalStateException("Didn't find download url")
         client.prepareRequest {
-            url(downloadUrl)
+            url(toGhProxyUrl(downloadUrl))
             onDownload(downloadListener)
         }.execute { response ->
             response.bodyAsChannel().copyAndClose(file.writeChannel())
         }
+    }
+
+    private fun toGhProxyUrl(originalUrl: String): String {
+        val prefix = "https://ghfast.top/"
+        return prefix + originalUrl
     }
 }

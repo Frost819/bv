@@ -1118,7 +1118,7 @@ fun VideoInfoData(
                             shape = MaterialTheme.shapes.extraSmall
                         )
                         .padding(all = 2.dp),
-                    text = "⚡充电",
+                    text = "⚡${videoDetail.chargingArcBadge}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White
                 )

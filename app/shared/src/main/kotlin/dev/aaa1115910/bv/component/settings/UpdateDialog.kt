@@ -1,5 +1,6 @@
 package dev.aaa1115910.bv.component.settings
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
 import androidx.compose.animation.core.animateFloatAsState
@@ -191,6 +192,7 @@ fun UpdateDialog(
     }
 }
 
+@SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 private fun UpdateDialogContent(
     modifier: Modifier = Modifier,
@@ -208,13 +210,14 @@ private fun UpdateDialogContent(
 ) {
     val configuration = LocalConfiguration.current
     val maxHeight = (configuration.screenHeightDp * 0.8).dp
+    val weight = (configuration.screenWidthDp * 0.67).dp
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val confirmButtonFocusRequester = remember { FocusRequester() }
 
     AlertDialog(
         modifier = modifier
-            .width(420.dp)
+            .width(weight)
             .heightIn(max = maxHeight),
         onDismissRequest = { onHideDialog() },
         title = {
@@ -227,7 +230,7 @@ private fun UpdateDialogContent(
                         UpdateStatus.Ready -> latestReleaseBuild!!.name
                         UpdateStatus.Downloading -> "下载中"
                         UpdateStatus.Installing -> "安装中"
-                        UpdateStatus.NoAvailableUpdate -> "无可用更新"
+                        UpdateStatus.NoAvailableUpdate -> "无可用更新${if(latestReleaseBuild?.name.isNullOrEmpty()) "" else " | 线上最新 ${latestReleaseBuild.name}"}"
                         UpdateStatus.CheckError -> "检查更新失败"
                         UpdateStatus.DownloadError -> "下载失败"
                         UpdateStatus.InstallError -> "安装失败"
@@ -287,7 +290,7 @@ private fun UpdateDialogContent(
                     UpdateStatus.DownloadError -> text("下载失败")
                     UpdateStatus.InstallError -> text("安装失败")
                     UpdateStatus.CheckError -> text("获取更新信息失败")
-                    UpdateStatus.NoAvailableUpdate -> text("真没更新，骗你是小狗！")
+                    UpdateStatus.NoAvailableUpdate -> text(latestReleaseBuild?.body ?: "真没更新，骗你是小狗！")
                 }
             }
         },

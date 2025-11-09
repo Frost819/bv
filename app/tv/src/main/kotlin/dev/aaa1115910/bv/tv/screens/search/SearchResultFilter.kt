@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.delay
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -29,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.repositories.SearchFilterDuration
 import dev.aaa1115910.biliapi.repositories.SearchFilterOrderType
@@ -58,10 +60,21 @@ fun SearchResultVideoFilter(
     val partitionFocusRequester = remember { FocusRequester() }
     val partitionChildFocusRequester = remember { FocusRequester() }
 
+    // 用于防止对话框刚打开时误触发点击事件
+    var isDialogJustOpened by remember { mutableStateOf(false) }
+
     val filterRowSpace = 8.dp
 
     LaunchedEffect(show) {
-        if (show) defaultFocusRequester.requestFocus()
+        if (show) {
+            isDialogJustOpened = true
+            // 延迟请求焦点，避免打开对话框的按键事件被新获得焦点的组件消费
+            delay(100)
+            defaultFocusRequester.requestFocus()
+            // 等待一段时间后才允许点击事件
+            delay(200)
+            isDialogJustOpened = false
+        }
     }
 
     if (show) {
@@ -91,6 +104,7 @@ fun SearchResultVideoFilter(
                                 selected = orderType == selectedOrder,
                                 onClick = { onSelectedOrderChange(orderType) },
                                 label = { Text(text = orderType.getDisplayName(context)) },
+                                enabled = !isDialogJustOpened
                             )
                         }
                     }
@@ -119,7 +133,8 @@ fun SearchResultVideoFilter(
                                 focusRequester = durationFocusRequester,
                                 selected = duration == selectedDuration,
                                 onClick = { onSelectedDurationChange(duration) },
-                                label = { Text(text = duration.getDisplayName(context)) }
+                                label = { Text(text = duration.getDisplayName(context)) },
+                                enabled = !isDialogJustOpened
                             )
                         }
                     }
@@ -152,7 +167,8 @@ fun SearchResultVideoFilter(
                                     onSelectedPartitionChange(null)
                                     onSelectedChildPartitionChange(null)
                                 },
-                                label = { Text(text = "全部分区") }
+                                label = { Text(text = "全部分区") },
+                                enabled = !isDialogJustOpened
                             )
                         }
                         items(items = partitions) { partition ->
@@ -163,7 +179,8 @@ fun SearchResultVideoFilter(
                                     onSelectedPartitionChange(partition)
                                     onSelectedChildPartitionChange(null)
                                 },
-                                label = { Text(text = partition.strRes) }
+                                label = { Text(text = partition.strRes) },
+                                enabled = !isDialogJustOpened
                             )
                         }
                     }
@@ -191,7 +208,8 @@ fun SearchResultVideoFilter(
                                             else null
                                         )
                                     },
-                                    label = { Text(text = partition.strRes) }
+                                    label = { Text(text = partition.strRes) },
+                                    enabled = !isDialogJustOpened
                                 )
                             }
                         }
@@ -216,6 +234,7 @@ private fun FilterDialogFilterChip(
     selected: Boolean,
     onClick: () -> Unit,
     label: @Composable () -> Unit,
+    enabled: Boolean = true
 ) {
     var hasFocus by remember { mutableStateOf(false) }
     val focusRequesterModifier = if (selected)
@@ -225,14 +244,14 @@ private fun FilterDialogFilterChip(
     FilterChip(
         modifier = focusRequesterModifier.onFocusChanged { hasFocus = it.hasFocus },
         selected = selected,
-        onClick = onClick,
+        onClick = { if (enabled) onClick() },
         label = label,
         border = if (hasFocus) FilterChipDefaults.filterChipBorder(
             enabled = true,
             selected = selected,
-            borderColor = Color.White,
+            borderColor = MaterialTheme.colorScheme.border,
             borderWidth = 2.dp,
-            selectedBorderColor = Color.White,
+            selectedBorderColor = MaterialTheme.colorScheme.border,
             selectedBorderWidth = 2.dp
         )
         else FilterChipDefaults.filterChipBorder(

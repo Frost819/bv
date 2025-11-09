@@ -118,7 +118,8 @@ fun DynamicsScreen(
                                 upName = item.author,
                                 time = item.duration * 1000L,
                                 pubTime = item.pubTime,
-                                isChargingArc = item.isChargingArc
+                                isChargingArc = item.isChargingArc,
+                                badgeText = item.chargingArcBadge
                             )
                         },
                         onClick = { onClickVideo(item) },

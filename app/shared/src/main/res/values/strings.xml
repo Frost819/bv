@@ -704,7 +704,7 @@
     <string name="settings_portrait_video_fix_mode_text">用来解决部分设备播放大于1080P的竖屏视频出现画面花屏/比例错误的问题</string>
     <string name="settings_player_show_debug_info_text">在视频播放页面左下角显示视频加载过程信息</string>
     <string name="settings_player_show_debug_info_title">显示视频加载过程信息</string>
-    <string name="settings_player_exit_when_all_is_played_text">没有下一个要播放的视频时，退出播放器回视频详情页</string>
+    <string name="settings_player_exit_when_all_is_played_text">没有符合要求的下一个视频时，退出播放器回视频详情页</string>
     <string name="settings_player_exit_when_all_is_played_title">都播完后退出播放器</string>
     <string name="settings_show_ugc_video_info_text">关闭后，点击非PGC视频卡片不显示详情页直接开始播放</string>
     <string name="settings_show_ugc_video_info_title">显示UGC视频详情页</string>
@@ -714,8 +714,8 @@
     <string name="settings_player_seek_forward_step_title">视频快进时间间隔（秒）</string>
     <string name="settings_player_seek_backward_step_text">设置视频快退时间间隔（秒）</string>
     <string name="settings_player_seek_backward_step_title">视频快退时间间隔（秒）</string>
-    <string name="settings_player_show_bottom_progress_bar_text">在播放器底部显示常驻进度条</string>
-    <string name="settings_player_show_bottom_progress_bar_title">显示常驻进度条</string>
+    <string name="settings_player_show_bottom_progress_bar_text">在播放器底部常驻显示迷你进度条</string>
+    <string name="settings_player_show_bottom_progress_bar_title">显示迷你进度条</string>
     <string name="settings_player_load_next_action_title">下一个播放</string>
     <string name="settings_player_load_next_action_text">设置播放完后是否自动播放、播放哪一个</string>
     <string name="settings_player_load_next_action_do_nothing">无，不播了</string>

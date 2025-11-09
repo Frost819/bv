@@ -124,7 +124,9 @@ data class VideoInfo(
     private val _rcmdReason: JsonElement? = null,
     var rcmdReason: RcmdReason? = null,
     @SerialName("is_upower_exclusive")
-    val isUpowerExclusive: Boolean = false
+    val isUpowerExclusive: Boolean = false,
+    @SerialName("is_upower_play")
+    val isUpowerPlay: Boolean = false
 ) {
     init {
         rcmdReason = if (_rcmdReason == null) {

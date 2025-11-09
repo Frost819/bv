@@ -39,6 +39,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -87,12 +92,23 @@ fun UpSpaceScreen(
     var currentIndex by remember { mutableIntStateOf(0) }
     val showLargeTitle by remember { derivedStateOf { currentIndex < 4 } }
     val titleFontSize by animateFloatAsState(
-        targetValue = if (showLargeTitle) 38f else 24f,
+        targetValue = if (showLargeTitle) 40f else 24f,
         label = "title font size"
+    )
+    val infoFontSize by animateFloatAsState(
+        targetValue = if (showLargeTitle) 15f else 12f,
+        label = "info font size"
     )
 
     var showFollowButton by remember { mutableStateOf(false) }
     var isFollowing by remember { mutableStateOf(false) }
+
+    // 为了解决长按打开页面导致误触卡片click的问题
+    // 记录按键周期的第一次 KeyDown 时间戳
+    // 只在 lastKeyDownTime 为 null 时记录，防止长按的重复 KeyDown 覆盖
+    var lastKeyDownTime by remember { mutableStateOf<Long?>(null) }
+    val timeDiff = 250L
+    var clickEnable by remember { mutableStateOf(false) }
 
     // 监听关注状态变化
     val followStateMap by FollowStateManager.followStateMap.collectAsState()
@@ -108,11 +124,9 @@ fun UpSpaceScreen(
 
     val listFocusRequester = remember { FocusRequester() }
     LaunchedEffect(userSpaceViewModel.tvSpaceVideos.isNotEmpty()) {
-        delay(1200)
-        // 如果listFocusRequester还没有焦点，则请求焦点
-        if (!listFocusRequester.freeFocus()) {
-            listFocusRequester.requestFocus()
-        }
+        listFocusRequester.requestFocus()
+        delay(timeDiff + 100)
+        clickEnable = true
     }
 
     val addFollow: (afterModify: (success: Boolean) -> Unit) -> Unit = { afterModify ->
@@ -187,7 +201,38 @@ fun UpSpaceScreen(
     }
 
     Scaffold(
-        modifier = modifier,
+        modifier = modifier
+            .onPreviewKeyEvent {
+                val isDpadCenter =
+                    listOf(Key.Enter, Key.DirectionCenter).contains(it.key)
+
+                if (isDpadCenter && it.type == KeyEventType.KeyDown) {
+                    // 只在 lastKeyDownTime 为 null 时记录第一个 KeyDown
+                    if (lastKeyDownTime == null) {
+                        lastKeyDownTime = System.currentTimeMillis()
+                    }
+                }
+
+                if (isDpadCenter && it.type == KeyEventType.KeyUp) {
+                    val timeDiff2 = lastKeyDownTime?.let { System.currentTimeMillis() - it } ?: 0L
+                    
+                    // 无论是否消费，都要重置 lastKeyDownTime
+                    lastKeyDownTime = null
+                    
+                    // 如果 KeyDown 和 KeyUp 的时间间隔大于 200ms，说明是长按
+                    // 消费掉这个 KeyUp，防止误触
+                    if (timeDiff2 >= timeDiff) {
+                        clickEnable = true
+                        return@onPreviewKeyEvent true
+                    } else if (!clickEnable){
+                        scope.launch(context = Dispatchers.Main) {
+                            delay(timeDiff)
+                            clickEnable = true
+                        }
+                    }
+                }
+                false
+            },
         topBar = {
             Row(
                 modifier = Modifier
@@ -229,7 +274,7 @@ fun UpSpaceScreen(
                         if (showFollowButton) {
                             Surface(
                                 modifier = Modifier
-                                    .padding(start = 8.dp)
+                                    .padding(start = if (showLargeTitle) 24.dp else 4.dp, top = 2.dp)
                                     .scale(if (showLargeTitle) 1f else 0.7f),
                                 onClick = {
                                     if (isFollowing) {
@@ -319,7 +364,7 @@ fun UpSpaceScreen(
                     }
                     Row {
                         Text(
-                            modifier = Modifier.padding(top = 2.dp),
+                            modifier = Modifier.padding(top =  if (showLargeTitle) 6.dp else 4.dp),
                             text = stringResource(
                                 R.string.friend_count,
                                 if (userSpaceViewModel.friend >= 10000) String.format(
@@ -332,11 +377,12 @@ fun UpSpaceScreen(
                                     "%.2f",
                                     userSpaceViewModel.fans / 10000.0
                                 ) + " 万" else userSpaceViewModel.fans.toString()
-                            ) + "${if (userSpaceViewModel.sign.isNotEmpty()) "  |  " + userSpaceViewModel.sign else ""}",
+                            ) + "${if (userSpaceViewModel.sign.isNotEmpty()) "   |   " + userSpaceViewModel.sign else ""}",
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                            fontSize = 15.sp,
+                            fontSize = infoFontSize.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
+                            lineHeight = (infoFontSize * 1.4).sp
                         )
                     }
                 }
@@ -377,11 +423,13 @@ fun UpSpaceScreen(
                         ),
                         data = video,
                         onClick = {
-                            VideoInfoActivity.actionStart(
-                                context = context,
-                                aid = video.avid,
-                                proxyArea = ProxyArea.checkProxyArea(video.title)
-                            )
+                            if (clickEnable) {
+                                VideoInfoActivity.actionStart(
+                                    context = context,
+                                    aid = video.avid,
+                                    proxyArea = ProxyArea.checkProxyArea(video.title)
+                                )
+                            }
                         },
                         onFocus = {
                             currentIndex = index

@@ -784,7 +784,7 @@ class VideoPlayerV3ViewModel(
             partTitle = nextVideo.title
             loadPlayUrl(
                 avid = nextVideo.aid,
-                cid = nextVideo.cid,
+                cid = nextVideo.cid!!,
                 epid = nextVideo.epid,
                 seasonId = nextVideo.seasonId,
                 continuePlayNext = true
@@ -797,7 +797,7 @@ class VideoPlayerV3ViewModel(
             partTitle = firstVideo.title
             loadPlayUrl(
                 avid = firstVideo.aid,
-                cid = firstVideo.cid,
+                cid = firstVideo.cid!!,
                 epid = firstVideo.epid,
                 seasonId = firstVideo.seasonId,
                 continuePlayNext = true

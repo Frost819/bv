@@ -89,7 +89,6 @@ private fun VideoSeekBar(
                 duration = duration,
                 position = position,
                 bufferedPercentage = bufferedPercentage,
-                showThumb = useDefaultThumb,
                 colors = colors,
                 height = 10.dp,
                 strokeWidth = if (isFocused != false) 10.dp else 4.dp

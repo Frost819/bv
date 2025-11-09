@@ -71,7 +71,8 @@ class UserSpaceViewModel(
                         upName = spaceVideoItem.author,
                         time = spaceVideoItem.duration * 1000L,
                         pubTime = spaceVideoItem.publishDate.getTime().toSmartDate(),
-                        isChargingArc = spaceVideoItem.isChargingArc
+                        isChargingArc = spaceVideoItem.isChargingArc,
+                        badgeText = spaceVideoItem.chargingArcBadge
                     )
                 )
             }

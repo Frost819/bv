@@ -121,8 +121,6 @@ fun VideoSeekBar(
             duration = duration,
             position = if (pressing) previewPosition else position,
             bufferedPercentage = bufferedPercentage,
-            waving = playing,
-            showThumb = thumb == null,
             colors = colors
         )
         Box(modifier = Modifier.fillMaxWidth()) {

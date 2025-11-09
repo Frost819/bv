@@ -14,6 +14,7 @@ import dev.aaa1115910.bv.BVApp.Companion.context
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.util.Prefs
+import dev.aaa1115910.bv.util.DeviceUtil
 import dev.aaa1115910.bv.util.addWithMainContext
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.fWarn
@@ -45,9 +46,13 @@ class FavoriteViewModel(
     var updatingFolders by mutableStateOf(false)
     var updatingFolderItems by mutableStateOf(false)
 
-//    init {
-//        updateFoldersInfo()
-//    }
+    init {
+        if (!DeviceUtil.isTvDevice()) {
+            updateFoldersInfo()
+        } else {
+            logger.fInfo { "Skip updating favorite folders on TV device" }
+        }
+    }
 
     fun updateFoldersInfo() {
         if (updatingFolders) return

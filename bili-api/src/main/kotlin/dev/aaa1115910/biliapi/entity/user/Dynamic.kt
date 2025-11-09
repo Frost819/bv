@@ -761,12 +761,14 @@ data class DynamicVideo(
     val avatar: String,
     val time: Long = 0L,
     val pubTime: String? = null,
-    val isChargingArc: Boolean = false
+    val isChargingArc: Boolean = false,
+    val chargingArcBadge: String = ""
 ) {
     companion object {
         fun fromDynamicVideoItem(item: dev.aaa1115910.biliapi.http.entity.dynamic.DynamicItem): DynamicVideo {
             val archive = item.modules.moduleDynamic.major!!.archive!!
             val author = item.modules.moduleAuthor
+            val isChargingArc = archive.badge.text.contains("充电") || archive.badge.text.contains("限时免费")
             return DynamicVideo(
                 aid = archive.aid.toLong(),
                 bvid = archive.bvid,
@@ -782,7 +784,8 @@ data class DynamicVideo(
                 danmaku = convertStringPlayCountToNumberPlayCount(archive.stat.danmaku).toInt(),
                 avatar = author.face,
                 pubTime = author.pubTime,
-                isChargingArc = archive.badge.text.contains("充电")
+                isChargingArc = isChargingArc,
+                chargingArcBadge = if (isChargingArc) archive.badge.text else ""
             )
         }
 

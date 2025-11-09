@@ -28,7 +28,8 @@ data class VideoDetail(
     val userActions: UserActions,
     var history: History,
     var playerIcon: PlayerIcon? = null,
-    var isChargingArc: Boolean = false
+    var isChargingArc: Boolean = false,
+    var chargingArcBadge: String = ""
 ) {
     companion object {
         fun fromViewReply(viewReply: ViewReply): VideoDetail {
@@ -113,7 +114,10 @@ data class VideoDetail(
                 userActions = UserActions(),
                 history = History(0, 0),
                 playerIcon = null,
-                isChargingArc = videoDetail.view.isUpowerExclusive
+                isChargingArc = videoDetail.view.isUpowerExclusive,
+                chargingArcBadge = if (videoDetail.view.isUpowerExclusive) {
+                    if (videoDetail.view.isUpowerPlay) "限时免费" else "充电专属"
+                } else ""
             )
     }
 

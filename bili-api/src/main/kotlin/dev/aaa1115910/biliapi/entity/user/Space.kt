@@ -44,7 +44,8 @@ data class SpaceVideo(
     val play: Long,
     val danmaku: Int,
     val publishDate: Date,
-    val isChargingArc: Boolean = false
+    val isChargingArc: Boolean = false,
+    val chargingArcBadge: String = ""
 ) {
     companion object {
         fun fromSpaceVideoItem(spaceVideoItem: dev.aaa1115910.biliapi.http.entity.user.WebSpaceVideoData.SpaceVideoListItem.VListItem) =
@@ -59,7 +60,8 @@ data class SpaceVideo(
                 play = spaceVideoItem.play,
                 danmaku = spaceVideoItem.videoReview,
                 publishDate = Date(spaceVideoItem.created * 1000L),
-                isChargingArc = spaceVideoItem.isChargingArc
+                isChargingArc = spaceVideoItem.isChargingArc,
+                chargingArcBadge = spaceVideoItem.elecArcBadge
             )
 
         fun fromSpaceVideoItem(spaceVideoItem: dev.aaa1115910.biliapi.http.entity.user.AppSpaceVideoData.SpaceVideoItem) =

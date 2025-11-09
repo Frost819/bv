@@ -205,7 +205,8 @@ fun VideoPlayerV3Screen(
             incognitoMode = Prefs.incognitoMode,
             isLoop = playerViewModel.isLoop,
             showDanmaku = playerViewModel.showDanmaku,
-            showRelatedVideos = playerViewModel.showRelatedVideos
+            showRelatedVideos = playerViewModel.showRelatedVideos,
+            showNextVideoBtn = Prefs.playerLoadNextAction != PlayerLoadNextAction.DoNothing
         ),
         LocalVideoPlayerDanmakuMasksData provides VideoPlayerDanmakuMasksData(
             danmakuMasks = playerViewModel.danmakuMasks,
@@ -242,7 +243,7 @@ fun VideoPlayerV3Screen(
                 },
                 onSendHeartbeat = playerViewModel::uploadHistory,
                 onClearBackToHistoryData = { playerViewModel.lastPlayed = 0 },
-                onLoadNextVideo = {
+                onLoadNextVideo = { immediate ->
                     if (playerViewModel.showRelatedVideos) {
                         logger.info { "Related videos is shown, skip auto action" }
                         return@BvPlayer
@@ -270,7 +271,7 @@ fun VideoPlayerV3Screen(
                     // 使用 Application 级单例 PlayedAidsCache，退出播放的时候清空缓存，避免重复播放
                     val candidates = playerViewModel.relatedVideos
                         .filter { related -> !related.isChargingArc && !PlayedAidsCache.hasPlayed(related.avid) }
-                        .take(5)
+                        .take(10)
                     val nextRelatedVideo = if (candidates.isNotEmpty()) candidates.random() else null
 
                     // nextVideo 可以是分P/剧集(VideoListItemData) 或 推荐卡片(VideoCardData)
@@ -296,9 +297,11 @@ fun VideoPlayerV3Screen(
                     if (nextVideo != null) {
                         autoActionCountdownJob = scope.launch {
                             try {
-                                autoActionTipText = "播放结束，即将播放下一集"
-                                autoActionTipVisible = true
-                                delay(1600)
+                                if (!immediate) {
+                                    autoActionTipText = "播放结束，即将播放下一集"
+                                    autoActionTipVisible = true
+                                    delay(1600)
+                                }
                                 autoActionTipVisible = false
                                 if (autoActionCountdownJob != null) {
                                     autoActionCountdownJob = null
@@ -488,7 +491,7 @@ fun VideoPlayerV3Screen(
                 onPlayModeChange = { playMode ->
                     Prefs.defaultPlayMode = playMode
                     playerViewModel.currentPlayMode = playMode
-                }
+                },
                 onOpenUpSpace = {
                     UpInfoActivity.actionStart(
                         context,

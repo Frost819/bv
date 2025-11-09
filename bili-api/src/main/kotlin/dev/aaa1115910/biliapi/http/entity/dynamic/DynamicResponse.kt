@@ -52,7 +52,7 @@ data class DynamicItem(
             val actionUrl: String,
             @SerialName("end_url")
             val endUrl: String,
-            val id: Int,
+            val id: Long,
             @SerialName("start_url")
             val startUrl: String
         )

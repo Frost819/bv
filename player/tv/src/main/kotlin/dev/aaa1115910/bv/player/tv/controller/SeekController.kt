@@ -57,8 +57,7 @@ fun SeekController(
                 moveState = moveState,
                 idleIcon = videoPlayerSeekThumbData.idleIcon,
                 movingIcon = videoPlayerSeekThumbData.movingIcon,
-                videoShot = videoPlayerVideoShotData.videoShot,
-                playing = videoPlayerStateData.isPlaying
+                videoShot = videoPlayerVideoShotData.videoShot
             )
         }
     }
@@ -72,8 +71,7 @@ private fun SeekController(
     moveState: SeekMoveState,
     idleIcon: String,
     movingIcon: String,
-    videoShot: VideoShot? = null,
-    playing: Boolean
+    videoShot: VideoShot? = null
 ) {
     Column(
         modifier = modifier,
@@ -112,8 +110,7 @@ private fun SeekController(
                 moveState = moveState,
                 idleIcon = idleIcon,
                 movingIcon = movingIcon,
-                showPosition = true,
-                playing = playing
+                showPosition = true
             )
         }
     }
@@ -138,8 +135,7 @@ private fun VideoProgressSeekPreview(@PreviewParameter(VideoProgressProvider::cl
                 imageWidth = 0,
                 imageHeight = 0,
                 images = emptyList()
-            ),
-            playing = true
+            )
         )
     }
 }

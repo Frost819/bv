@@ -12,8 +12,8 @@ import dev.aaa1115910.bv.player.shared.R
 enum class VideoPlayerMenuNavItem(private val strRes: Int, val icon: ImageVector) {
     Picture(R.string.video_player_menu_nav_picture, Icons.Outlined.Image),
     Danmaku(R.string.video_player_menu_nav_danmaku, Icons.Outlined.ClearAll),
-    ClosedCaption(R.string.video_player_menu_nav_subtitle, Icons.Outlined.ClosedCaption),
-    Others(R.string.video_player_menu_nav_others, Icons.Outlined.MoreVert);
+    ClosedCaption(R.string.video_player_menu_nav_subtitle, Icons.Outlined.ClosedCaption);
+//    Others(R.string.video_player_menu_nav_others, Icons.Outlined.MoreVert);
 
     fun getDisplayName(context: Context) = context.getString(strRes)
 }

@@ -97,7 +97,7 @@ fun BvVideoPlayer(
                             videoPlayer.start()
 
                             lastRotationDegrees = rotationDegrees
-                        }, 80)
+                        }, 0)
                     }
                 }
 
@@ -123,6 +123,7 @@ fun BvVideoPlayer(
                 AndroidView(
                     modifier = modifier.fillMaxSize(),
                     factory = { ctx ->
+                        lastRotationDegrees = rotationDegrees
                         clearVideoView()
                         SurfaceView(ctx).also { sv ->
                             surfaceView = sv
