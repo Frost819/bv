@@ -103,10 +103,10 @@ fun AboutSetting(
                 Text(text = stringResource(R.string.settings_version_check_update_button))
             }
         }
-        // Text(
-        //     modifier = Modifier.align(Alignment.BottomCenter),
-        //     text = "https://github.com/aaa1115910/bv"
-        // )
+        Text(
+         modifier = Modifier.align(Alignment.BottomCenter),
+         text = "https://github.com/fantasytyx/bv"
+        )
     }
 
     UpdateDialog(

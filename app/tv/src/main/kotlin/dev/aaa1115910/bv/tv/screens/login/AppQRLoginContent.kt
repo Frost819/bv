@@ -3,6 +3,8 @@ package dev.aaa1115910.bv.tv.screens.login
 import android.app.Activity
 import android.view.KeyEvent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +16,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onKeyEvent
@@ -28,7 +32,6 @@ import dev.aaa1115910.biliapi.entity.login.QrLoginState
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.util.toast
 import dev.aaa1115910.bv.viewmodel.login.AppQrLoginViewModel
-import dev.aaa1115910.m3qrcode.MaterialShapeQr
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -82,10 +85,19 @@ fun AppQRLoginContent(
                     visible = listOf(QrLoginState.WaitingForScan, QrLoginState.WaitingForConfirm)
                         .contains(appQrLoginViewModel.state)
                 ) {
-                    MaterialShapeQr(
-                        modifier = Modifier.size(280.dp),
-                        content = appQrLoginViewModel.loginUrl
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(240.dp)
+                            .clip(MaterialTheme.shapes.large)
+                            .background(Color.White),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Image(
+                            modifier = Modifier.size(200.dp),
+                            bitmap = appQrLoginViewModel.qrImage,
+                            contentDescription = null
+                        )
+                    }
                 }
 
                 Column(

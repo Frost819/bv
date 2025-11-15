@@ -60,13 +60,13 @@ import com.geetest.sdk.GT3Listener
 import dev.aaa1115910.biliapi.entity.login.QrLoginState
 import dev.aaa1115910.biliapi.repositories.SendSmsState
 import dev.aaa1115910.bv.R
+import dev.aaa1115910.bv.component.QrImage
 import dev.aaa1115910.bv.mobile.theme.BVMobileTheme
 import dev.aaa1115910.bv.util.calculateWindowSizeClassInPreview
 import dev.aaa1115910.bv.util.toast
 import dev.aaa1115910.bv.viewmodel.login.AppQrLoginViewModel
 import dev.aaa1115910.bv.viewmodel.login.GeetestResult
 import dev.aaa1115910.bv.viewmodel.login.SmsLoginViewModel
-import dev.aaa1115910.m3qrcode.MaterialShapeQr
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -306,11 +306,11 @@ fun LoginContentCompact(
                 onLogin = onLogin
             )
             AnimatedVisibility(showQrCode) {
-                MaterialShapeQr(
-                    Modifier
+                QrImage(
+                    modifier = Modifier
                         .padding(top = 36.dp)
                         .size(240.dp),
-                    qrLoginUrl
+                    content = qrLoginUrl
                 )
             }
         }
@@ -477,7 +477,7 @@ fun QrLogin(
     Box(
         modifier = modifier
     ) {
-        MaterialShapeQr(
+        QrImage(
             modifier = Modifier.size(240.dp),
             content = qrLoginUrl
         )

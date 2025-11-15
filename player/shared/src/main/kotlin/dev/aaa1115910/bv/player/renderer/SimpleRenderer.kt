@@ -128,7 +128,7 @@ open class SimpleRenderer : DanmakuRenderer {
     companion object {
         private val DEFAULT_DARK_COLOR: Int = Color.argb(255, 0x22, 0x22, 0x22)
 
-        private const val CANVAS_PADDING: Int = 10
+        private const val CANVAS_PADDING: Int = 8
 
         private val sTextHeightCache: MutableMap<Float, Float> = HashMap()
 

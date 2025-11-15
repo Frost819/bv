@@ -484,7 +484,7 @@ fun ControllerVideoInfoBottom(
         Text(
             modifier = Modifier
                 .padding(horizontal = 32.dp),
-            text = "$title${if(title.contains(partTitle)) "" else " | $partTitle"}",
+            text = "${if(title.contains(partTitle)) "" else "$partTitle ｜ "}$title",
             color = Color.White,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,

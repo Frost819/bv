@@ -103,10 +103,11 @@ fun UpdateDialog(
         scope.launch(Dispatchers.IO) {
             runCatching {
                 latestReleaseBuild = GithubApi.getLatestBuild()
-                val revision = latestReleaseBuild!!
+                val name = latestReleaseBuild!!
                     .assets.first { it.name.startsWith("BV") }
-                    .name.split("_")[1].toInt()
-                if (revision <= BuildConfig.VERSION_CODE) {
+                    .name
+                val revision = name.split("_")[1].toInt()
+                if (revision < BuildConfig.VERSION_CODE || name.contains(BuildConfig.VERSION_NAME)) {
                     updateStatus = UpdateStatus.NoAvailableUpdate
                     return@launch
                 }

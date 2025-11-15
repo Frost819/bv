@@ -67,6 +67,7 @@ import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import dev.aaa1115910.bv.R
+import dev.aaa1115910.bv.component.QrImage
 import dev.aaa1115910.bv.entity.BvScheme
 import dev.aaa1115910.bv.entity.db.UserDB
 import dev.aaa1115910.bv.repository.UserRepository
@@ -78,7 +79,6 @@ import dev.aaa1115910.bv.ui.theme.BVTheme
 import dev.aaa1115910.bv.util.ifElse
 import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.viewmodel.UserSwitchViewModel
-import dev.aaa1115910.m3qrcode.MaterialShapeQr
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
@@ -450,7 +450,7 @@ fun UserAuthDataDialog(
                             .fillMaxHeight(),
                         contentAlignment = Alignment.Center,
                     ) {
-                        MaterialShapeQr(
+                        QrImage(
                             modifier = Modifier
                                 .size(240.dp),
                             content = qrContent

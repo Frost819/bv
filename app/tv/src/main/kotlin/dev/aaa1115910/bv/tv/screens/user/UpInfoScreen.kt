@@ -102,13 +102,7 @@ fun UpSpaceScreen(
 
     var showFollowButton by remember { mutableStateOf(false) }
     var isFollowing by remember { mutableStateOf(false) }
-
-    // 为了解决长按打开页面导致误触卡片click的问题
-    // 记录按键周期的第一次 KeyDown 时间戳
-    // 只在 lastKeyDownTime 为 null 时记录，防止长按的重复 KeyDown 覆盖
-    var lastKeyDownTime by remember { mutableStateOf<Long?>(null) }
-    val timeDiff = 250L
-    var clickEnable by remember { mutableStateOf(false) }
+    var isLongPress by remember { mutableStateOf(false) }
 
     // 监听关注状态变化
     val followStateMap by FollowStateManager.followStateMap.collectAsState()
@@ -125,8 +119,6 @@ fun UpSpaceScreen(
     val listFocusRequester = remember { FocusRequester() }
     LaunchedEffect(userSpaceViewModel.tvSpaceVideos.isNotEmpty()) {
         listFocusRequester.requestFocus()
-        delay(timeDiff + 100)
-        clickEnable = true
     }
 
     val addFollow: (afterModify: (success: Boolean) -> Unit) -> Unit = { afterModify ->
@@ -207,29 +199,7 @@ fun UpSpaceScreen(
                     listOf(Key.Enter, Key.DirectionCenter).contains(it.key)
 
                 if (isDpadCenter && it.type == KeyEventType.KeyDown) {
-                    // 只在 lastKeyDownTime 为 null 时记录第一个 KeyDown
-                    if (lastKeyDownTime == null) {
-                        lastKeyDownTime = System.currentTimeMillis()
-                    }
-                }
-
-                if (isDpadCenter && it.type == KeyEventType.KeyUp) {
-                    val timeDiff2 = lastKeyDownTime?.let { System.currentTimeMillis() - it } ?: 0L
-                    
-                    // 无论是否消费，都要重置 lastKeyDownTime
-                    lastKeyDownTime = null
-                    
-                    // 如果 KeyDown 和 KeyUp 的时间间隔大于 200ms，说明是长按
-                    // 消费掉这个 KeyUp，防止误触
-                    if (timeDiff2 >= timeDiff) {
-                        clickEnable = true
-                        return@onPreviewKeyEvent true
-                    } else if (!clickEnable){
-                        scope.launch(context = Dispatchers.Main) {
-                            delay(timeDiff)
-                            clickEnable = true
-                        }
-                    }
+                    isLongPress = it.nativeKeyEvent.repeatCount > 0
                 }
                 false
             },
@@ -377,7 +347,7 @@ fun UpSpaceScreen(
                                     "%.2f",
                                     userSpaceViewModel.fans / 10000.0
                                 ) + " 万" else userSpaceViewModel.fans.toString()
-                            ) + "${if (userSpaceViewModel.sign.isNotEmpty()) "   |   " + userSpaceViewModel.sign else ""}",
+                            ) + "${if (userSpaceViewModel.sign.isNotEmpty()) "   ｜   " + userSpaceViewModel.sign else ""}",
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                             fontSize = infoFontSize.sp,
                             maxLines = 2,
@@ -423,7 +393,7 @@ fun UpSpaceScreen(
                         ),
                         data = video,
                         onClick = {
-                            if (clickEnable) {
+                            if (!isLongPress) {
                                 VideoInfoActivity.actionStart(
                                     context = context,
                                     aid = video.avid,

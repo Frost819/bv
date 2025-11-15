@@ -1,3 +1,5 @@
+[![Downloads](https://img.shields.io/github/downloads/fantasytyx/bv/total?cacheSeconds=3600)](https://github.com/fantasytyx/bv/releases)
+
 - 主屏（整体框架以及首页、UGC、PGC）
     - 重构左侧导航栏，移除抽屉展开效果
     - 重写首页列表、UGC列表，优化性能
