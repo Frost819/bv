@@ -89,7 +89,7 @@ fun SpeedTestScreen(
 
                     settings.apply {
                         userAgentString =
-                            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"
+                            dev.aaa1115910.biliapi.BiliApiConstants.USER_AGENT_WEB
                         javaScriptEnabled = true
                     }
 

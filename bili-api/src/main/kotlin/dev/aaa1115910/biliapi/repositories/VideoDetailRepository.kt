@@ -63,35 +63,18 @@ class VideoDetailRepository(
                     var isCoined = false
 
                     if (withUserActions) {
-                        // 串行执行：检查点赞状态
-                        isLiked = runCatching {
-                            likeRepository.checkVideoLike(
-                                aid = aid,
-                                preferApiType = ApiType.Web
-                            )
+                        // 检查点赞、收藏、投币状态
+                        runCatching {
+                            val archiveRelation = BiliHttpApi.getArchiveRelation(
+                                avid = aid,
+                                sessData = authRepository.sessionData ?: ""
+                            ).getResponseData()
+                            isLiked = archiveRelation.like
+                            isCoined = archiveRelation.coin > 0
+                            isFavoured = archiveRelation.favorite
                         }.onFailure {
-                            println("Check video liked failed: $it")
-                        }.getOrDefault(false)
-
-                        // 串行执行：检查投币状态
-                        isCoined =  runCatching {
-                            coinRepository.checkVideoCoin(
-                                aid = aid,
-                                preferApiType = ApiType.Web
-                            )
-                        }.onFailure {
-                            println("Check video liked failed: $it")
-                        }.getOrDefault(false)
-
-                        // 串行执行：检查收藏状态
-                        isFavoured = runCatching {
-                            favoriteRepository.checkVideoFavoured(
-                                aid = aid,
-                                preferApiType = ApiType.Web
-                            )
-                        }.onFailure {
-                            println("Check video favoured failed: $it")
-                        }.getOrDefault(false)
+                            println("Check video relation failed: $it")
+                        }
                     }
 
                     // 串行执行：获取历史和播放器图标

@@ -35,7 +35,7 @@ fun VideoSeekBar(
     movingIcon: String = "",
     moveState: SeekMoveState = SeekMoveState.Idle,
     showPosition: Boolean = false,
-    isFocused: Boolean? = null,
+    isFocused: Boolean = false,
 ) {
     VideoSeekBar(
         modifier = modifier,
@@ -66,7 +66,7 @@ private fun VideoSeekBar(
     useDefaultThumb: Boolean = false,
     showPosition: Boolean = false,
     thumb: (@Composable (Modifier) -> Unit)? = null,
-    isFocused: Boolean? = null,
+    isFocused: Boolean = false,
 ) {
     BoxWithConstraints(
         modifier = modifier
@@ -85,6 +85,11 @@ private fun VideoSeekBar(
                         end.linkTo(parent.end)
                         bottom.linkTo(parent.bottom, 8.dp)
                     }
+                    .border(
+                        width = 1.dp,
+                        color = if (isFocused) Color.White.copy(alpha = 0.35f) else Color.Transparent,
+                        shape = RoundedCornerShape(6.dp)
+                    )
                     .padding(horizontal = 6.dp, vertical = 1.dp),
                 duration = duration,
                 position = position,

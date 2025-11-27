@@ -695,8 +695,6 @@
     <string name="video_info_tags">标签</string>
     <string name="video_info_time">投稿时间: %1$s</string>
     <string name="video_player_referer">https://www.bilibili.com</string>
-    <string name="video_player_user_agent_client">Bilibili Freedoooooom/MarkII</string>
-    <string name="video_player_user_agent_http">Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36</string>
 
     <string name="fans_count">粉丝 %1$s</string>
     <string name="friend_count">关注 %1$s</string>

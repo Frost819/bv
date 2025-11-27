@@ -56,8 +56,8 @@ fun ExoPlayer.playUrl(videoUrl: String?, audioUrl: String?) {
 @UnstableApi
 object Media3VideoPlayerConfig {
     private const val userAgent =
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
-    private val header = mapOf("referer" to "https://www.bilibili.com")
+    dev.aaa1115910.biliapi.BiliApiConstants.USER_AGENT_WEB
+    private val header = mapOf("referer" to "https://www.bilibili.com/")
 
     val dataSourceFactory = DefaultHttpDataSource.Factory().apply {
         setUserAgent(userAgent)
