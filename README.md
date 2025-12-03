@@ -167,6 +167,11 @@ BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三�
 - 播放器默认全屏显示
 - 再次尝试解决视频详情页面崩溃问题
 
+### 0.3.10 r826
+- 恢复web接口获取播放地址，更新UA，修复request was banned和403 Forbidden
+- 重构播放器加载分P和合集的逻辑，历史续播可跳转到对应分P
+- 重做播放器内视频列表，可同时显示合集和分P
+
 </details>
 
 ## Todo
