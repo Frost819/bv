@@ -328,6 +328,7 @@ fun VideoPlayerController(
                         if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
                         logger.info { "[${it.key} press]" }
                         if (showClickableControllers) return@onPreviewKeyEvent false
+                        if (isLive) return@onPreviewKeyEvent true
                         showListController = true
                         return@onPreviewKeyEvent true
                     }
