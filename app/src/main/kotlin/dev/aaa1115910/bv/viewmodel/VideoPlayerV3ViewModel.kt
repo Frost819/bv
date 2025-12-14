@@ -271,10 +271,11 @@ class VideoPlayerV3ViewModel(
             liveDanmakuJob = runCatching {
                 LiveDataWebSocket.connectLiveEvent(roomId) { event ->
                     val danmakuEvent = event as? DanmakuEvent ?: return@connectLiveEvent
-                    val position = livePlayerPositionMs
+                    // 使用弹幕引擎的当前时间作为弹幕时间戳，而不是播放器位置
+                    val danmakuTime = danmakuPlayer?.getCurrentTimeMs() ?: 0L
                     val item = DanmakuItemData(
                         danmakuId = ++liveDanmakuId,
-                        position = position,
+                        position = danmakuTime,
                         content = danmakuEvent.content,
                         mode = DanmakuItemData.DANMAKU_MODE_ROLLING,
                         textSize = 25,

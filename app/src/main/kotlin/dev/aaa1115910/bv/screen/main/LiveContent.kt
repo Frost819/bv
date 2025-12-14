@@ -119,7 +119,7 @@ fun LiveContent(
         LazyVerticalGrid(
             columns = GridCells.Fixed(4),
             state = gridState,
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
             modifier = Modifier.fillMaxSize()
