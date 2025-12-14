@@ -39,6 +39,7 @@ import dev.aaa1115910.bv.component.UserPanel
 import dev.aaa1115910.bv.screen.main.HomeContent
 import dev.aaa1115910.bv.screen.main.LeftNaviContent
 import dev.aaa1115910.bv.screen.main.LeftNaviItem
+import dev.aaa1115910.bv.screen.main.LiveContent
 import dev.aaa1115910.bv.screen.main.PersonalContent
 import dev.aaa1115910.bv.screen.main.PgcContent
 import dev.aaa1115910.bv.screen.main.UgcContent
@@ -66,6 +67,7 @@ fun MainScreen(
     val mainFocusRequester = remember { FocusRequester() }
     val ugcFocusRequester = remember { FocusRequester() }
     val pgcFocusRequester = remember { FocusRequester() }
+    val liveFocusRequester = remember { FocusRequester() }
     val searchFocusRequester = remember { FocusRequester() }
 
     val handleBack = {
@@ -84,6 +86,7 @@ fun MainScreen(
             LeftNaviItem.Home -> mainFocusRequester.requestFocus()
             LeftNaviItem.UGC -> ugcFocusRequester.requestFocus()
             LeftNaviItem.PGC -> pgcFocusRequester.requestFocus()
+            LeftNaviItem.Live -> liveFocusRequester.requestFocus()
             LeftNaviItem.Search -> searchFocusRequester.requestFocus()
             LeftNaviItem.Personal -> personalFocusRequester.requestFocus()
             else -> {}
@@ -148,6 +151,7 @@ fun MainScreen(
                     LeftNaviItem.Home -> HomeContent(navFocusRequester = mainFocusRequester)
                     LeftNaviItem.UGC -> UgcContent(navFocusRequester = ugcFocusRequester)
                     LeftNaviItem.PGC -> PgcContent(navFocusRequester = pgcFocusRequester)
+                    LeftNaviItem.Live -> LiveContent(navFocusRequester = liveFocusRequester)
                     else -> {}
                 }
             }

@@ -43,8 +43,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     buildFeatures {
         compose = true
@@ -54,7 +54,7 @@ android {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
 
@@ -71,6 +71,8 @@ dependencies {
     implementation(androidx.media3.datasource.okhttp)
     implementation(androidx.media3.decoder)
     implementation(androidx.media3.exoplayer)
+    implementation(androidx.media3.exoplayer.dash)
+    implementation(androidx.media3.exoplayer.hls)
     implementation(androidx.media3.ui)
     implementation(libs.material)
     implementation(project(":libs:ffmpegDecoder"))

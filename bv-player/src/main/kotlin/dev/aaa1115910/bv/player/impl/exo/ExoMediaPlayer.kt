@@ -13,9 +13,9 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.mediacodec.MediaCodecUtil
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.OkHttpUtil
 import dev.aaa1115910.bv.player.VideoPlayerOptions
@@ -35,6 +35,7 @@ class ExoMediaPlayer(
             options.userAgent?.let { setUserAgent(it) }
             options.referer?.let { setDefaultRequestProperties(mapOf("referer" to it)) }
         }
+    private val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
 
     init {
         initPlayer()
@@ -91,12 +92,10 @@ class ExoMediaPlayer(
     @OptIn(UnstableApi::class)
     override fun playUrl(videoUrl: String?, audioUrl: String?) {
         val videoMediaSource = videoUrl?.let {
-            ProgressiveMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(MediaItem.fromUri(it))
+            mediaSourceFactory.createMediaSource(MediaItem.fromUri(it))
         }
         val audioMediaSource = audioUrl?.let {
-            ProgressiveMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(MediaItem.fromUri(it))
+            mediaSourceFactory.createMediaSource(MediaItem.fromUri(it))
         }
 
         val mediaSources = listOfNotNull(videoMediaSource, audioMediaSource)

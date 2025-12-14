@@ -62,6 +62,26 @@ class VideoPlayerV3Activity : ComponentActivity() {
                 }
             )
         }
+
+        fun actionStartLive(
+            context: Context,
+            roomId: Int,
+            title: String,
+            authorMid: Long = 0L,
+            authorName: String = ""
+        ) {
+            currentInstance?.finish()
+            context.startActivity(
+                Intent(context, VideoPlayerV3Activity::class.java).apply {
+                    putExtra("isLive", true)
+                    putExtra("room_id", roomId)
+                    putExtra("title", title)
+                    putExtra("partTitle", authorName)
+                    putExtra("author_mid", authorMid)
+                    putExtra("author_name", authorName)
+                }
+            )
+        }
     }
 
     private val playerViewModel: VideoPlayerV3ViewModel by viewModel()
@@ -142,6 +162,27 @@ class VideoPlayerV3Activity : ComponentActivity() {
     }*/
 
     private fun getParamsFromIntent() {
+        if (intent.getBooleanExtra("isLive", false) || intent.hasExtra("room_id")) {
+            val roomId = intent.getIntExtra("room_id", 0)
+            val title = intent.getStringExtra("title") ?: "Unknown Title"
+            val authorMid = intent.getLongExtra("author_mid", 0L)
+            val authorName = intent.getStringExtra("author_name") ?: ""
+            logger.fInfo { "Launch live parameter: [roomId=$roomId]" }
+            playerViewModel.apply {
+                loadLive(
+                    roomId = roomId,
+                    title = title,
+                    authorMid = authorMid,
+                    authorName = authorName
+                )
+                this.title = title
+                this.partTitle = authorName
+                this.author_mid = authorMid
+                this.author_name = authorName
+            }
+            return
+        }
+
         if (intent.hasExtra("avid")) {
             val aid = intent.getLongExtra("avid", 170001)
             val cid = intent.getLongExtra("cid", 170001)

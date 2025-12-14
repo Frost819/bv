@@ -66,6 +66,7 @@ import kotlinx.coroutines.delay
 fun ControllerVideoInfo(
     modifier: Modifier = Modifier,
     show: Boolean,
+    isLive: Boolean,
     isSeeking: Boolean,
     goTime: Long,
     infoData: VideoPlayerInfoData,
@@ -134,6 +135,7 @@ fun ControllerVideoInfo(
                         return@onPreviewKeyEvent false
                     },
                 show = show,
+                isLive = isLive,
                 isSeeking = isSeeking,
                 goTime = goTime,
                 infoData = infoData,
@@ -212,6 +214,7 @@ fun ControllerVideoInfoTop(
 fun ControllerVideoInfoBottom(
     modifier: Modifier = Modifier,
     show: Boolean,
+    isLive: Boolean,
     isSeeking: Boolean,
     goTime: Long,
     infoData: VideoPlayerInfoData,
@@ -238,7 +241,7 @@ fun ControllerVideoInfoBottom(
         if (show) {
             delay(50)
             try {
-                seekFocusRequester.requestFocus()
+                if (isLive) buttonsFocusRequester.requestFocus() else seekFocusRequester.requestFocus()
             } catch (e: IllegalStateException) {
                 Log.d("ControllerVideoInfo", "requestFocus failed")
             }
@@ -262,82 +265,84 @@ fun ControllerVideoInfoBottom(
                 coercedOffset = (-24).dp
             )
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(
-                modifier = Modifier.padding(bottom = 2.dp, start = 24.dp),
-                text = "${if (isSeeking) goTime.formatHourMinSec() else infoData.currentTime.formatHourMinSec()} / ${infoData.totalDuration.formatHourMinSec()}",
-                color = Color.White,
-                style = TextStyle(
-                    shadow = Shadow(color = Color.Black, blurRadius = 1f),
-                ),
-            )
-        }
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 24.dp)
-                .border(
-                    width = 1.dp,
-                    color = Color.White.copy(alpha = if (isSeekFocused) 1f else 0f),
-                    shape = RoundedCornerShape(8.dp)
+        if (!isLive) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    modifier = Modifier.padding(bottom = 2.dp, start = 24.dp),
+                    text = "${if (isSeeking) goTime.formatHourMinSec() else infoData.currentTime.formatHourMinSec()} / ${infoData.totalDuration.formatHourMinSec()}",
+                    color = Color.White,
+                    style = TextStyle(
+                        shadow = Shadow(color = Color.Black, blurRadius = 1f),
+                    ),
                 )
-                .focusable()
-                .focusRequester(seekFocusRequester)
-                .onKeyEvent {
-                    when (it.key) {
-                        Key.DirectionCenter, Key.Enter, Key.Spacebar -> {
-                            if (it.type == KeyEventType.KeyUp) return@onKeyEvent true
-                            if (isSeeking) {
-                                onSeekGoTime()
-                            } else {
-                                onPlayPause()
-                            }
-                            return@onKeyEvent true
-                        }
-
-                        Key.DirectionLeft, Key.MediaRewind -> {
-                            if (it.type == KeyEventType.KeyUp) return@onKeyEvent true
-                            onDirectionLeft()
-                            return@onKeyEvent true
-                        }
-
-                        Key.DirectionRight, Key.MediaFastForward -> {
-                            if (it.type == KeyEventType.KeyUp) return@onKeyEvent true
-                            onDirectionRight()
-                            return@onKeyEvent true
-                        }
-
-                        Key.DirectionDown -> {
-                            if (it.type == KeyEventType.KeyDown) return@onKeyEvent true
-                            buttonsFocusRequester.requestFocus()
-                            return@onKeyEvent true
-                        }
-                    }
-                    return@onKeyEvent false
-                }
-                .onFocusChanged {
-                    isSeekFocused = it.isFocused
-                },
-        ) {
-            VideoProgressSeek(
+            }
+            Row(
                 modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .border(
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = if (isSeekFocused) 1f else 0f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
                     .focusable()
-                    .fillMaxWidth(),
-                duration = infoData.totalDuration,
-                position = if (isSeeking) goTime else infoData.currentTime,
-                bufferedPercentage = infoData.bufferedPercentage,
-                isPersistentSeek = false
-            )
+                    .focusRequester(seekFocusRequester)
+                    .onKeyEvent {
+                        when (it.key) {
+                            Key.DirectionCenter, Key.Enter, Key.Spacebar -> {
+                                if (it.type == KeyEventType.KeyUp) return@onKeyEvent true
+                                if (isSeeking) {
+                                    onSeekGoTime()
+                                } else {
+                                    onPlayPause()
+                                }
+                                return@onKeyEvent true
+                            }
+
+                            Key.DirectionLeft, Key.MediaRewind -> {
+                                if (it.type == KeyEventType.KeyUp) return@onKeyEvent true
+                                onDirectionLeft()
+                                return@onKeyEvent true
+                            }
+
+                            Key.DirectionRight, Key.MediaFastForward -> {
+                                if (it.type == KeyEventType.KeyUp) return@onKeyEvent true
+                                onDirectionRight()
+                                return@onKeyEvent true
+                            }
+
+                            Key.DirectionDown -> {
+                                if (it.type == KeyEventType.KeyDown) return@onKeyEvent true
+                                buttonsFocusRequester.requestFocus()
+                                return@onKeyEvent true
+                            }
+                        }
+                        return@onKeyEvent false
+                    }
+                    .onFocusChanged {
+                        isSeekFocused = it.isFocused
+                    },
+            ) {
+                VideoProgressSeek(
+                    modifier = Modifier
+                        .focusable()
+                        .fillMaxWidth(),
+                    duration = infoData.totalDuration,
+                    position = if (isSeeking) goTime else infoData.currentTime,
+                    bufferedPercentage = infoData.bufferedPercentage,
+                    isPersistentSeek = false
+                )
+            }
         }
 
         val icons = listOfNotNull(
             (R.drawable.play_pause_24px to "播放/暂停") to onPlayPause,
             ((if (danmakuEnabled) (R.drawable.danmaku_on_24px) else (R.drawable.danmaku_off_24px)) to "弹幕开关") to onDanmakuSwitchChange,
             (R.drawable.settings_24px to "打开设置") to onShowSettings,
-            if (!fromSeason) (R.drawable.info_24px to "视频信息") to onGoToVideoInfo else null,
+            if (!fromSeason && !isLive) (R.drawable.info_24px to "视频信息") to onGoToVideoInfo else null,
             if (!fromSeason) (R.drawable.contact_page_24px to "up主页") to onGoToUpPage else null,
-            ((if (isLooping) (R.drawable.repeat_one_on_24px) else (R.drawable.repeat_one_24px)) to "循环播放") to onToggleLoop,
+            if (!isLive) ((if (isLooping) (R.drawable.repeat_one_on_24px) else (R.drawable.repeat_one_24px)) to "循环播放") to onToggleLoop else null,
         )
 
         Row(
@@ -427,6 +432,7 @@ private fun ControllerVideoInfoPreview() {
         ControllerVideoInfo(
             modifier = Modifier.fillMaxSize(),
             show = show,
+            isLive = false,
             isSeeking = false,
             goTime = 0,
             infoData = VideoPlayerInfoData(

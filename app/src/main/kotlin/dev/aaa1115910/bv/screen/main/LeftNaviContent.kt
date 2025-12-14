@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.OndemandVideo
 import androidx.compose.material.icons.filled.Person
@@ -128,6 +129,7 @@ fun LeftNaviContent(
                 LeftNaviItem.Home,
                 LeftNaviItem.UGC,
                 LeftNaviItem.PGC,
+                LeftNaviItem.Live,
             ).forEach { item ->
                 var isFocused by remember { mutableStateOf(false) }
                 val indicatorColor by animateColorAsState(
@@ -182,6 +184,7 @@ enum class LeftNaviItem(
     Home(displayIcon = Icons.Default.Home),
     UGC(displayIcon = Icons.Default.OndemandVideo),
     PGC(displayIcon = Icons.Default.Movie),
+    Live(displayIcon = Icons.Default.LiveTv),
     Settings(displayIcon = Icons.Default.Settings), ;
 }
 

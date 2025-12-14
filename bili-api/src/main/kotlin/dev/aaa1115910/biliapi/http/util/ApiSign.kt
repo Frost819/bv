@@ -27,6 +27,25 @@ private val mixinKeyEncTab = listOf(
     20, 34, 44, 52
 )
 
+internal fun buildWbiRid(
+    queryParams: Map<String, String>,
+    imgKey: String,
+    subKey: String,
+    wts: Int
+): String {
+    val getMixinKey: (orig: String) -> String = { orig ->
+        val mixinKey = mixinKeyEncTab.fold("") { s, i -> s + orig[i] }
+        mixinKey.substring(0, 32)
+    }
+    val mixinKey = getMixinKey(imgKey + subKey)
+    val sortedParams = (queryParams + mapOf("wts" to wts.toString()))
+        .toSortedMap()
+        .map { (key, value) -> "$key=$value" }
+        .joinToString("&")
+    return MessageDigest.getInstance("MD5").digest((sortedParams + mixinKey).toByteArray())
+        .joinToString("") { "%02x".format(it) }
+}
+
 fun HttpRequestBuilder.encAppPost() {
     var parameters = (body as FormDataContent).formData
     parameters += Parameters.build { append("appkey", APP_KEY) }

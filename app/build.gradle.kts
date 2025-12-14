@@ -75,7 +75,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
+            if (signingProp.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             configure<CrashlyticsExtension> {
                 mappingFileUploadEnabled = AppConfiguration.googleServicesAvailable
             }
@@ -99,7 +101,9 @@ android {
                 "proguard-rules.pro"
             )
             applicationIdSuffix = ".r8test"
-            if (signingProp.exists()) signingConfig = signingConfigs.getByName("release")
+            if (signingProp.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             configure<CrashlyticsExtension> {
                 mappingFileUploadEnabled = false
             }
@@ -110,7 +114,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            if (signingProp.exists()) signingConfig = signingConfigs.getByName("release")
+            if (signingProp.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             configure<CrashlyticsExtension> {
                 mappingFileUploadEnabled = AppConfiguration.googleServicesAvailable
             }
@@ -118,8 +124,8 @@ android {
     }
     // https://issuetracker.google.com/issues/260059413
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     buildFeatures {
         compose = true
@@ -174,7 +180,7 @@ composeCompiler {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
 

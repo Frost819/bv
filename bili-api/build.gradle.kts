@@ -20,6 +20,7 @@ dependencies {
     //implementation(libs.ktor.jsoup)
     implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.serialization.kotlinx)
+    implementation("org.brotli:dec:0.1.2")
     implementation(libs.logging)
     implementation(libs.slf4j.simple)
     testImplementation(libs.kotlin.test)

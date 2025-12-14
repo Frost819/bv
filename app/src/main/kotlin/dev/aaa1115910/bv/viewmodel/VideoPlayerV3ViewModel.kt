@@ -18,6 +18,7 @@ import com.kuaishou.akdanmaku.render.SimpleRenderer
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 import dev.aaa1115910.biliapi.entity.ApiType
 import dev.aaa1115910.biliapi.entity.PlayData
+import dev.aaa1115910.biliapi.http.BiliLiveHttpApi
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuMaskSegment
 import dev.aaa1115910.biliapi.entity.video.HeartbeatVideoType
 import dev.aaa1115910.biliapi.entity.video.Subtitle
@@ -26,6 +27,8 @@ import dev.aaa1115910.biliapi.entity.video.SubtitleAiType
 import dev.aaa1115910.biliapi.entity.video.SubtitleType
 import dev.aaa1115910.biliapi.entity.video.VideoShot
 import dev.aaa1115910.biliapi.http.BiliHttpApi
+import dev.aaa1115910.biliapi.http.entity.live.DanmakuEvent
+import dev.aaa1115910.biliapi.websocket.LiveDataWebSocket
 import dev.aaa1115910.biliapi.repositories.VideoPlayRepository
 import dev.aaa1115910.bilisubtitle.SubtitleParser
 import dev.aaa1115910.bilisubtitle.entity.SubtitleItem
@@ -50,6 +53,9 @@ import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.android.annotation.KoinViewModel
@@ -121,6 +127,15 @@ class VideoPlayerV3ViewModel(
     var currentAid = 0L
     var currentCid = 0L
     private var currentEpid = 0
+    var isLive by mutableStateOf(false)
+    var currentRoomId by mutableIntStateOf(0)
+    private var liveDanmakuJob: Job? = null
+    private var liveDanmakuId by mutableLongStateOf(0L)
+    private var liveDanmakuChannel: Channel<DanmakuItemData>? = null
+    private var liveDanmakuConsumeJob: Job? = null
+    @Volatile
+    private var livePlayerPositionMs: Long = 0L
+    private var livePlayerPositionJob: Job? = null
 
     private suspend fun releaseDanmakuPlayer() = withContext(Dispatchers.Main) {
         danmakuPlayer?.release()
@@ -137,6 +152,8 @@ class VideoPlayerV3ViewModel(
         seasonId: Int? = null,
         continuePlayNext: Boolean = false
     ) {
+        stopLive()
+        isLive = false
         currentAid = avid
         currentCid = cid
         currentEpid = epid ?: 0
@@ -170,6 +187,104 @@ class VideoPlayerV3ViewModel(
             if (continuePlayNext) {
                 if (lastPlayEnabledSubtitle) enableFirstSubtitle()
             }
+        }
+    }
+
+    fun loadLive(
+        roomId: Int,
+        title: String,
+        authorMid: Long = 0L,
+        authorName: String = ""
+    ) {
+        stopLive()
+        isLive = true
+        currentRoomId = roomId
+        currentAid = 0L
+        currentCid = 0L
+        this.title = title
+        this.partTitle = authorName
+        this.author_mid = authorMid
+        this.author_name = authorName
+        viewModelScope.launch(Dispatchers.Default) {
+            addLogs("加载直播中")
+            releaseDanmakuPlayer()
+            initDanmakuPlayer()
+            addLogs("初始化弹幕引擎")
+
+            val channel = Channel<DanmakuItemData>(capacity = 512)
+            liveDanmakuChannel = channel
+            liveDanmakuConsumeJob = viewModelScope.launch(Dispatchers.Main) {
+                danmakuData.clear()
+                val buffer = ArrayList<DanmakuItemData>(128)
+                while (true) {
+                    val first = channel.receiveCatching().getOrNull() ?: break
+                    buffer.add(first)
+                    while (true) {
+                        val next = channel.tryReceive().getOrNull() ?: break
+                        buffer.add(next)
+                    }
+                    danmakuData.addAll(buffer)
+                    if (danmakuData.size > 800) {
+                        danmakuData.subList(0, danmakuData.size - 800).clear()
+                    }
+                    danmakuPlayer?.updateData(danmakuData)
+                    buffer.clear()
+                }
+            }
+
+            val playUrl = runCatching {
+                val v2 = BiliLiveHttpApi.getLiveRoomPlayInfoV2(
+                    roomId = roomId,
+                    sessData = Prefs.sessData
+                ).data
+                selectLivePlayUrl(v2)
+            }.getOrNull() ?: runCatching {
+                BiliLiveHttpApi.getLiveRoomPlayInfo(roomId).data?.playUrl
+            }.getOrNull()
+
+            if (playUrl.isNullOrBlank()) {
+                addLogs("加载直播地址失败")
+                withContext(Dispatchers.Main) {
+                    errorMessage = "Load live play url failed"
+                    loadState = RequestState.Failed
+                }
+                return@launch
+            }
+
+            withContext(Dispatchers.Main) {
+                videoPlayer!!.playUrl(playUrl, null)
+                videoPlayer!!.prepare()
+                showBuffering = true
+                loadState = RequestState.Success
+            }
+
+            livePlayerPositionMs = 0L
+            livePlayerPositionJob?.cancel()
+            livePlayerPositionJob = viewModelScope.launch(Dispatchers.Main) {
+                while (isActive && isLive && currentRoomId == roomId) {
+                    livePlayerPositionMs = videoPlayer?.currentPosition?.coerceAtLeast(0L) ?: 0L
+                    kotlinx.coroutines.delay(250)
+                }
+            }
+
+            liveDanmakuId = 0L
+            liveDanmakuJob = runCatching {
+                LiveDataWebSocket.connectLiveEvent(roomId) { event ->
+                    val danmakuEvent = event as? DanmakuEvent ?: return@connectLiveEvent
+                    val position = livePlayerPositionMs
+                    val item = DanmakuItemData(
+                        danmakuId = ++liveDanmakuId,
+                        position = position,
+                        content = danmakuEvent.content,
+                        mode = DanmakuItemData.DANMAKU_MODE_ROLLING,
+                        textSize = 25,
+                        textColor = Color.White.toArgb()
+                    )
+                    channel.trySend(item)
+                }
+            }.onFailure {
+                addLogs("连接弹幕失败：${it.localizedMessage}")
+            }.getOrNull()
         }
     }
 
@@ -300,6 +415,45 @@ class VideoPlayerV3ViewModel(
             loadState = RequestState.Success
             logger.fInfo { "Load play url success" }
         }
+    }
+
+    private fun stopLive() {
+        liveDanmakuJob?.cancel()
+        liveDanmakuJob = null
+        liveDanmakuConsumeJob?.cancel()
+        liveDanmakuConsumeJob = null
+        liveDanmakuChannel?.close()
+        liveDanmakuChannel = null
+        livePlayerPositionJob?.cancel()
+        livePlayerPositionJob = null
+        livePlayerPositionMs = 0L
+        currentRoomId = 0
+    }
+
+    private fun selectLivePlayUrl(data: dev.aaa1115910.biliapi.http.entity.live.RoomPlayInfoV2Data?): String? {
+        val playUrl = data?.playUrlInfo?.playurl ?: return null
+        val protocolPriority = listOf("http_stream", "http_hls")
+        val formatPriority = listOf("fmp4", "ts", "flv")
+
+        val stream = playUrl.stream
+            .sortedBy { protocolPriority.indexOf(it.protocolName).let { i -> if (i == -1) Int.MAX_VALUE else i } }
+            .firstOrNull() ?: return null
+
+        val format = stream.format
+            .sortedBy { formatPriority.indexOf(it.formatName).let { i -> if (i == -1) Int.MAX_VALUE else i } }
+            .firstOrNull() ?: return null
+
+        val codec = format.codec.firstOrNull() ?: return null
+        val urlInfo = codec.urlInfo.firstOrNull() ?: return null
+
+        val host = urlInfo.host
+        val base = codec.baseUrl
+        val merged = when {
+            host.endsWith("/") && base.startsWith("/") -> host.dropLast(1) + base
+            !host.endsWith("/") && !base.startsWith("/") -> "$host/$base"
+            else -> host + base
+        }
+        return merged + urlInfo.extra
     }
 
     suspend fun updateAvailableCodec() {
@@ -611,6 +765,11 @@ class VideoPlayerV3ViewModel(
         }.onFailure {
             logger.fWarn { "Load video shot failed: ${it.stackTraceToString()}" }
         }
+    }
+
+    override fun onCleared() {
+        stopLive()
+        super.onCleared()
     }
 }
 

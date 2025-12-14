@@ -277,7 +277,7 @@ fun VideoPlayerV3Screen(
             logger.info { "onEnd" }
             playerViewModel.danmakuPlayer?.pause()
             isPlaying = false
-            if (!Prefs.incognitoMode) sendHeartbeat()
+            if (!playerViewModel.isLive && !Prefs.incognitoMode) sendHeartbeat()
 
             if (isLooping) {
                 onBackToStart()
@@ -443,7 +443,7 @@ fun VideoPlayerV3Screen(
 
     DisposableEffect(Unit) {
         var sendHeartbeatTimer: Timer? = null
-        if (!Prefs.incognitoMode) {
+        if (!playerViewModel.isLive && !Prefs.incognitoMode) {
             sendHeartbeatTimer = timeTask(
                 delay = 5000,
                 period = 15000,
@@ -455,7 +455,7 @@ fun VideoPlayerV3Screen(
             }
         }
         onDispose {
-            if (!Prefs.incognitoMode) {
+            if (!playerViewModel.isLive && !Prefs.incognitoMode) {
                 sendHeartbeat()
                 sendHeartbeatTimer?.cancel()
             }
@@ -528,6 +528,7 @@ fun VideoPlayerV3Screen(
             lastPlayed = playerViewModel.lastPlayed,
             title = playerViewModel.title,
             secondTitle = playerViewModel.partTitle,
+            isLive = playerViewModel.isLive,
             isPlaying = isPlaying,
             isBuffering = isBuffering,
             isError = isError,
@@ -550,13 +551,14 @@ fun VideoPlayerV3Screen(
             onPlay = { videoPlayer.start() },
             onPause = {
                 videoPlayer.pause()
-                if (!Prefs.incognitoMode) sendHeartbeat()
+                if (!playerViewModel.isLive && !Prefs.incognitoMode) sendHeartbeat()
             },
             onExit = {
-                if (!Prefs.incognitoMode) sendHeartbeat()
+                if (!playerViewModel.isLive && !Prefs.incognitoMode) sendHeartbeat()
                 (context as Activity).finish()
             },
             onGoTime = { goTime ->
+                if (playerViewModel.isLive) return@VideoPlayerController
                 videoPlayer.seekTo(goTime)
                 infoData.currentTime = goTime
                 playerViewModel.danmakuPlayer?.seekTo(goTime)
@@ -575,7 +577,7 @@ fun VideoPlayerV3Screen(
                 showBackToStart = true
             },
             onPlayNewVideo = {
-                if (!Prefs.incognitoMode) sendHeartbeat()
+                if (!playerViewModel.isLive && !Prefs.incognitoMode) sendHeartbeat()
                 videoPlayer.pause()
                 playerViewModel.partTitle = it.title
                 playerViewModel.loadPlayUrl(
@@ -737,7 +739,7 @@ fun VideoPlayerV3Screen(
                         ),
                     danmakuPlayer = playerViewModel.danmakuPlayer
                 )
-                if (Prefs.showPersistentSeek) {
+                if (Prefs.showPersistentSeek && !playerViewModel.isLive) {
                     VideoProgressSeek(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)

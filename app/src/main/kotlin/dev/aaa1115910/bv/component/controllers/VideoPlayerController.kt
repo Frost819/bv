@@ -493,6 +493,7 @@ data class VideoPlayerControllerData(
     val currentSubtitleFontSize: TextUnit = 24.sp,
     val currentSubtitleBackgroundOpacity: Float = 0.4f,
     val currentSubtitleBottomPadding: Dp = 12.dp,
+    val isLive: Boolean = false,
     val lastPlayed: Int = 0,
     val title: String = "Title",
     val secondTitle: String = "Second title",

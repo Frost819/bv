@@ -89,6 +89,7 @@ fun VideoPlayerController(
     val context = LocalContext.current
     val data = LocalVideoPlayerControllerData.current
     val logger = KotlinLogging.logger {}
+    val isLive = data.isLive
 
     var showListController by remember { mutableStateOf(false) }
     var showMenuController by remember { mutableStateOf(false) }
@@ -114,7 +115,8 @@ fun VideoPlayerController(
         }
     }
 
-    val onTimeForward = {
+    val onTimeForward = onTimeForward@{
+        if (isLive) return@onTimeForward
         isSeeking = true
         val targetTime = goTime + (10000 + calCoefficient() * 5000)
         goTime =
@@ -122,7 +124,8 @@ fun VideoPlayerController(
         lastSeekChangeTime = System.currentTimeMillis()
         logger.info { "onTimeForward: [current=${videoPlayer.currentPosition}, goTime=$goTime]" }
     }
-    val onTimeBack = {
+    val onTimeBack = onTimeBack@{
+        if (isLive) return@onTimeBack
         isSeeking = true
         val targetTime = goTime - (10000 + calCoefficient() * 5000)
         goTime = if (targetTime < 0) 0 else targetTime
@@ -130,7 +133,8 @@ fun VideoPlayerController(
         logger.info { "onTimeBack: [current=${videoPlayer.currentPosition}, goTime=$goTime]" }
     }
 
-    val onDirectionLeft = {
+    val onDirectionLeft = onDirectionLeft@{
+        if (isLive) return@onDirectionLeft
         if (!isSeeking) goTime = data.infoData.currentTime
         onTimeBack()
         onTimeForwardBackTimer?.cancel()
@@ -143,7 +147,8 @@ fun VideoPlayerController(
         }
     }
 
-    val onDirectionRight = {
+    val onDirectionRight = onDirectionRight@{
+        if (isLive) return@onDirectionRight
         if (!isSeeking) goTime = data.infoData.currentTime
         onTimeForward()
         onTimeForwardBackTimer?.cancel()
@@ -156,7 +161,8 @@ fun VideoPlayerController(
         }
     }
 
-    val onSeekGoTime = {
+    val onSeekGoTime = onSeekGoTime@{
+        if (isLive) return@onSeekGoTime
         onGoTime(goTime)
         isSeeking = false
         if (!videoPlayer.isPlaying) onPlay()
@@ -271,6 +277,7 @@ fun VideoPlayerController(
                     Key.MediaRewind -> {
                         if (it.type == KeyEventType.KeyUp) return@onPreviewKeyEvent true
                         logger.info { "[${it.key} press]" }
+                        if (isLive) return@onPreviewKeyEvent true
                         if (data.showSkipToNextEp) {
                             onCancelSkipToNextEp()
                         }
@@ -283,6 +290,7 @@ fun VideoPlayerController(
 
                     Key.MediaFastForward -> {
                         if (it.type == KeyEventType.KeyUp) return@onPreviewKeyEvent true
+                        if (isLive) return@onPreviewKeyEvent true
                         if (!showInfoSeekController) {
                             showInfoSeekController = true
                             onDirectionRight()
@@ -293,6 +301,7 @@ fun VideoPlayerController(
                     Key.DirectionLeft -> {
                         if (it.type == KeyEventType.KeyUp) return@onPreviewKeyEvent true
                         logger.info { "[${it.key} press]" }
+                        if (isLive) return@onPreviewKeyEvent true
                         if (data.showSkipToNextEp) {
                             onCancelSkipToNextEp()
                         }
@@ -305,6 +314,7 @@ fun VideoPlayerController(
 
                     Key.DirectionRight -> {
                         if (it.type == KeyEventType.KeyUp) return@onPreviewKeyEvent true
+                        if (isLive) return@onPreviewKeyEvent true
                         if (!showInfoSeekController) {
                             showInfoSeekController = true
                             onDirectionRight()
@@ -369,6 +379,7 @@ fun VideoPlayerController(
         ControllerVideoInfo(
             modifier = Modifier.focusable(),
             show = showInfoSeekController,
+            isLive = isLive,
             isSeeking = isSeeking,
             goTime = goTime,
             infoData = data.infoData,
