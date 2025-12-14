@@ -121,16 +121,9 @@ fun LiveCardCover(
             )
             Spacer(Modifier.width(4.dp))
             Text(
-                text = "$online",
+                text = if (online >= 10000) "${online / 10000}万" else "$online",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White
-            )
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = areaName,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White,
-                maxLines = 1
             )
         }
     }
