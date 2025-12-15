@@ -37,6 +37,7 @@ class SearchResultViewModel(
     var mediaBangumiSearchResult by mutableStateOf(SearchResult(SearchType.MediaBangumi))
     var mediaFtSearchResult by mutableStateOf(SearchResult(SearchType.MediaFt))
     var biliUserSearchResult by mutableStateOf(SearchResult(SearchType.BiliUser))
+    var liveRoomSearchResult by mutableStateOf(SearchResult(SearchType.LiveRoom))
 
     var selectedOrder by mutableStateOf(SearchFilterOrderType.ComprehensiveSort)
     var selectedDuration by mutableStateOf(SearchFilterDuration.All)
@@ -59,6 +60,7 @@ class SearchResultViewModel(
         mediaBangumiSearchResult = mediaBangumiSearchResult.resetPage()
         mediaFtSearchResult = mediaFtSearchResult.resetPage()
         biliUserSearchResult = biliUserSearchResult.resetPage()
+        liveRoomSearchResult = liveRoomSearchResult.resetPage()
     }
 
     private fun clearResults() {
@@ -66,6 +68,7 @@ class SearchResultViewModel(
         mediaBangumiSearchResult = mediaBangumiSearchResult.clear()
         mediaFtSearchResult = mediaFtSearchResult.clear()
         biliUserSearchResult = biliUserSearchResult.clear()
+        liveRoomSearchResult = liveRoomSearchResult.clear()
     }
 
     fun loadMore(
@@ -82,6 +85,7 @@ class SearchResultViewModel(
                 SearchType.MediaBangumi -> mediaBangumiSearchResult.page
                 SearchType.MediaFt -> mediaFtSearchResult.page
                 SearchType.BiliUser -> biliUserSearchResult.page
+                SearchType.LiveRoom -> liveRoomSearchResult.page
             }
             logger.fInfo { "Load search result: [keyword=$keyword, type=$searchType, page=${page}]" }
             runCatching {
@@ -113,6 +117,10 @@ class SearchResultViewModel(
                         SearchType.BiliUser -> {
                             biliUserSearchResult = biliUserSearchResult.appendSearchResultData(searchResultResponse)
                         }
+
+                        SearchType.LiveRoom -> {
+                            liveRoomSearchResult = liveRoomSearchResult.appendSearchResultData(searchResultResponse)
+                        }
                     }
                 }
             }
@@ -126,9 +134,10 @@ class SearchResultViewModel(
         val mediaBangumis: List<SearchTypeResult.Pgc> = emptyList(),
         val mediaFts: List<SearchTypeResult.Pgc> = emptyList(),
         val biliUsers: List<SearchTypeResult.User> = emptyList(),
+        val liveRooms: List<SearchTypeResult.LiveRoom> = emptyList(),
         val page: SearchTypePage = SearchTypePage()
     ) {
-        val count get() = videos.size + mediaBangumis.size + mediaFts.size + biliUsers.size
+        val count get() = videos.size + mediaBangumis.size + mediaFts.size + biliUsers.size + liveRooms.size
 
         fun resetPage() = copy(page = SearchTypePage())
 
@@ -137,6 +146,7 @@ class SearchResultViewModel(
             mediaBangumis = emptyList(),
             mediaFts = emptyList(),
             biliUsers = emptyList(),
+            liveRooms = emptyList(),
             page = SearchTypePage()
         )
 
@@ -156,6 +166,10 @@ class SearchResultViewModel(
                 )
                 SearchType.BiliUser -> copy(
                     biliUsers = biliUsers + searchTypeResult.users,
+                    page = searchTypeResult.page
+                )
+                SearchType.LiveRoom -> copy(
+                    liveRooms = liveRooms + searchTypeResult.liveRooms,
                     page = searchTypeResult.page
                 )
             }

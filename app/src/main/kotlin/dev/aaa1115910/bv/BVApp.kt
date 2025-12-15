@@ -20,6 +20,7 @@ import dev.aaa1115910.bv.dao.AppDatabase
 import dev.aaa1115910.bv.entity.AuthData
 import dev.aaa1115910.bv.entity.db.UserDB
 import dev.aaa1115910.bv.network.HttpServer
+import dev.aaa1115910.bv.repository.RepositoryModule
 import dev.aaa1115910.bv.repository.UserRepository
 import dev.aaa1115910.bv.repository.VideoInfoRepository
 import dev.aaa1115910.bv.util.FirebaseUtil
@@ -135,6 +136,6 @@ class BVApp : Application() {
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "Settings")
 
-@Module(includes = [BiliApiModule::class])
+@Module(includes = [BiliApiModule::class, RepositoryModule::class])
 @ComponentScan
 class AppModule
