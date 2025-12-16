@@ -56,9 +56,7 @@ object LiveDataWebSocket {
 
     private fun createClient() {
         client = HttpClient(OkHttp) {
-            install(UserAgent) {
-                agent = dev.aaa1115910.biliapi.BiliApiConstants.USER_AGENT_WEB
-            }
+            BiliUserAgent()
             install(WebSockets)
         }
     }

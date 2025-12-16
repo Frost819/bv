@@ -68,6 +68,7 @@ dependencies {
     implementation(androidx.media3.ui)
     implementation(libs.logging)
     implementation(libs.material)
+    implementation(project(":akdanmaku"))
     implementation(project(":libs:ffmpegDecoder"))
     implementation(project(":player:shared"))
     testImplementation(libs.kotlin.test)

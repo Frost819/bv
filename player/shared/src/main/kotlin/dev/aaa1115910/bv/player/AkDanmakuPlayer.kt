@@ -47,9 +47,6 @@ fun AkDanmakuPlayer(
         modifier = modifier,
         factory = { ctx ->
             danmakuView = DanmakuView(ctx).apply {
-                // 透明背景
-                setBackgroundColor(Color.TRANSPARENT)
-
                 // 确保View会被绘制
                 setWillNotDraw(false)
                 
@@ -57,8 +54,6 @@ fun AkDanmakuPlayer(
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
                     @Suppress("DEPRECATION")
                     isDrawingCacheEnabled = true
-                    @Suppress("DEPRECATION")
-                    setDrawingCacheBackgroundColor(Color.TRANSPARENT)
                 }
             }
             danmakuView!!

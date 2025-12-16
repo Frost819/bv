@@ -10,7 +10,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpRequestRetry
-import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
@@ -32,9 +31,7 @@ object BiliHttpProxyApi {
 
     fun createClient(proxyServer: String) {
         client = HttpClient(OkHttp) {
-            install(UserAgent) {
-                agent = BiliApiConstants.USER_AGENT_WEB
-            }
+            BiliUserAgent()
             install(ContentNegotiation) {
                 json(json)
             }

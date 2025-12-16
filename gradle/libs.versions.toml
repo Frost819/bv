@@ -1,6 +1,6 @@
 [versions]
 accompanist = "0.36.0"
-akdanmaku = "1.0.0"
+#akdanmaku = "1.0.0"
 androidsvg = "1.4"
 coil = "2.7.0"
 firebase-bom = "33.14.0"
@@ -33,7 +33,7 @@ zxing = "3.5.3"
 accompanist-systemuicontroller = { module = "com.google.accompanist:accompanist-systemuicontroller", version.ref = "accompanist" }
 
 # https://github.com/shenbengit/AkDanmaku
-akdanmaku = { module = "com.github.shenbengit:AkDanmaku", version.ref = "akdanmaku" }
+#akdanmaku = { module = "com.github.shenbengit:AkDanmaku", version.ref = "akdanmaku" }
 
 # https://github.com/BigBadaboom/androidsvg
 androidSvg = { module = "com.caverock:androidsvg-aar", version.ref = "androidsvg" }
