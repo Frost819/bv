@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.activities.video.VideoInfoActivity
+import dev.aaa1115910.bv.component.TvLazyVerticalGrid
 import dev.aaa1115910.bv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
 import dev.aaa1115910.bv.ui.common.UiEvent
@@ -116,7 +117,7 @@ fun UpSpaceScreen(
             }
         }
     ) { innerPadding ->
-        LazyVerticalGrid(
+        TvLazyVerticalGrid(
             modifier = Modifier.padding(innerPadding),
             columns = GridCells.Fixed(4),
             state = gridState,

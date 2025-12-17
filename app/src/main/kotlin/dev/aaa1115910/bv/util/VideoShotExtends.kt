@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import dev.aaa1115910.biliapi.entity.video.VideoShot
 import dev.aaa1115910.biliapi.repositories.VideoPlayRepository
+import dev.aaa1115910.bv.component.TvLazyVerticalGrid
 import org.koin.compose.getKoin
 
 fun VideoShot.getImage(time: Int): Bitmap {
@@ -77,7 +78,7 @@ fun VideoShotTest(
     }
 
     if (videoShot != null) {
-        LazyVerticalGrid(
+        TvLazyVerticalGrid(
             modifier = modifier,
             columns = GridCells.Fixed(10),
         ) {

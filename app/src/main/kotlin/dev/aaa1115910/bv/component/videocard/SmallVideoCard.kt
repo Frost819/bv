@@ -45,6 +45,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import dev.aaa1115910.bv.R
+import dev.aaa1115910.bv.component.TvLazyVerticalGrid
 import dev.aaa1115910.bv.component.UpIcon
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.ui.theme.BVTheme
@@ -360,7 +361,7 @@ fun SmallVideoCardsPreview() {
         pubTime = "1小时前"
     )
     BVTheme {
-        LazyVerticalGrid(
+        TvLazyVerticalGrid(
             columns = GridCells.Fixed(4),
             contentPadding = PaddingValues(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

@@ -106,6 +106,7 @@ import dev.aaa1115910.bv.activities.video.SeasonInfoActivity
 import dev.aaa1115910.bv.activities.video.TagActivity
 import dev.aaa1115910.bv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.activities.video.VideoInfoActivity
+import dev.aaa1115910.bv.component.TvLazyVerticalGrid
 import dev.aaa1115910.bv.component.UpIcon
 import dev.aaa1115910.bv.component.buttons.CoinButton
 import dev.aaa1115910.bv.component.buttons.FavoriteButton
@@ -566,7 +567,7 @@ fun VideoInfoScreen(
                 modifier.padding(innerPadding)
             ) {
                 LazyColumn(
-                    contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp),
+                    contentPadding = PaddingValues(top = 16.dp, bottom = 64.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item {
@@ -1397,7 +1398,7 @@ private fun VideoPartListDialog(
                         }
                     }
 
-                    LazyVerticalGrid(
+                    TvLazyVerticalGrid(
                         state = listState,
                         columns = GridCells.Fixed(2),
                         contentPadding = PaddingValues(8.dp),
@@ -1504,7 +1505,7 @@ private fun VideoUgcListDialog(
                         }
                     }
 
-                    LazyVerticalGrid(
+                    TvLazyVerticalGrid(
                         state = listState,
                         columns = GridCells.Fixed(2),
                         contentPadding = PaddingValues(8.dp),

@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
 import dev.aaa1115910.bv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.activities.video.VideoInfoActivity
+import dev.aaa1115910.bv.component.TvLazyVerticalGrid
 import dev.aaa1115910.bv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
 import dev.aaa1115910.bv.ui.common.UiEvent
@@ -46,7 +47,7 @@ fun ToViewScreen(
         }
     }
 
-    LazyVerticalGrid(
+    TvLazyVerticalGrid(
         modifier = modifier,
         columns = GridCells.Fixed(4),
         contentPadding = PaddingValues(24.dp),

@@ -39,6 +39,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import dev.aaa1115910.bv.component.TvLazyVerticalGrid
 import dev.aaa1115910.bv.entity.carddata.SeasonCardData
 import dev.aaa1115910.bv.ui.theme.BVTheme
 
@@ -155,7 +156,7 @@ fun SeasonCard(
 @Composable
 private fun SeasonCardPreview() {
     BVTheme {
-        LazyVerticalGrid(columns = GridCells.Fixed(6)) {
+        TvLazyVerticalGrid(columns = GridCells.Fixed(6)) {
             repeat(6) {
                 item {
                     SeasonCard(

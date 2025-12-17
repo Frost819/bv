@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -96,6 +95,7 @@ import dev.aaa1115910.biliapi.repositories.UserRepository
 import dev.aaa1115910.biliapi.repositories.VideoDetailRepository
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.activities.video.VideoInfoActivity
+import dev.aaa1115910.bv.component.TvLazyVerticalGrid
 import dev.aaa1115910.bv.component.buttons.SeasonInfoButtons
 import dev.aaa1115910.bv.component.ifElse
 import dev.aaa1115910.bv.entity.VideoListItem
@@ -800,7 +800,7 @@ fun SeasonEpisodesDialog(
                         }
                     }
 
-                    LazyVerticalGrid(
+                    TvLazyVerticalGrid(
                         state = listState,
                         columns = GridCells.Fixed(2),
                         contentPadding = PaddingValues(8.dp),
