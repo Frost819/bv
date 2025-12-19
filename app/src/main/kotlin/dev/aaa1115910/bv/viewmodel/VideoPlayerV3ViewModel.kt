@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kuaishou.akdanmaku.DanmakuConfig
 import com.kuaishou.akdanmaku.data.DanmakuItemData
 import com.kuaishou.akdanmaku.render.SimpleRenderer
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
@@ -33,6 +34,7 @@ import dev.aaa1115910.biliapi.repositories.VideoPlayRepository
 import dev.aaa1115910.bilisubtitle.SubtitleParser
 import dev.aaa1115910.bilisubtitle.entity.SubtitleItem
 import dev.aaa1115910.bv.BVApp
+import dev.aaa1115910.bv.component.toDanmakuMode
 import dev.aaa1115910.bv.component.controllers2.DanmakuType
 import dev.aaa1115910.bv.entity.Audio
 import dev.aaa1115910.bv.entity.Resolution
@@ -224,8 +226,9 @@ class VideoPlayerV3ViewModel(
                         buffer.add(next)
                     }
                     danmakuData.addAll(buffer)
-                    if (danmakuData.size > 800) {
-                        danmakuData.subList(0, danmakuData.size - 800).clear()
+                    // 优化内存使用，减少弹幕缓存数量
+                    if (danmakuData.size > 500) {
+                        danmakuData.subList(0, danmakuData.size - 500).clear()
                     }
                     danmakuPlayer?.updateData(danmakuData)
                     buffer.clear()
@@ -553,16 +556,13 @@ class VideoPlayerV3ViewModel(
         runCatching {
             val danmakuXmlData = BiliHttpApi.getDanmakuXml(cid = cid, sessData = Prefs.sessData)
 
-            val danmakuItemDataList = danmakuXmlData.data.map {
+            // 优化内存使用，限制初始加载的弹幕数量
+            val danmakuItemDataList = danmakuXmlData.data.take(1000).map {
                 DanmakuItemData(
                     danmakuId = it.dmid,
                     position = (it.time * 1000).toLong(),
                     content = it.text,
-                    mode = when (it.type) {
-                        4 -> DanmakuItemData.DANMAKU_MODE_CENTER_TOP
-                        5 -> DanmakuItemData.DANMAKU_MODE_CENTER_BOTTOM
-                        else -> DanmakuItemData.DANMAKU_MODE_ROLLING
-                    },
+                    mode = it.type.toDanmakuMode(),
                     textSize = it.size,
                     textColor = Color(it.color).toArgb()
                 )
