@@ -77,18 +77,25 @@ data class UgcItem(
                 pubTime = videoInfo.pubdate.smartDate
             )
 
-        fun fromSmallCoverV5(card: bilibili.app.card.v1.SmallCoverV5) =
-            UgcItem(
+        fun fromSmallCoverV5(card: bilibili.app.card.v1.SmallCoverV5): UgcItem {
+            // 格式："n.n万观看 · n天前"
+            val playAndPubTime = card.rightDesc2.split(" · ")
+            val play = playAndPubTime.getOrNull(0)?.let { convertPlayStringToInt(it) } ?: -1
+            val pubTime = playAndPubTime.getOrNull(1)
+
+            return UgcItem(
                 aid = card.base.param.toLong(),
                 title = card.base.title,
                 duration = convertStringTimeToSeconds(card.coverRightText1),
                 author = card.rightDesc1,
                 authorMid = card.up.id,
                 cover = card.base.cover,
-                play = -1,
+                play = play,
+                pubTime = pubTime,
                 danmaku = -1,
-                idx = card.base.idx.toInt()
+                idx = card.base.idx.toInt(),
             )
+        }
 
         @Deprecated("User region v2 instead")
         fun fromRegionDynamicListItem(item: dev.aaa1115910.biliapi.http.entity.region.RegionDynamicList.Item) =
@@ -125,4 +132,30 @@ private fun convertStringTimeToSeconds(time: String): Int {
     val minutes = parts[parts.size - 2].toInt()
     val seconds = parts[parts.size - 1].toInt()
     return (hours * 3600) + (minutes * 60) + seconds
+}
+
+private fun convertPlayStringToInt(text: String): Int {
+    if (text.isBlank()) return -1
+
+    val value = text.replace("观看", "").trim()
+
+    return try {
+        when {
+            value.endsWith("万") -> {
+                val num = value.removeSuffix("万").toDouble()
+                (num * 10_000).toLong().coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            }
+
+            value.endsWith("亿") -> {
+                val num = value.removeSuffix("亿").toDouble()
+                (num * 100_000_000).toLong().coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            }
+
+            else -> {
+                value.toLong().coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            }
+        }
+    } catch (e: Exception) {
+        -1
+    }
 }

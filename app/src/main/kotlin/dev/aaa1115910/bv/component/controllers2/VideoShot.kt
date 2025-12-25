@@ -1,13 +1,11 @@
 package dev.aaa1115910.bv.component.controllers2
 
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -15,7 +13,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -34,10 +31,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import dev.aaa1115910.biliapi.entity.video.VideoShot
-import dev.aaa1115910.bv.ui.theme.BVTheme
+import dev.aaa1115910.bv.player.util.getImage
 import dev.aaa1115910.bv.util.fInfo
-import dev.aaa1115910.bv.util.getImage
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.delay
 
 @Composable
 fun VideoShot(
@@ -57,15 +54,19 @@ fun VideoShot(
     var imageWidth by remember { mutableStateOf(0.dp) }
 
     LaunchedEffect(position, imageWidth) {
+        delay(25)
+        // logger.fInfo { "update progress preview image offset at $position $imageWidth" }
+        val baseOffset = -imageWidth / 2
+        val imageOffset = baseOffset + screenWidth * (position.toFloat() / duration.toFloat())
+        coercedImageOffset =
+            imageOffset.coerceIn(0.dp + coercedOffset, screenWidth - imageWidth - coercedOffset)
+    }
+
+    LaunchedEffect(position) {
+        delay(25)
         logger.fInfo { "update progress preview image at $position" }
         if (!view.isInEditMode) {
             bitmap = videoShot.getImage(position.toInt() / 1000).asImageBitmap()
-        }
-        if(imageWidth != 0.dp){
-            val baseOffset = -imageWidth / 2
-            val imageOffset = baseOffset + screenWidth * (position.toFloat() / duration.toFloat())
-            coercedImageOffset =
-                imageOffset.coerceIn(0.dp + coercedOffset, screenWidth - imageWidth - coercedOffset)
         }
     }
 
@@ -76,13 +77,11 @@ fun VideoShot(
     BoxWithConstraints(
         modifier = modifier.fillMaxWidth()
     ) {
+        screenWidth = this.maxWidth
         VideoShotImage(
             modifier = Modifier
                 .offset(x = coercedImageOffset)
-                .alpha(if (coercedImageOffset != 0.dp) 1f else 0f)
                 .onSizeChanged {
-                    Log.d("VideoShot", "image width: ${it.width}")
-                    screenWidth = maxWidth
                     imageWidth = with(density) { it.width.toDp() }
                 },
             bitmap = bitmap
@@ -99,7 +98,6 @@ fun VideoShotImage(
 
     Image(
         modifier = modifier
-            .width(178.dp)
             .height(100.dp)
             .shadow(4.dp, MaterialTheme.shapes.large)
             .clip(MaterialTheme.shapes.large)
@@ -117,7 +115,7 @@ fun VideoShotImage(
 @Preview
 @Composable
 private fun VideoShotImagePreview() {
-    BVTheme {
+    MaterialTheme {
         VideoShotImage(bitmap = ImageBitmap(1, 1))
     }
 }
@@ -125,7 +123,7 @@ private fun VideoShotImagePreview() {
 @Preview(device = "id:tv_1080p")
 @Composable
 private fun VideoShotPreview(@PreviewParameter(VideoShotProgressProvider::class) data: Pair<Long, Long>) {
-    BVTheme {
+    MaterialTheme {
         Column {
             VideoShot(
                 videoShot = VideoShot(
