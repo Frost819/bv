@@ -1,4 +1,4 @@
-package dev.aaa1115910.bv.component.controllers2
+package dev.aaa1115910.bv.component.controllers
 
 import android.graphics.BitmapFactory
 import androidx.compose.animation.AnimatedVisibility

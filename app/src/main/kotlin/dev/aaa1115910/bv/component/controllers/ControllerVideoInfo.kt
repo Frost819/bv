@@ -1,4 +1,4 @@
-package dev.aaa1115910.bv.component.controllers2
+package dev.aaa1115910.bv.component.controllers
 
 import android.os.CountDownTimer
 import android.util.Log
@@ -56,7 +56,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.video.VideoShot
 import dev.aaa1115910.bv.R
-import dev.aaa1115910.bv.component.controllers.info.VideoPlayerInfoData
+import dev.aaa1115910.bv.entity.VideoPlayerInfoData
 import dev.aaa1115910.bv.ui.theme.BVTheme
 import dev.aaa1115910.bv.util.countDownTimer
 import dev.aaa1115910.bv.util.formatHourMinSec

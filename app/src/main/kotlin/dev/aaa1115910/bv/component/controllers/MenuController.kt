@@ -1,4 +1,4 @@
-package dev.aaa1115910.bv.component.controllers2
+package dev.aaa1115910.bv.component.controllers
 
 import android.content.Context
 import android.util.Log
@@ -51,14 +51,14 @@ import dev.aaa1115910.biliapi.entity.video.SubtitleAiStatus
 import dev.aaa1115910.biliapi.entity.video.SubtitleAiType
 import dev.aaa1115910.biliapi.entity.video.SubtitleType
 import dev.aaa1115910.bv.R
-import dev.aaa1115910.bv.component.controllers.LocalVideoPlayerControllerData
-import dev.aaa1115910.bv.component.controllers.VideoPlayerControllerData
-import dev.aaa1115910.bv.component.controllers2.playermenu.ClosedCaptionMenuList
-import dev.aaa1115910.bv.component.controllers2.playermenu.DanmakuMenuList
-import dev.aaa1115910.bv.component.controllers2.playermenu.MenuNavList
-import dev.aaa1115910.bv.component.controllers2.playermenu.PictureMenuList
-import dev.aaa1115910.bv.component.controllers2.playermenu.PlaySpeedItem
-import dev.aaa1115910.bv.component.controllers2.playermenu.PlaySpeedMenuList
+import dev.aaa1115910.bv.entity.LocalVideoPlayerControllerData
+import dev.aaa1115910.bv.entity.VideoPlayerControllerData
+import dev.aaa1115910.bv.component.controllers.playermenu.ClosedCaptionMenuList
+import dev.aaa1115910.bv.component.controllers.playermenu.DanmakuMenuList
+import dev.aaa1115910.bv.component.controllers.playermenu.MenuNavList
+import dev.aaa1115910.bv.component.controllers.playermenu.PictureMenuList
+import dev.aaa1115910.bv.component.controllers.playermenu.PlaySpeedItem
+import dev.aaa1115910.bv.component.controllers.playermenu.PlaySpeedMenuList
 import dev.aaa1115910.bv.entity.Audio
 import dev.aaa1115910.bv.entity.VideoAspectRatio
 import dev.aaa1115910.bv.entity.VideoCodec

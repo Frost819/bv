@@ -16,8 +16,8 @@ import dev.aaa1115910.biliapi.entity.ApiType
 import dev.aaa1115910.biliapi.http.util.generateBuvid
 import dev.aaa1115910.bv.BVApp
 import dev.aaa1115910.bv.component.HomeTopNavItem
-import dev.aaa1115910.bv.component.controllers2.DanmakuType
-import dev.aaa1115910.bv.component.controllers2.playermenu.PlaySpeedItem
+import dev.aaa1115910.bv.component.controllers.DanmakuType
+import dev.aaa1115910.bv.component.controllers.playermenu.PlaySpeedItem
 import dev.aaa1115910.bv.entity.Audio
 import dev.aaa1115910.bv.entity.PlayerType
 import dev.aaa1115910.bv.entity.Resolution

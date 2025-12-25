@@ -1,4 +1,4 @@
-package dev.aaa1115910.bv.component.controllers2.playermenu.component
+package dev.aaa1115910.bv.component.controllers.playermenu.component
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
