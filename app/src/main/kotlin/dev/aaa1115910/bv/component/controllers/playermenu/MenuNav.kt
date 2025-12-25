@@ -1,4 +1,4 @@
-package dev.aaa1115910.bv.component.controllers2.playermenu
+package dev.aaa1115910.bv.component.controllers.playermenu
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,8 +13,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import dev.aaa1115910.bv.component.controllers2.VideoPlayerMenuNavItem
-import dev.aaa1115910.bv.component.controllers2.playermenu.component.MenuListItem
+import dev.aaa1115910.bv.component.controllers.VideoPlayerMenuNavItem
+import dev.aaa1115910.bv.component.controllers.playermenu.component.MenuListItem
 import dev.aaa1115910.bv.component.ifElse
 
 @Composable

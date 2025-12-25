@@ -1,4 +1,4 @@
-package dev.aaa1115910.bv.component.controllers2.playermenu
+package dev.aaa1115910.bv.component.controllers.playermenu
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
@@ -26,12 +26,12 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import dev.aaa1115910.bv.component.controllers.LocalVideoPlayerControllerData
-import dev.aaa1115910.bv.component.controllers2.LocalMenuFocusStateData
-import dev.aaa1115910.bv.component.controllers2.MenuFocusState
-import dev.aaa1115910.bv.component.controllers2.VideoPlayerPictureMenuItem
-import dev.aaa1115910.bv.component.controllers2.playermenu.component.MenuListItem
-import dev.aaa1115910.bv.component.controllers2.playermenu.component.RadioMenuList
+import dev.aaa1115910.bv.entity.LocalVideoPlayerControllerData
+import dev.aaa1115910.bv.component.controllers.LocalMenuFocusStateData
+import dev.aaa1115910.bv.component.controllers.MenuFocusState
+import dev.aaa1115910.bv.component.controllers.VideoPlayerPictureMenuItem
+import dev.aaa1115910.bv.component.controllers.playermenu.component.MenuListItem
+import dev.aaa1115910.bv.component.controllers.playermenu.component.RadioMenuList
 import dev.aaa1115910.bv.component.ifElse
 import dev.aaa1115910.bv.entity.Audio
 import dev.aaa1115910.bv.entity.Resolution

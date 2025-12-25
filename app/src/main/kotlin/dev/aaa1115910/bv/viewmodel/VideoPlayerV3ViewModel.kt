@@ -30,7 +30,7 @@ import dev.aaa1115910.biliapi.repositories.VideoPlayRepository
 import dev.aaa1115910.bilisubtitle.SubtitleParser
 import dev.aaa1115910.bilisubtitle.entity.SubtitleItem
 import dev.aaa1115910.bv.BVApp
-import dev.aaa1115910.bv.component.controllers2.DanmakuType
+import dev.aaa1115910.bv.component.controllers.DanmakuType
 import dev.aaa1115910.bv.entity.Audio
 import dev.aaa1115910.bv.entity.Resolution
 import dev.aaa1115910.bv.entity.VideoCodec

@@ -1,6 +1,5 @@
-package dev.aaa1115910.bv.component.controllers2.playermenu
+package dev.aaa1115910.bv.component.controllers.playermenu
 
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -31,14 +30,13 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.aaa1115910.biliapi.entity.video.Subtitle
-import dev.aaa1115910.biliapi.entity.video.SubtitleType
-import dev.aaa1115910.bv.component.controllers.LocalVideoPlayerControllerData
-import dev.aaa1115910.bv.component.controllers2.LocalMenuFocusStateData
-import dev.aaa1115910.bv.component.controllers2.MenuFocusState
-import dev.aaa1115910.bv.component.controllers2.VideoPlayerClosedCaptionMenuItem
-import dev.aaa1115910.bv.component.controllers2.playermenu.component.MenuListItem
-import dev.aaa1115910.bv.component.controllers2.playermenu.component.RadioMenuList
-import dev.aaa1115910.bv.component.controllers2.playermenu.component.StepLessMenuItem
+import dev.aaa1115910.bv.entity.LocalVideoPlayerControllerData
+import dev.aaa1115910.bv.component.controllers.LocalMenuFocusStateData
+import dev.aaa1115910.bv.component.controllers.MenuFocusState
+import dev.aaa1115910.bv.component.controllers.VideoPlayerClosedCaptionMenuItem
+import dev.aaa1115910.bv.component.controllers.playermenu.component.MenuListItem
+import dev.aaa1115910.bv.component.controllers.playermenu.component.RadioMenuList
+import dev.aaa1115910.bv.component.controllers.playermenu.component.StepLessMenuItem
 import dev.aaa1115910.bv.component.ifElse
 import java.text.NumberFormat
 

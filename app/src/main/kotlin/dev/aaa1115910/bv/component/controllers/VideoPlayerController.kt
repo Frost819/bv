@@ -1,57 +1,47 @@
 package dev.aaa1115910.bv.component.controllers
 
-import android.app.Activity
 import android.os.CountDownTimer
-import android.view.KeyEvent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.media3.common.Player
+import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.video.Subtitle
-import dev.aaa1115910.biliapi.entity.video.VideoShot
-import dev.aaa1115910.biliapi.http.entity.video.VideoMoreInfo
-import dev.aaa1115910.bilisubtitle.entity.SubtitleItem
 import dev.aaa1115910.bv.BuildConfig
 import dev.aaa1115910.bv.R
-import dev.aaa1115910.bv.component.controllers.info.VideoPlayerInfoData
-import dev.aaa1115910.bv.component.controllers.info.VideoPlayerInfoTip
-import dev.aaa1115910.bv.component.controllers2.DanmakuType
-import dev.aaa1115910.bv.component.controllers2.playermenu.PlaySpeedItem
+import dev.aaa1115910.bv.activities.video.VideoInfoActivity
+import dev.aaa1115910.bv.entity.LocalVideoPlayerControllerData
+import dev.aaa1115910.bv.component.controllers.playermenu.PlaySpeedItem
 import dev.aaa1115910.bv.entity.Audio
-import dev.aaa1115910.bv.entity.DanmakuSize
-import dev.aaa1115910.bv.entity.DanmakuTransparency
 import dev.aaa1115910.bv.entity.VideoAspectRatio
 import dev.aaa1115910.bv.entity.VideoCodec
 import dev.aaa1115910.bv.entity.VideoListItem
+import dev.aaa1115910.bv.entity.proxy.ProxyArea
+import dev.aaa1115910.bv.player.AbstractVideoPlayer
+import dev.aaa1115910.bv.util.countDownTimer
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.toast
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -59,453 +49,389 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 @Composable
 fun VideoPlayerController(
     modifier: Modifier = Modifier,
-    playbackState: Int? = -1,
-    infoData: VideoPlayerInfoData,
-    resolutionMap: Map<Int, String> = emptyMap(),
-    availableVideoCodec: List<VideoCodec> = emptyList(),
-    availableSubtitle: List<VideoMoreInfo.SubtitleItem> = emptyList(),
-    availableVideoList: List<VideoListItem> = emptyList(),
-    currentVideoCid: Long = 0,
-    currentResolution: Int? = null,
-    currentVideoCodec: VideoCodec = VideoCodec.AVC,
-    currentVideoAspectRatio: VideoAspectRatio = VideoAspectRatio.Default,
-    currentDanmakuEnabled: Boolean = true,
-    currentDanmakuSize: DanmakuSize = DanmakuSize.S2,
-    currentDanmakuTransparency: DanmakuTransparency = DanmakuTransparency.T1,
-    currentDanmakuArea: Float = 1f,
-    currentSubtitleId: Long = 0,
-    currentSubtitleData: List<SubtitleItem>,
-    currentPosition: Long,
-    currentSubtitleFontSize: TextUnit = 24.sp,
-    currentSubtitleBottomPadding: Dp = 12.dp,
-    buffering: Boolean,
-    isPlaying: Boolean,
-    @Suppress("UNUSED_PARAMETER") bufferSpeed: String,
-    showLogs: Boolean,
-    logs: String,
-    title: String,
-    partTitle: String,
-    lastPlayed: Int,
-    onChooseResolution: (qualityId: Int) -> Unit,
-    onChooseVideoCodec: (videoCodec: VideoCodec) -> Unit,
-    onChooseVideoAspectRatio: (VideoAspectRatio) -> Unit,
-    onSwitchDanmaku: (enable: Boolean) -> Unit,
-    onDanmakuSizeChange: (DanmakuSize) -> Unit,
-    onDanmakuTransparencyChange: (DanmakuTransparency) -> Unit,
-    onDanmakuAreaChange: (Float) -> Unit,
-    onSubtitleChange: (Long) -> Unit,
-    onSubtitleFontSizeChange: (TextUnit) -> Unit,
-    onSubtitleBottomPaddingChange: (Dp) -> Unit,
-    onSeekBack: () -> Unit,
-    onSeekForward: () -> Unit,
+    videoPlayer: AbstractVideoPlayer,
+    aid: Long,
+    fromSeason: Boolean,
+    proxyArea: ProxyArea,
+    isLooping: Boolean,
+
+    //player events
     onPlay: () -> Unit,
     onPause: () -> Unit,
     onExit: () -> Unit,
-    requestFocus: () -> Unit,
-    goBackHistory: () -> Unit = {},
-    onVideoSwitch: (VideoListItem) -> Unit = {},
+    onGoTime: (time: Long) -> Unit,
+    onBackToStart: () -> Unit,
+    onBackToHistory: () -> Unit,
+    onCancelSkipToNextEp: () -> Unit,
+    onPlayNewVideo: (VideoListItem) -> Unit,
+    onToggleLoop: () -> Unit,
+    onGoToUpPage: () -> Unit,
+
+    //menu events
+    onResolutionChange: (Int) -> Unit,
+    onCodecChange: (VideoCodec) -> Unit,
+    onAspectRatioChange: (VideoAspectRatio) -> Unit,
+    onPlaySpeedChange: (Float) -> Unit,
+    onSelectedPlaySpeedItemChange: (PlaySpeedItem) -> Unit,
+    onAudioChange: (Audio) -> Unit,
+    onDanmakuSwitchChange: (List<DanmakuType>) -> Unit,
+    onDanmakuSizeChange: (Float) -> Unit,
+    onDanmakuOpacityChange: (Float) -> Unit,
+    onDanmakuAreaChange: (Float) -> Unit,
+    onDanmakuMaskChange: (Boolean) -> Unit,
+    onSubtitleChange: (Subtitle) -> Unit,
+    onSubtitleSizeChange: (TextUnit) -> Unit,
+    onSubtitleBackgroundOpacityChange: (Float) -> Unit,
+    onSubtitleBottomPadding: (Dp) -> Unit,
+
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
-    val logger = KotlinLogging.logger { }
+    val data = LocalVideoPlayerControllerData.current
+    val logger = KotlinLogging.logger {}
 
-    var showSeekController by remember { mutableStateOf(false) }
+    var showListController by remember { mutableStateOf(false) }
     var showMenuController by remember { mutableStateOf(false) }
-    var showPartController by remember { mutableStateOf(false) }
+    var showInfoSeekController by remember { mutableStateOf(false) }
+    val showClickableControllers by remember { derivedStateOf { showListController || showMenuController || showInfoSeekController } }
 
-    val showingRightController: () -> Boolean = { showMenuController || showPartController }
-
-    var seekHideTimer: CountDownTimer? by remember { mutableStateOf(null) }
-    var lastChangedSeek by remember { mutableLongStateOf(0L) }
     var lastPressBack by remember { mutableLongStateOf(0L) }
+    var goTime by remember { mutableLongStateOf(0L) }
 
-    var hasFocus by remember { mutableStateOf(false) }
+    var isSeeking by remember { mutableStateOf(false) }
+    var seekChangeCount by remember { mutableIntStateOf(0) }
+    var lastSeekChangeTime by remember { mutableLongStateOf(0L) }
 
-    val setCloseSeekTimer: () -> Unit = {
-        if (showSeekController) {
-            seekHideTimer?.cancel()
-            seekHideTimer = object : CountDownTimer(5000, 1000) {
-                override fun onTick(millisUntilFinished: Long) {
+    var onTimeForwardBackTimer: CountDownTimer? by remember { mutableStateOf(null) }
 
-                }
-
-                override fun onFinish() {
-                    showSeekController = false
-                }
-            }
-            seekHideTimer?.start()
+    val calCoefficient = {
+        if (System.currentTimeMillis() - lastSeekChangeTime < 200) {
+            seekChangeCount++
+            seekChangeCount / 5
         } else {
-            seekHideTimer?.cancel()
-            seekHideTimer = null
+            seekChangeCount = 0
+            0
         }
     }
 
-    LaunchedEffect(Unit) {
-        logger.fInfo { "Request focus on controller" }
-        //focusRequester.captureFocus()
+    val onTimeForward = {
+        isSeeking = true
+        val targetTime = goTime + (10000 + calCoefficient() * 5000)
+        goTime =
+            if (targetTime > data.infoData.totalDuration) data.infoData.totalDuration else targetTime
+        lastSeekChangeTime = System.currentTimeMillis()
+        logger.info { "onTimeForward: [current=${videoPlayer.currentPosition}, goTime=$goTime]" }
+    }
+    val onTimeBack = {
+        isSeeking = true
+        val targetTime = goTime - (10000 + calCoefficient() * 5000)
+        goTime = if (targetTime < 0) 0 else targetTime
+        lastSeekChangeTime = System.currentTimeMillis()
+        logger.info { "onTimeBack: [current=${videoPlayer.currentPosition}, goTime=$goTime]" }
     }
 
-    LaunchedEffect(showMenuController) {
-        if (!showMenuController) requestFocus()
+    val onDirectionLeft = {
+        if (!isSeeking) goTime = data.infoData.currentTime
+        onTimeBack()
+        onTimeForwardBackTimer?.cancel()
+        onTimeForwardBackTimer = countDownTimer(1000, 100, "onTimeBackTimer") {
+            onGoTime(goTime)
+            isSeeking = false
+            if (!videoPlayer.isPlaying) onPlay()
+            showInfoSeekController = false
+            onTimeForwardBackTimer = null
+        }
     }
 
-    LaunchedEffect(showSeekController) {
-        setCloseSeekTimer()
+    val onDirectionRight = {
+        if (!isSeeking) goTime = data.infoData.currentTime
+        onTimeForward()
+        onTimeForwardBackTimer?.cancel()
+        onTimeForwardBackTimer = countDownTimer(1000, 100, "onTimeBackTimer") {
+            onGoTime(goTime)
+            isSeeking = false
+            if (!videoPlayer.isPlaying) onPlay()
+            showInfoSeekController = false
+            onTimeForwardBackTimer = null
+        }
     }
 
-    LaunchedEffect(lastChangedSeek) {
-        setCloseSeekTimer()
+    val onSeekGoTime = {
+        onGoTime(goTime)
+        isSeeking = false
+        if (!videoPlayer.isPlaying) onPlay()
+        showInfoSeekController = false
+        onTimeForwardBackTimer?.cancel()
+        onTimeForwardBackTimer = null
     }
 
-    CompositionLocalProvider(
-        LocalVideoPlayerControllerData provides VideoPlayerControllerData(
-            infoData = infoData,
-            resolutionMap = resolutionMap,
-            availableVideoCodec = availableVideoCodec,
-            availableSubtitle = availableSubtitle,
-            availableVideoList = availableVideoList,
-            currentVideoCid = currentVideoCid,
-            currentResolution = currentResolution,
-            currentVideoCodec = currentVideoCodec,
-            currentVideoAspectRatio = currentVideoAspectRatio,
-            currentDanmakuEnabled = currentDanmakuEnabled,
-            currentDanmakuSize = currentDanmakuSize,
-            currentDanmakuTransparency = currentDanmakuTransparency,
-            currentDanmakuArea = currentDanmakuArea,
-            currentSubtitleId = currentSubtitleId,
-            currentSubtitleData = currentSubtitleData,
-            currentSubtitleFontSize = currentSubtitleFontSize,
-            currentSubtitleBottomPadding = currentSubtitleBottomPadding,
-            currentPosition = currentPosition
-        )
-    ) {
-        Box(
-            modifier = modifier
-                .onFocusChanged { hasFocus = it.hasFocus }
-                //.focusRequester(focusRequester)
-                .focusable()
-                .fillMaxSize()
-                .onPreviewKeyEvent {
-                    if (BuildConfig.DEBUG) logger.fInfo { "Native key event: ${it.nativeKeyEvent}" }
+    val onPlayPause = {
+        if (videoPlayer.isPlaying) onPause() else onPlay()
+    }
 
-                    if (showingRightController()) {
-                        if (listOf(
-                                KeyEvent.KEYCODE_BACK,
-                                KeyEvent.KEYCODE_BOOKMARK,
-                                KeyEvent.KEYCODE_MENU
-                            ).contains(it.nativeKeyEvent.keyCode)
-                        ) {
-                            if (it.nativeKeyEvent.action == KeyEvent.ACTION_UP) {
-                                showMenuController = false
-                                showPartController = false
-                                return@onPreviewKeyEvent true
-                            }
-                        }
+    //有历史播放记录时自动跳转播放进度
+    LaunchedEffect(data.showBackToStart) {
+        if (data.showBackToStart)
+            onBackToHistory()
+    }
+
+    Box(
+        modifier = modifier
+            .background(Color.Black)
+            .focusable()
+            .onPreviewKeyEvent {
+                if (showClickableControllers) {
+                    if (!listOf(Key.Back, Key.Menu).contains(it.key)) {
                         return@onPreviewKeyEvent false
                     }
 
-                    when (it.nativeKeyEvent.keyCode) {
-                        KeyEvent.KEYCODE_DPAD_UP -> {
-                            if (it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent true
-                            logger.fInfo { "Pressed dpad up" }
-                            if (showingRightController()) return@onPreviewKeyEvent false
-                            showPartController = true
+                }
+                when (it.key) {
+                    Key.DirectionCenter, Key.Enter, Key.Spacebar -> {
+                        if (!showClickableControllers && data.showBackToStart) {
+                            if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
+                            onBackToStart()
                             return@onPreviewKeyEvent true
                         }
 
-                        KeyEvent.KEYCODE_DPAD_DOWN -> {
-                            if (it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent true
-                            logger.fInfo { "Pressed dpad down" }
-                            if (showingRightController()) return@onPreviewKeyEvent false
-                            showSeekController = !showSeekController
-                            return@onPreviewKeyEvent true
+                        if (showInfoSeekController) {
+                            return@onPreviewKeyEvent false
                         }
 
-                        KeyEvent.KEYCODE_DPAD_LEFT -> {
-                            if (it.nativeKeyEvent.action == KeyEvent.ACTION_UP) return@onPreviewKeyEvent true
-                            logger.fInfo { "Pressed dpad left" }
-                            if (showingRightController()) return@onPreviewKeyEvent false
-                            showSeekController = true
-                            lastChangedSeek = System.currentTimeMillis()
-                            onSeekBack()
-                            return@onPreviewKeyEvent true
-                        }
-
-                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                            if (it.nativeKeyEvent.action == KeyEvent.ACTION_UP) return@onPreviewKeyEvent true
-                            logger.fInfo { "Pressed dpad right" }
-                            if (showingRightController()) return@onPreviewKeyEvent false
-                            showSeekController = true
-                            lastChangedSeek = System.currentTimeMillis()
-                            onSeekForward()
-                            return@onPreviewKeyEvent true
-                        }
-
-                        KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                            logger.fInfo { "Pressed dpad center" }
-                            if (lastPlayed != 0) {
-                                goBackHistory()
-                                return@onPreviewKeyEvent true
-                            }
-                            if (showingRightController()) return@onPreviewKeyEvent false
-                            if (it.nativeKeyEvent.isLongPress) {
-                                logger.fInfo { "long pressing" }
-                                showMenuController = true
-                                return@onPreviewKeyEvent true
-                            }
-                            logger.fInfo { "short pressing" }
-                            if (it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent true
-                            if (isPlaying) onPause() else onPlay()
-                            return@onPreviewKeyEvent true
-                        }
-
-                        //KEYCODE_CENTER_LONG
-                        763 -> {
-                            if (showingRightController()) return@onPreviewKeyEvent false
+                        if (it.nativeKeyEvent.isLongPress) {
+                            logger.fInfo { "[${it.key}] long press" }
                             showMenuController = true
                             return@onPreviewKeyEvent true
                         }
 
-                        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
-                            if (it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent true
-                            if (isPlaying) onPause() else onPlay()
-                            return@onPreviewKeyEvent true
-                        }
+                        logger.fInfo { "[${it.key}] short press" }
+                        if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
+                        onPlayPause()
+                        return@onPreviewKeyEvent false
+                    }
 
-                        KeyEvent.KEYCODE_MEDIA_PLAY -> {
-                            if (it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent true
-                            if (!isPlaying) onPlay()
-                            return@onPreviewKeyEvent true
-                        }
+                    // KEYCODE_CENTER_LONG
+                    // 一切设备上长按 DirectionCenter 键会是这个按键事件
+                    Key(763) -> {
+                        showMenuController = true
+                        return@onPreviewKeyEvent true
+                    }
 
-                        KeyEvent.KEYCODE_MEDIA_PAUSE -> {
-                            if (it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent true
-                            if (isPlaying) onPause()
-                            return@onPreviewKeyEvent true
-                        }
 
-                        KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_BOOKMARK -> {
-                            if (it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent true
-                            logger.fInfo { "Pressed dpad menu" }
-                            if (showingRightController()) {
-                                showMenuController = false
-                                showPartController = false
-                                return@onPreviewKeyEvent true
-                            }
-                            showMenuController = !showMenuController
-                            return@onPreviewKeyEvent true
-                        }
+                    Key.Menu -> {
+                        if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
+                        logger.info { "[${it.key} press]" }
+                        showMenuController = !showMenuController
+                        return@onPreviewKeyEvent true
+                    }
 
-                        KeyEvent.KEYCODE_BACK -> {
-                            if (it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent true
-                            logger.fInfo { "Pressed dpad back" }
-                            if (showingRightController()) {
-                                logger.fInfo { "Close menu and part controller" }
-                                showMenuController = false
-                                showPartController = false
-                                return@onPreviewKeyEvent true
+                    Key.Back -> {
+                        if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
+                        logger.info { "[${it.key} press]" }
+
+                        // 显示controller时，点击返回键关闭所有controller
+                        if (showClickableControllers) {
+                            showMenuController = false
+                            showListController = false
+                            showInfoSeekController = false
+                        } else {
+                            val currentTime = System.currentTimeMillis()
+                            if (currentTime - lastPressBack < 1000 * 3) {
+                                logger.fInfo { "Exiting video player" }
+                                onExit()
                             } else {
-                                //播放停止时按返回键直接退出
-                                if (playbackState == Player.STATE_ENDED) {
-                                    (context as Activity).finish()
-                                    return@onPreviewKeyEvent true
-                                }
-                                val currentTime = System.currentTimeMillis()
-                                if (currentTime - lastPressBack < 1000 * 3) {
-                                    logger.fInfo { "Exiting video player" }
-                                    onExit()
-                                    (context as Activity).finish()
-                                } else {
-                                    lastPressBack = currentTime
-                                    R.string.video_player_press_back_again_to_exit.toast(context)
-                                }
+                                lastPressBack = currentTime
+                                R.string.video_player_press_back_again_to_exit.toast(context)
                             }
-                            return@onPreviewKeyEvent true
                         }
+                        return@onPreviewKeyEvent true
+                    }
 
-                        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                            if (it.nativeKeyEvent.action == KeyEvent.ACTION_UP) return@onPreviewKeyEvent true
-                            if (showingRightController()) return@onPreviewKeyEvent false
-                            showSeekController = true
-                            lastChangedSeek = System.currentTimeMillis()
-                            onSeekForward()
-                            return@onPreviewKeyEvent true
+                    Key.MediaPlayPause -> {
+                        if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
+                        logger.info { "[${it.key} press]" }
+                        onPlayPause()
+                        return@onPreviewKeyEvent true
+                    }
+
+                    Key.MediaPlay -> {
+                        if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
+                        logger.info { "[${it.key} press]" }
+                        if (!videoPlayer.isPlaying) onPlay()
+                        return@onPreviewKeyEvent true
+                    }
+
+                    Key.MediaPause -> {
+                        if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
+                        logger.info { "[${it.key} press]" }
+                        if (videoPlayer.isPlaying) onPause()
+                        return@onPreviewKeyEvent true
+                    }
+
+                    Key.MediaRewind -> {
+                        if (it.type == KeyEventType.KeyUp) return@onPreviewKeyEvent true
+                        logger.info { "[${it.key} press]" }
+                        if (data.showSkipToNextEp) {
+                            onCancelSkipToNextEp()
                         }
-
-                        KeyEvent.KEYCODE_MEDIA_REWIND -> {
-                            if (it.nativeKeyEvent.action == KeyEvent.ACTION_UP) return@onPreviewKeyEvent true
-                            if (showingRightController()) return@onPreviewKeyEvent false
-                            showSeekController = true
-                            lastChangedSeek = System.currentTimeMillis()
-                            onSeekBack()
+                        if (!showInfoSeekController) {
+                            showInfoSeekController = true
+                            onDirectionLeft()
                             return@onPreviewKeyEvent true
                         }
                     }
-                    false
+
+                    Key.MediaFastForward -> {
+                        if (it.type == KeyEventType.KeyUp) return@onPreviewKeyEvent true
+                        if (!showInfoSeekController) {
+                            showInfoSeekController = true
+                            onDirectionRight()
+                            return@onPreviewKeyEvent true
+                        }
+                    }
+
+                    Key.DirectionLeft -> {
+                        if (it.type == KeyEventType.KeyUp) return@onPreviewKeyEvent true
+                        logger.info { "[${it.key} press]" }
+                        if (data.showSkipToNextEp) {
+                            onCancelSkipToNextEp()
+                        }
+                        if (!showInfoSeekController) {
+                            showInfoSeekController = true
+                            onDirectionLeft()
+                            return@onPreviewKeyEvent true
+                        }
+                    }
+
+                    Key.DirectionRight -> {
+                        if (it.type == KeyEventType.KeyUp) return@onPreviewKeyEvent true
+                        if (!showInfoSeekController) {
+                            showInfoSeekController = true
+                            onDirectionRight()
+                            return@onPreviewKeyEvent true
+                        }
+                        logger.info { "[${it.key} press]" }
+
+                    }
+
+                    Key.DirectionUp -> {
+                        if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
+                        logger.info { "[${it.key} press]" }
+                        if (showClickableControllers) return@onPreviewKeyEvent false
+                        showListController = true
+                        return@onPreviewKeyEvent true
+                    }
+
+                    Key.DirectionDown -> {
+                        if (it.type == KeyEventType.KeyDown) return@onPreviewKeyEvent true
+                        logger.info { "[${it.key} press]" }
+                        if (showClickableControllers) {
+                            return@onPreviewKeyEvent false
+                        } else {
+                            showInfoSeekController = true
+                            return@onPreviewKeyEvent true
+                        }
+                    }
                 }
-        ) {
-            content()
 
-            if (BuildConfig.DEBUG) {
-                Text(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .background(Color.Black),
-                    text = "焦点: $hasFocus"
-                )
+                false
             }
-
-            if (BuildConfig.DEBUG) {
-                VideoPlayerInfoTip(
-                    modifier = Modifier.align(Alignment.TopStart),
-                    data = infoData
-                )
-            }
-
-            if (showLogs) {
-                Text(
-                    modifier = Modifier.align(Alignment.BottomStart),
-                    text = logs
-                )
-            }
-
-            if (!isPlaying && !buffering) {
-                PauseIcon(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(32.dp)
-                )
-            }
-
-            //底部字幕
-            BottomSubtitle(
+    ) {
+        content()
+        if (BuildConfig.DEBUG) {
+            Box(
                 modifier = Modifier
-            )
-
-            //底部进度条
-            AnimatedVisibility(
-                modifier = Modifier.align(Alignment.BottomCenter),
-                visible = showSeekController,
-                enter = expandVertically(),
-                exit = shrinkVertically()
+                    .align(Alignment.TopStart)
+                    .padding(8.dp)
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(Color.Black.copy(alpha = 0.3f))
             ) {
-                BottomControls(
-                    partTitle = partTitle,
-                    infoData = infoData
+                Text(
+                    modifier = Modifier.padding(8.dp),
+                    text = data.debugInfo
                 )
-            }
-
-            //顶部标题
-            AnimatedVisibility(
-                modifier = Modifier.align(Alignment.TopCenter),
-                visible = showSeekController,
-                enter = expandVertically(),
-                exit = shrinkVertically()
-            ) {
-                TopController(title = title)
-            }
-
-            //右侧菜单
-            AnimatedVisibility(
-                modifier = Modifier.align(Alignment.CenterEnd),
-                visible = showMenuController,
-                enter = expandHorizontally(),
-                exit = shrinkHorizontally()
-            ) {
-                VideoPlayerMenuController(
-                    onChooseResolution = onChooseResolution,
-                    onChooseVideoCodec = onChooseVideoCodec,
-                    onChooseVideoAspectRatio = onChooseVideoAspectRatio,
-                    onSwitchDanmaku = onSwitchDanmaku,
-                    onDanmakuSizeChange = onDanmakuSizeChange,
-                    onDanmakuTransparencyChange = onDanmakuTransparencyChange,
-                    onDanmakuAreaChange = onDanmakuAreaChange,
-                    onSubtitleChange = onSubtitleChange,
-                    onSubtitleFontSizeChange = onSubtitleFontSizeChange,
-                    onSubtitleBottomPaddingChange = onSubtitleBottomPaddingChange
-                )
-            }
-
-            //左侧分P
-            AnimatedVisibility(
-                modifier = Modifier.align(Alignment.CenterStart),
-                visible = showPartController,
-                enter = expandHorizontally(),
-                exit = shrinkHorizontally()
-            ) {
-                VideoListController(
-                    onVideoSwitch = onVideoSwitch
-                )
-            }
-
-            //正中间缓冲
-            AnimatedVisibility(
-                modifier = Modifier.align(Alignment.Center),
-                visible = buffering,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                BufferingTip(speed = "")
-            }
-
-            //跳转历史记录提醒
-            AnimatedVisibility(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(bottom = 32.dp),
-                visible = lastPlayed > 0,
-                enter = expandHorizontally(),
-                exit = shrinkHorizontally()
-            ) {
-                GoBackHistoryTip(played = lastPlayed)
             }
         }
+        BottomSubtitle()
+        SkipTips(
+            historyTime = data.lastPlayed.toLong(),
+            showBackToStart = data.showBackToStart,
+            showSkipToNextEp = data.showSkipToNextEp,
+        )
+        PlayStateTips(
+            isPlaying = data.isPlaying,
+            isBuffering = data.isBuffering,
+            isError = data.isError,
+            exception = data.exception,
+            needPay = data.needPay,
+            epid = data.epid
+        )
+        ControllerVideoInfo(
+            modifier = Modifier.focusable(),
+            show = showInfoSeekController,
+            isSeeking = isSeeking,
+            goTime = goTime,
+            infoData = data.infoData,
+            title = data.title,
+            clock = data.clock,
+            videoShot = data.videoShot,
+            fromSeason = fromSeason,
+            danmakuEnabled = data.currentDanmakuEnabledList.isNotEmpty(),
+            isLooping = isLooping,
+            onHideInfo = { showInfoSeekController = false },
+            onDirectionLeft = onDirectionLeft,
+            onDirectionRight = onDirectionRight,
+            onSeekGoTime = onSeekGoTime,
+            onPlayPause = onPlayPause,
+            onDanmakuSwitchChange = {
+                if (data.currentDanmakuEnabledList.isEmpty()) {
+                    onDanmakuSwitchChange(DanmakuType.entries)
+                } else {
+                    onDanmakuSwitchChange(listOf())
+                }
+            },
+            onShowSettings = {
+                showInfoSeekController = false
+                showMenuController = true
+            },
+            onGoToVideoInfo = {
+                VideoInfoActivity.actionStart(
+                    context = context,
+                    aid = aid,
+                    fromSeason = fromSeason,
+                    fromController = true,
+                    proxyArea = proxyArea
+                )
+            },
+            onToggleLoop = onToggleLoop,
+            onGoToUpPage = onGoToUpPage
+        )
+        VideoListController(
+            show = showListController,
+            currentCid = data.currentVideoCid,
+            videoList = data.availableVideoList,
+            onPlayNewVideo = onPlayNewVideo
+        )
+        MenuController(
+            show = showMenuController,
+            onResolutionChange = onResolutionChange,
+            onCodecChange = onCodecChange,
+            onAspectRatioChange = onAspectRatioChange,
+            onPlaySpeedChange = onPlaySpeedChange,
+            onSelectedPlaySpeedItemChange = onSelectedPlaySpeedItemChange,
+            onAudioChange = onAudioChange,
+            onDanmakuSwitchChange = onDanmakuSwitchChange,
+            onDanmakuSizeChange = onDanmakuSizeChange,
+            onDanmakuOpacityChange = onDanmakuOpacityChange,
+            onDanmakuAreaChange = onDanmakuAreaChange,
+            onDanmakuMaskChange = onDanmakuMaskChange,
+            onSubtitleChange = onSubtitleChange,
+            onSubtitleSizeChange = onSubtitleSizeChange,
+            onSubtitleBackgroundOpacityChange = onSubtitleBackgroundOpacityChange,
+            onSubtitleBottomPadding = onSubtitleBottomPadding
+        )
     }
 }
 
-data class VideoPlayerControllerData(
-    val debugInfo: String = "",
-    val infoData: VideoPlayerInfoData = VideoPlayerInfoData(0, 0, 0, 0, 0, ""),
-    val resolutionMap: Map<Int, String> = emptyMap(),
-    val availableVideoCodec: List<VideoCodec> = emptyList(),
-    val availableAudio: List<Audio> = emptyList(),
-    val availableSubtitle: List<VideoMoreInfo.SubtitleItem> = emptyList(),
-    val availableSubtitleTracks: List<Subtitle> = emptyList(),
-    val availableVideoList: List<VideoListItem> = emptyList(),
-    val currentVideoCid: Long = 0,
-    val currentResolution: Int? = null,
-    val currentVideoCodec: VideoCodec = VideoCodec.AVC,
-    val currentVideoAspectRatio: VideoAspectRatio = VideoAspectRatio.Default,
-    val currentVideoSpeed: Float = 1f,
-    val currentSelectedPlaySpeedItem: PlaySpeedItem = PlaySpeedItem.x1,
-    val currentAudio: Audio = Audio.A192K,
-    val currentDanmakuEnabled: Boolean = true,
-    val currentDanmakuEnabledList: List<DanmakuType> = listOf(),
-    val currentDanmakuSize: DanmakuSize = DanmakuSize.S2,
-    val currentDanmakuScale: Float = 1f,
-    val currentDanmakuTransparency: DanmakuTransparency = DanmakuTransparency.T1,
-    val currentDanmakuOpacity: Float = 1f,
-    val currentDanmakuArea: Float = 1f,
-    val currentDanmakuMask: Boolean = false,
-    val currentSubtitleId: Long = 0,
-    val currentSubtitleData: List<SubtitleItem> = emptyList(),
-    val currentPosition: Long = 0,
-    val currentSubtitleFontSize: TextUnit = 24.sp,
-    val currentSubtitleBackgroundOpacity: Float = 0.4f,
-    val currentSubtitleBottomPadding: Dp = 12.dp,
-    val lastPlayed: Int = 0,
-    val title: String = "Title",
-    val secondTitle: String = "Second title",
-    val isPlaying: Boolean = false,
-    val isBuffering: Boolean = false,
-    val isError: Boolean = false,
-    val exception: Exception? = null,
-    val clock: Triple<Int, Int, Int> = Triple(0, 0, 0),
-    val showBackToStart: Boolean = false,
-    val showSkipToNextEp: Boolean = false,
-    val needPay: Boolean = false,
-    val epid: Int = 0,
-    val videoShot: VideoShot? = null
-)
 
-val LocalVideoPlayerControllerData = compositionLocalOf { VideoPlayerControllerData() }
+

@@ -1,4 +1,4 @@
-package dev.aaa1115910.bv.component.controllers2.playermenu
+package dev.aaa1115910.bv.component.controllers.playermenu
 
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
@@ -23,9 +23,9 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.aaa1115910.bv.R
-import dev.aaa1115910.bv.component.controllers.LocalVideoPlayerControllerData
-import dev.aaa1115910.bv.component.controllers2.MenuFocusState
-import dev.aaa1115910.bv.component.controllers2.playermenu.component.MenuListItem
+import dev.aaa1115910.bv.entity.LocalVideoPlayerControllerData
+import dev.aaa1115910.bv.component.controllers.MenuFocusState
+import dev.aaa1115910.bv.component.controllers.playermenu.component.MenuListItem
 import dev.aaa1115910.bv.component.ifElse
 
 @Composable
