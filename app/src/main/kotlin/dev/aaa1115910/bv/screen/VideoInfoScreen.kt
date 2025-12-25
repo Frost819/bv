@@ -5,8 +5,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -140,6 +143,7 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.getKoin
 import kotlin.math.ceil
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun VideoInfoScreen(
     modifier: Modifier = Modifier,
@@ -184,6 +188,19 @@ fun VideoInfoScreen(
 
     val favoriteFolderMetadataList = remember { mutableStateListOf<FavoriteFolderMetadata>() }
     val videoInFavoriteFolderIds = remember { mutableStateListOf<Long>() }
+
+    val bringIntoViewSpec = remember{
+        object : BringIntoViewSpec {
+            override fun calculateScrollDistance(
+                offset: Float,
+                size: Float,
+                containerSize: Float
+            ): Float {
+                val targetPosition = containerSize * 0.3f
+                return offset - targetPosition
+            }
+        }
+    }
 
     val setHistory = {
         logger.info { "play history: ${videoDetailViewModel.videoDetail?.history}" }
@@ -560,190 +577,194 @@ fun VideoInfoScreen(
             )
         }
     } else {
-        Scaffold(
-            containerColor = MaterialTheme.colorScheme.background
-        ) { innerPadding ->
-            Box(
-                modifier.padding(innerPadding)
-            ) {
-                LazyColumn(
-                    contentPadding = PaddingValues(top = 16.dp, bottom = 64.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+        CompositionLocalProvider(
+            LocalBringIntoViewSpec provides bringIntoViewSpec
+        ){
+            Scaffold(
+                containerColor = MaterialTheme.colorScheme.background
+            ) { innerPadding ->
+                Box(
+                    modifier.padding(innerPadding)
                 ) {
-                    item {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            if (videoDetailViewModel.videoDetail?.isUpowerExclusive == true) {
-                                ArgueTip(text = stringResource(R.string.video_info_argue_tip_upower_exclusive))
-                            }
-                            if (containsVerticalScreenVideo) {
-                                ArgueTip(text = stringResource(R.string.video_info_argue_tip_vertical_screen))
-                            }
-                            if (videoDetailViewModel.videoDetail?.argueTip != null) {
-                                ArgueTip(text = videoDetailViewModel.videoDetail!!.argueTip!!)
+                    LazyColumn(
+                        contentPadding = PaddingValues(top = 16.dp, bottom = 64.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        item {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (videoDetailViewModel.videoDetail?.isUpowerExclusive == true) {
+                                    ArgueTip(text = stringResource(R.string.video_info_argue_tip_upower_exclusive))
+                                }
+                                if (containsVerticalScreenVideo) {
+                                    ArgueTip(text = stringResource(R.string.video_info_argue_tip_vertical_screen))
+                                }
+                                if (videoDetailViewModel.videoDetail?.argueTip != null) {
+                                    ArgueTip(text = videoDetailViewModel.videoDetail!!.argueTip!!)
+                                }
                             }
                         }
-                    }
-                    item {
-                        VideoInfoData(
-                            defaultFocusRequester = defaultFocusRequester,
-                            videoDetail = videoDetailViewModel.videoDetail!!,
-                            showFollowButton = showFollowButton,
-                            isFollowing = isFollowing,
-                            tags = videoDetailViewModel.videoDetail!!.tags,
-                            isFavorite = favorited,
-                            isLiked = liked,
-                            isCoined = coined,
-                            userFavoriteFolders = favoriteFolderMetadataList,
-                            favoriteFolderIds = videoInFavoriteFolderIds,
-                            onClickCover = {
-                                logger.fInfo { "Click video cover" }
-                                // 点击封面播放当前视频
-                                playCurrentVideo(lastPlayedCid.takeIf { it != 0L })
-                            },
-                            onClickUp = {
-                                UpInfoActivity.actionStart(
-                                    context,
-                                    mid = videoDetailViewModel.videoDetail!!.author.mid,
-                                    name = videoDetailViewModel.videoDetail!!.author.name
-                                )
-                            },
-                            onAddFollow = {
-                                addFollow {
-                                    updateFollowingState()
-                                }
-                            },
-                            onDelFollow = {
-                                delFollow {
-                                    updateFollowingState()
-                                }
-                            },
-                            onClickTip = { tag ->
-                                TagActivity.actionStart(
-                                    context = context,
-                                    tagId = tag.id,
-                                    tagName = tag.name
-                                )
-                            },
-                            onAddToDefaultFavoriteFolder = {
-                                if (addVideoToDefaultFavoriteFolder())
-                                    favorited = true
-                                else
-                                    "收藏失败".toast(context)
-                            },
-                            onUpdateFavoriteFolders = {
-                                updateVideoFavoriteData(it)
-                                favorited = it.isNotEmpty()
-                                videoInFavoriteFolderIds.swapList(it)
-                            },
-                            onUpdateLiked = {
-                                scope.launch(Dispatchers.Main) {
-                                    if (updateVideoLikedData(it))
-                                        liked = it
-                                    else
-                                        "点赞失败".toast(context)
-                                }
-                            },
-                            onSendVideoCoin = {
-                                scope.launch(Dispatchers.Main) {
-                                    if (!coined) {
-                                        if (sendVideoCoin()) coined = true
-                                        else "投币失败".toast(context)
-                                    }
-                                }
-                            },
-                            onSendVideoOneClickTripleAction = {
-                                scope.launch(Dispatchers.Main) {
-                                    if (sendVideoOneClickTripleAction()) {
-                                        "一键三连".toast(context)
-                                    } else {
-                                        "一键三连失败".toast(context)
-                                    }
-                                }
-                            }
-                        )
-                    }
-                    if ((videoDetailViewModel.videoDetail?.description ?: "").isNotBlank()) {
                         item {
-                            VideoDescription(
-                                description = videoDetailViewModel.videoDetail?.description
-                                    ?: "no desc"
+                            VideoInfoData(
+                                defaultFocusRequester = defaultFocusRequester,
+                                videoDetail = videoDetailViewModel.videoDetail!!,
+                                showFollowButton = showFollowButton,
+                                isFollowing = isFollowing,
+                                tags = videoDetailViewModel.videoDetail!!.tags,
+                                isFavorite = favorited,
+                                isLiked = liked,
+                                isCoined = coined,
+                                userFavoriteFolders = favoriteFolderMetadataList,
+                                favoriteFolderIds = videoInFavoriteFolderIds,
+                                onClickCover = {
+                                    logger.fInfo { "Click video cover" }
+                                    // 点击封面播放当前视频
+                                    playCurrentVideo(lastPlayedCid.takeIf { it != 0L })
+                                },
+                                onClickUp = {
+                                    UpInfoActivity.actionStart(
+                                        context,
+                                        mid = videoDetailViewModel.videoDetail!!.author.mid,
+                                        name = videoDetailViewModel.videoDetail!!.author.name
+                                    )
+                                },
+                                onAddFollow = {
+                                    addFollow {
+                                        updateFollowingState()
+                                    }
+                                },
+                                onDelFollow = {
+                                    delFollow {
+                                        updateFollowingState()
+                                    }
+                                },
+                                onClickTip = { tag ->
+                                    TagActivity.actionStart(
+                                        context = context,
+                                        tagId = tag.id,
+                                        tagName = tag.name
+                                    )
+                                },
+                                onAddToDefaultFavoriteFolder = {
+                                    if (addVideoToDefaultFavoriteFolder())
+                                        favorited = true
+                                    else
+                                        "收藏失败".toast(context)
+                                },
+                                onUpdateFavoriteFolders = {
+                                    updateVideoFavoriteData(it)
+                                    favorited = it.isNotEmpty()
+                                    videoInFavoriteFolderIds.swapList(it)
+                                },
+                                onUpdateLiked = {
+                                    scope.launch(Dispatchers.Main) {
+                                        if (updateVideoLikedData(it))
+                                            liked = it
+                                        else
+                                            "点赞失败".toast(context)
+                                    }
+                                },
+                                onSendVideoCoin = {
+                                    scope.launch(Dispatchers.Main) {
+                                        if (!coined) {
+                                            if (sendVideoCoin()) coined = true
+                                            else "投币失败".toast(context)
+                                        }
+                                    }
+                                },
+                                onSendVideoOneClickTripleAction = {
+                                    scope.launch(Dispatchers.Main) {
+                                        if (sendVideoOneClickTripleAction()) {
+                                            "一键三连".toast(context)
+                                        } else {
+                                            "一键三连失败".toast(context)
+                                        }
+                                    }
+                                }
                             )
                         }
-                    }
-
-                    item {
-                        //视频分P
-                        VideoPartRow(
-                            pages = videoDetailViewModel.videoDetail?.pages ?: emptyList(),
-                            lastPlayedCid = lastPlayedCid,
-                            lastPlayedTime = lastPlayedTime,
-                            enablePartListDialog =
-                            (videoDetailViewModel.videoDetail?.pages?.size ?: 0) > 5,
-                            onClick = { cid ->
-                                logger.fInfo { "Click video part: [av:${videoDetailViewModel.videoDetail?.aid}, bv:${videoDetailViewModel.videoDetail?.bvid}, cid:$cid]" }
-                                // 播放当前视频的对应分P
-                                playCurrentVideo(cid)
+                        if ((videoDetailViewModel.videoDetail?.description ?: "").isNotBlank()) {
+                            item {
+                                VideoDescription(
+                                    description = videoDetailViewModel.videoDetail?.description
+                                        ?: "no desc"
+                                )
                             }
-                        )
-                    }
+                        }
 
-                    val videoDetail = videoDetailViewModel.videoDetail
-                    videoDetail?.ugcSeason?.let { season ->
-                        itemsIndexed(items = season.sections) { index, section ->
-                            VideoUgcSeasonRow(
-                                title = if (season.sections.size == 1) season.title else section.title,
-                                episodes = section.episodes,
+                        item {
+                            //视频分P
+                            VideoPartRow(
+                                pages = videoDetailViewModel.videoDetail?.pages ?: emptyList(),
                                 lastPlayedCid = lastPlayedCid,
                                 lastPlayedTime = lastPlayedTime,
-                                enableUgcListDialog = section.episodes.size > 5,
-                                onClick = { aid, cid ->
-                                    logger.fInfo { "Click ugc season part: [av:${videoDetail.aid}, bv:${videoDetail.bvid}, cid:$lastPlayedCid]" }
-
-                                    // 读取合集内视频
-                                    videoDetailViewModel.updateUgcSeasonSectionVideoList(index)
-
-                                    val currentEpisode = section.episodes.find { it.cid == cid }
-                                    val episodeTitle = currentEpisode?.title ?: ""
-
-                                    launchPlayerActivity(
-                                        context = context,
-                                        avid = aid,
-                                        cid = cid,
-                                        title = episodeTitle,
-                                        partTitle = episodeTitle,
-                                        played = if (cid == lastPlayedCid) lastPlayedTime * 1000 else 0,
-                                        fromSeason = false,
-                                        isVerticalVideo = containsVerticalScreenVideo,
-                                        author = videoDetail.author
-                                    )
+                                enablePartListDialog =
+                                (videoDetailViewModel.videoDetail?.pages?.size ?: 0) > 5,
+                                onClick = { cid ->
+                                    logger.fInfo { "Click video part: [av:${videoDetailViewModel.videoDetail?.aid}, bv:${videoDetailViewModel.videoDetail?.bvid}, cid:$cid]" }
+                                    // 播放当前视频的对应分P
+                                    playCurrentVideo(cid)
                                 }
                             )
                         }
-                    }
 
-                    val relatedVideos = videoDetailViewModel.relatedVideos
-                    if (relatedVideos.isNotEmpty()) {
-                        item {
-                            VideosRow(
-                                header = stringResource(R.string.video_info_related_video_title),
-                                videos = relatedVideos,
-                                showMore = {},
-                                onAddWatchLater = { aid ->
-                                    toViewViewModel.addToView(aid)
-                                },
-                                onGoToDetailPage = { aid ->
-                                    VideoInfoActivity.actionStart(
-                                        context = context,
-                                        fromController = true,
-                                        aid = aid
-                                    )
-                                },
-                                onGoToUpPage = { mid, upName ->
-                                    UpInfoActivity.actionStart(context, mid, upName)
-                                }
-                            )
+                        val videoDetail = videoDetailViewModel.videoDetail
+                        videoDetail?.ugcSeason?.let { season ->
+                            itemsIndexed(items = season.sections) { index, section ->
+                                VideoUgcSeasonRow(
+                                    title = if (season.sections.size == 1) season.title else section.title,
+                                    episodes = section.episodes,
+                                    lastPlayedCid = lastPlayedCid,
+                                    lastPlayedTime = lastPlayedTime,
+                                    enableUgcListDialog = section.episodes.size > 5,
+                                    onClick = { aid, cid ->
+                                        logger.fInfo { "Click ugc season part: [av:${videoDetail.aid}, bv:${videoDetail.bvid}, cid:$lastPlayedCid]" }
+
+                                        // 读取合集内视频
+                                        videoDetailViewModel.updateUgcSeasonSectionVideoList(index)
+
+                                        val currentEpisode = section.episodes.find { it.cid == cid }
+                                        val episodeTitle = currentEpisode?.title ?: ""
+
+                                        launchPlayerActivity(
+                                            context = context,
+                                            avid = aid,
+                                            cid = cid,
+                                            title = episodeTitle,
+                                            partTitle = episodeTitle,
+                                            played = if (cid == lastPlayedCid) lastPlayedTime * 1000 else 0,
+                                            fromSeason = false,
+                                            isVerticalVideo = containsVerticalScreenVideo,
+                                            author = videoDetail.author
+                                        )
+                                    }
+                                )
+                            }
+                        }
+
+                        val relatedVideos = videoDetailViewModel.relatedVideos
+                        if (relatedVideos.isNotEmpty()) {
+                            item {
+                                VideosRow(
+                                    header = stringResource(R.string.video_info_related_video_title),
+                                    videos = relatedVideos,
+                                    showMore = {},
+                                    onAddWatchLater = { aid ->
+                                        toViewViewModel.addToView(aid)
+                                    },
+                                    onGoToDetailPage = { aid ->
+                                        VideoInfoActivity.actionStart(
+                                            context = context,
+                                            fromController = true,
+                                            aid = aid
+                                        )
+                                    },
+                                    onGoToUpPage = { mid, upName ->
+                                        UpInfoActivity.actionStart(context, mid, upName)
+                                    }
+                                )
+                            }
                         }
                     }
                 }
