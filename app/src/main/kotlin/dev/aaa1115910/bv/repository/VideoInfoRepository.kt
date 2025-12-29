@@ -16,11 +16,7 @@ class VideoInfoRepository(private val videoDetailRepository: VideoDetailReposito
     suspend fun updateUgcPages(preferApiType: ApiType = ApiType.Web) {
         _videoList.update { oldList ->
             oldList.map { item ->
-                val pages = runCatching {
-                    videoDetailRepository.getUgcPages(aid = item.aid, preferApiType = preferApiType)
-                }.getOrElse { throwable ->
-                    emptyList()
-                }
+                val pages = videoDetailRepository.getUgcPages(aid = item.aid, preferApiType = preferApiType)
                 if (pages.size > 1) {
                     item.copy(
                         ugcPages = pages,
