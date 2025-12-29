@@ -8,6 +8,7 @@ import dev.aaa1115910.biliapi.entity.video.VideoPage
 import dev.aaa1115910.biliapi.entity.video.season.SeasonDetail
 import dev.aaa1115910.biliapi.grpc.utils.handleGrpcException
 import dev.aaa1115910.biliapi.http.BiliHttpApi
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
@@ -122,23 +123,32 @@ class VideoDetailRepository(
         aid: Long,
         preferApiType: ApiType = ApiType.Web
     ): List<VideoPage> {
-        when (preferApiType) {
-            ApiType.Web -> {
-                val detail = BiliHttpApi.getVideoInfo(
-                    av = aid,
-                    sessData = authRepository.sessionData ?: ""
-                ).getResponseData()
-                return detail.pages.map { VideoPage.fromVideoPage(it) }
-            }
+        return try {
+            when (preferApiType) {
+                ApiType.Web -> {
+                    val detail = BiliHttpApi.getVideoInfo(
+                        av = aid,
+                        sessData = authRepository.sessionData ?: ""
+                    ).getResponseData()
+                    detail.pages.map { VideoPage.fromVideoPage(it) }
+                }
 
-            ApiType.App -> {
-                val viewReply = runCatching {
-                    viewStub?.view(viewReq {
-                        this.aid = aid
-                    }) ?: throw IllegalStateException("Player stub is not initialized")
-                }.onFailure { handleGrpcException(it) }.getOrThrow()
-                return viewReply.pagesList.map { VideoPage.fromViewPage(it) }
+                ApiType.App -> {
+                    val viewReply = runCatching {
+                        viewStub?.view(viewReq {
+                            this.aid = aid
+                        }) ?: throw IllegalStateException("Player stub is not initialized")
+                    }.onFailure { handleGrpcException(it) }
+                        .getOrThrow()
+
+                    viewReply.pagesList.map { VideoPage.fromViewPage(it) }
+                }
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            println("Get ugc pages failed: aid=$aid, preferApiType=$preferApiType, error=${e.stackTraceToString()}")
+            emptyList()
         }
     }
 
