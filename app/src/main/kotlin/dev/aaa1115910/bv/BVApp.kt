@@ -63,6 +63,7 @@ class BVApp : Application() {
         }
         FirebaseUtil.init(applicationContext)
         LogCatcherUtil.installLogCatcher()
+        Prefs.init()
         initApiConfig()
         initRepository()
         initProxy()
