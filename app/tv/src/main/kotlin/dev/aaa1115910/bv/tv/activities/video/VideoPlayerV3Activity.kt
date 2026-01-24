@@ -189,6 +189,8 @@ class VideoPlayerV3Activity : ComponentActivity() {
             val pubTime = intent.getStringExtra("pubTime") ?: ""
             dev.aaa1115910.bv.tv.activities.video.VideoPlayerV3Activity.Companion.logger.fInfo { "Launch parameter: [aid=$aid, cid=$cid]" }
             playerViewModel.apply {
+                // lastPlayed 需要在 loadPlayUrl 之前设置，以便 prepare() 时能正确设置初始跳转位置
+                this.lastPlayed = played
                 loadPlayUrl(
                     avid = aid,
                     cid = cid,
@@ -196,7 +198,6 @@ class VideoPlayerV3Activity : ComponentActivity() {
                 )
                 this.title = title
                 this.partTitle = partTitle
-                this.lastPlayed = played
                 this.fromSeason = fromSeason
                 this.subType = subType
                 this.epid = epid

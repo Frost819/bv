@@ -69,6 +69,7 @@ import dev.aaa1115910.bv.player.entity.VideoPlayerSeekThumbData
 import dev.aaa1115910.bv.player.entity.VideoPlayerVideoInfoData
 import dev.aaa1115910.bv.player.entity.VideoPlayerVideoShotData
 import dev.aaa1115910.bv.player.tv.BvPlayer
+import dev.aaa1115910.bv.player.tv.controller.OnlineViewerCountTip
 import dev.aaa1115910.bv.player.tv.controller.SkipTip
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.component.buttons.CoinButton
@@ -86,6 +87,7 @@ import dev.aaa1115910.bv.util.toast
 import dev.aaa1115910.bv.util.formatHourMinSec
 import dev.aaa1115910.bv.util.swapList
 import dev.aaa1115910.bv.viewmodel.VideoPlayerV3ViewModel
+import dev.aaa1115910.biliapi.http.BiliHttpApi
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -123,6 +125,10 @@ fun VideoPlayerV3Screen(
     var autoActionTipVisible by remember { mutableStateOf(false) }
     var autoActionTipText by remember { mutableStateOf("") }
 
+    // 在线观看人数状态
+    var onlineViewerCount by remember { mutableStateOf("") }
+    var showOnlineViewerCountTip by remember { mutableStateOf(false) }
+
     // 焦点管理
     val relatedVideosFocusRequester = remember { FocusRequester() }
 
@@ -132,6 +138,56 @@ fun VideoPlayerV3Screen(
             delay(300)
             kotlin.runCatching {
                 relatedVideosFocusRequester.requestFocus()
+            }
+        }
+    }
+
+    // 获取在线观看人数
+    LaunchedEffect(playerViewModel.currentCid, playerViewModel.currentAid) {
+        if (playerViewModel.currentCid > 0 && playerViewModel.currentAid > 0 && Prefs.showOnlineViewerCount > 0) {
+            withContext(Dispatchers.IO) {
+                try {
+                    val response = BiliHttpApi.getVideoOnlineTotal(
+                        cid = playerViewModel.currentCid,
+                        aid = playerViewModel.currentAid
+                    )
+                    if (response.code == 0) {
+                        onlineViewerCount = response.data?.total ?: ""
+                        showOnlineViewerCountTip = true
+
+                        // 如果设置为 30 秒后隐藏，则自动隐藏
+                        if (Prefs.showOnlineViewerCount == 1) {
+                            delay(30_000)
+                            showOnlineViewerCountTip = false
+                        }
+                    }
+                } catch (e: Exception) {
+                    logger.warn(e) { "Failed to get online viewer count" }
+                }
+            }
+        }
+    }
+
+    // 如果设置为始终显示，每 5 分钟刷新一次数据
+    LaunchedEffect(showOnlineViewerCountTip, Prefs.showOnlineViewerCount) {
+        if (showOnlineViewerCountTip && Prefs.showOnlineViewerCount == 2) {
+            while (true) {
+                delay(300_000)  // 5 分钟
+                if (playerViewModel.currentCid > 0 && playerViewModel.currentAid > 0) {
+                    withContext(Dispatchers.IO) {
+                        try {
+                            val response = BiliHttpApi.getVideoOnlineTotal(
+                                cid = playerViewModel.currentCid,
+                                aid = playerViewModel.currentAid
+                            )
+                            if (response.code == 0) {
+                                onlineViewerCount = response.data?.total ?: ""
+                            }
+                        } catch (e: Exception) {
+                            logger.warn(e) { "Failed to refresh online viewer count" }
+                        }
+                    }
+                }
             }
         }
     }
@@ -206,7 +262,8 @@ fun VideoPlayerV3Screen(
             isLoop = playerViewModel.isLoop,
             showDanmaku = playerViewModel.showDanmaku,
             showRelatedVideos = playerViewModel.showRelatedVideos,
-            showNextVideoBtn = Prefs.playerLoadNextAction != PlayerLoadNextAction.DoNothing
+            showNextVideoBtn = Prefs.playerLoadNextAction != PlayerLoadNextAction.DoNothing,
+            defaultStartPosition = Prefs.playerDefaultStartPosition.toPlayerType()
         ),
         LocalVideoPlayerDanmakuMasksData provides VideoPlayerDanmakuMasksData(
             danmakuMasks = playerViewModel.danmakuMasks,
@@ -701,6 +758,12 @@ fun VideoPlayerV3Screen(
                     }
                 )
             }
+
+            // 在线观看人数 Tip
+            OnlineViewerCountTip(
+                show = showOnlineViewerCountTip,
+                count = onlineViewerCount
+            )
         }
     }
 }

@@ -25,6 +25,7 @@ import dev.aaa1115910.bv.player.entity.PortraitVideoFixMode
 import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoCodec
 import dev.aaa1115910.bv.player.entity.PlayerLoadNextAction
+import dev.aaa1115910.bv.player.entity.PlayerDefaultStartPosition
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -210,7 +211,7 @@ object Prefs {
                 id
             } else {
                 val randomBuvid = generateBuvid()
-                buvid3 = randomBuvid
+                buvid = randomBuvid
                 randomBuvid
             }
         }
@@ -218,7 +219,11 @@ object Prefs {
 
     var buvid3: String
         get() = runBlocking {
-            val id = dsm.getPreferenceFlow(PrefKeys.prefBuvid3Request).first()
+            var id = dsm.getPreferenceFlow(PrefKeys.prefBuvid3Request).first()
+            if(!id.contains("infoc")){
+                buvid3 = "${UUID.randomUUID()}${(0..9).random()}infoc"
+                id = buvid3
+            }
             if (id != "") {
                 id
             } else {
@@ -352,6 +357,13 @@ object Prefs {
         }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayerLoadNextActionKey, value.value) }
 
+    var playerDefaultStartPosition: PlayerDefaultStartPosition
+        get() = runBlocking {
+            val intValue = dsm.getPreferenceFlow(PrefKeys.prefPlayerDefaultStartPositionRequest).first()
+            PlayerDefaultStartPosition.fromValue(intValue)
+        }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayerDefaultStartPositionKey, value.value) }
+
     var playerExitWhenAllIsPlayed: Boolean
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPlayerExitWhenAllIsPlayedRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPlayerExitWhenAllIsPlayedKey, value) }
@@ -379,6 +391,13 @@ object Prefs {
     var showDanmaku: Boolean
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefShowDanmakuRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefShowDanmakuKey, value) }
+
+    var showOnlineViewerCount: Int
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefShowOnlineViewerCountRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefShowOnlineViewerCountKey, value) }
+
+    val showOnlineViewerCountFlow: Flow<Int>
+        get() = dsm.getPreferenceFlow(PrefKeys.prefShowOnlineViewerCountRequest)
 }
 
 object PrefKeys {
@@ -437,6 +456,8 @@ object PrefKeys {
     val prefIsLoopKey = booleanPreferencesKey("player_is_loop")
     val prefShowDanmakuKey = booleanPreferencesKey("player_show_danmaku")
     val prefPlayerLoadNextActionKey = intPreferencesKey("player_load_next_action")
+    val prefPlayerDefaultStartPositionKey = intPreferencesKey("player_default_start_position")
+    val prefShowOnlineViewerCountKey = intPreferencesKey("show_online_viewer_count")
 
 
     val prefIsLoginRequest = PreferenceRequest(prefIsLoginKey, false)
@@ -508,4 +529,6 @@ object PrefKeys {
     val prefIsLoopRequest = PreferenceRequest(prefIsLoopKey, false)
     val prefShowDanmakuRequest = PreferenceRequest(prefShowDanmakuKey, true)
     val prefPlayerLoadNextActionRequest = PreferenceRequest(prefPlayerLoadNextActionKey, PlayerLoadNextAction.DoNothing.value)
+    val prefPlayerDefaultStartPositionRequest = PreferenceRequest(prefPlayerDefaultStartPositionKey, PlayerDefaultStartPosition.Beginning.value)
+    val prefShowOnlineViewerCountRequest = PreferenceRequest(prefShowOnlineViewerCountKey, 2)  // 0 = 不显示, 1 = 30 秒后隐藏, 2 = 始终显示
 }

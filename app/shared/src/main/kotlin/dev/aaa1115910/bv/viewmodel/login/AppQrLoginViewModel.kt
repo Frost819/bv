@@ -98,6 +98,7 @@ class AppQrLoginViewModel(
 
                 QrLoginState.Success -> {
                     logger.fInfo { "Login success" }
+                    Prefs.buvid3 = loginRepository.getbuvid3()
 
                     val authData = AuthData(
                         uid = qrLoginResult.cookies!!.dedeUserId,

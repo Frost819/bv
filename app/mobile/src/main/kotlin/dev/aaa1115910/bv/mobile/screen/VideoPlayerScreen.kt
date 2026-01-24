@@ -274,6 +274,7 @@ fun VideoPlayerScreen(
                             currentSubtitleBottomPadding = playerViewModel.currentSubtitleBottomPadding,
                             currentPlayMode = playerViewModel.currentPlayMode,
                             incognitoMode = Prefs.incognitoMode,
+                            defaultStartPosition = Prefs.playerDefaultStartPosition.toPlayerType()
                         ),
                         LocalVideoPlayerDanmakuMasksData provides VideoPlayerDanmakuMasksData(
                             danmakuMasks = playerViewModel.danmakuMasks,

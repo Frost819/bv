@@ -100,11 +100,14 @@
 # gRPC
 -keep class bilibili.rpc.** { *; }
 -keep class com.google.protobuf.** { *; }
+-keep class com.google.re2j.** { *; }
 -dontwarn com.google.protobuf.GeneratedMessageV3$Builder
 -dontwarn com.google.protobuf.GeneratedMessageV3$BuilderParent
 -dontwarn com.google.protobuf.GeneratedMessageV3$FieldAccessorTable
 -dontwarn com.google.protobuf.GeneratedMessageV3
 -dontwarn com.google.protobuf.RepeatedFieldBuilderV3
+-dontwarn com.google.re2j.Matcher
+-dontwarn com.google.re2j.Pattern
 
 # kotlin-logging
 -dontwarn ch.qos.logback.classic.Level

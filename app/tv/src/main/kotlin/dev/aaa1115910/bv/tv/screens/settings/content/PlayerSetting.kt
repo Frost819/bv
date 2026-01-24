@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -18,14 +19,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.RadioButton
 import androidx.tv.material3.Text
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.PortraitVideoFixMode
 import dev.aaa1115910.bv.player.entity.PlayerLoadNextAction
+import dev.aaa1115910.bv.player.entity.PlayerDefaultStartPosition
 import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoCodec
+import dev.aaa1115910.bv.tv.component.TvAlertDialog
+import dev.aaa1115910.bv.tv.component.settings.SettingListItem
 import dev.aaa1115910.bv.tv.component.settings.SettingListItemWithDialog
 import dev.aaa1115910.bv.tv.component.settings.SettingSwitchListItem
 import dev.aaa1115910.bv.tv.component.settings.SettingNumberListItem
@@ -47,10 +53,13 @@ fun PlayerSetting(
     var playerShowDebugInfo by remember { mutableStateOf(Prefs.playerShowDebugInfo) }
     var playerExitWhenAllIsPlayed by remember { mutableStateOf(Prefs.playerExitWhenAllIsPlayed) }
     var playerLoadNextAction by remember { mutableStateOf(Prefs.playerLoadNextAction) }
+    var playerDefaultStartPosition by remember { mutableStateOf(Prefs.playerDefaultStartPosition) }
     var defaultPlaybackSpeed by remember { mutableDoubleStateOf(Prefs.defaultPlaySpeed.toDouble()) }
     var playerSeekForwardStep by remember { mutableDoubleStateOf(Prefs.playerSeekForwardStep.toDouble()) }
     var playerSeekBackwardStep by remember { mutableDoubleStateOf(Prefs.playerSeekBackwardStep.toDouble()) }
     var portraitVideoFixMode by remember { mutableStateOf(Prefs.portraitVideoFixMode) }
+    var showOnlineViewerCountDialog by remember { mutableStateOf(false) }
+    val showOnlineViewerCount by Prefs.showOnlineViewerCountFlow.collectAsState(Prefs.showOnlineViewerCount)
 
     Column(
         modifier = modifier.fillMaxSize(),
@@ -179,6 +188,19 @@ fun PlayerSetting(
                 )
             }
             item {
+                SettingListItemWithDialog(
+                    title = stringResource(R.string.settings_player_default_start_position_title),
+                    supportText = stringResource(R.string.settings_player_default_start_position_text),
+                    options = PlayerDefaultStartPosition.entries,
+                    getDisplayName = { item, ctx -> item.displayName(ctx) },
+                    value = playerDefaultStartPosition,
+                    onValueChange = {
+                        playerDefaultStartPosition = it
+                        Prefs.playerDefaultStartPosition = it
+                    }
+                )
+            }
+            item {
                 SettingSwitchListItem(
                     title = stringResource(R.string.settings_player_exit_when_all_is_played_title),
                     supportText = stringResource(R.string.settings_player_exit_when_all_is_played_text),
@@ -234,7 +256,66 @@ fun PlayerSetting(
                     }
                 )
             }
+            item {
+                SettingListItem(
+                    title = "视频在线观看人数",
+                    supportText = "设置播放器在线人数显示方式",
+                    valueText = when (showOnlineViewerCount) {
+                        0 -> "不显示"
+                        1 -> "30 秒后隐藏"
+                        2 -> "始终显示"
+                        else -> "30 秒后隐藏"
+                    },
+                    onClick = { showOnlineViewerCountDialog = true }
+                )
+            }
         }
-    }
 
+        OnlineViewerCountDialog(
+            show = showOnlineViewerCountDialog,
+            onHideDialog = { showOnlineViewerCountDialog = false },
+            showOnlineViewerCount = showOnlineViewerCount,
+            onShowOnlineViewerCountChange = { Prefs.showOnlineViewerCount = it }
+        )
+    }
+}
+
+@Composable
+private fun OnlineViewerCountDialog(
+    modifier: Modifier = Modifier,
+    show: Boolean,
+    onHideDialog: () -> Unit,
+    showOnlineViewerCount: Int,
+    onShowOnlineViewerCountChange: (Int) -> Unit
+) {
+    if (show) {
+        TvAlertDialog(
+            modifier = modifier,
+            onDismissRequest = { onHideDialog() },
+            title = { Text(text = "视频在线观看人数") },
+            text = {
+                Column {
+                    val options = listOf(
+                        "不显示" to 0,
+                        "30 秒后隐藏" to 1,
+                        "始终显示" to 2
+                    )
+                    options.forEach { (text, value) ->
+                        ListItem(
+                            selected = showOnlineViewerCount == value,
+                            onClick = { onShowOnlineViewerCountChange(value) },
+                            headlineContent = { Text(text = text) },
+                            trailingContent = {
+                                RadioButton(
+                                    selected = showOnlineViewerCount == value,
+                                    onClick = null
+                                )
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
 }

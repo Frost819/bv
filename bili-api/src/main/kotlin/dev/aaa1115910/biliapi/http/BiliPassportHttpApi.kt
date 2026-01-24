@@ -22,6 +22,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.Cookie
 import io.ktor.http.Parameters
 import io.ktor.http.URLProtocol
@@ -31,6 +32,11 @@ import kotlinx.serialization.json.Json
 
 object BiliPassportHttpApi {
     private lateinit var client: HttpClient
+    private val json = Json {
+        coerceInputValues = true
+        ignoreUnknownKeys = true
+        prettyPrint = true
+    }
 
     init {
         createClient()
@@ -184,4 +190,22 @@ object BiliPassportHttpApi {
             }
         ))
     }.body()
+
+    /**
+     * 获取buvid3
+     *
+     * @param source 获取来源 已知：main_web
+     */
+    suspend fun getbuvid3(): String {
+        val response = client.get("/x/web-frontend/getbuvid") {
+            url{
+                host = "api.bilibili.com"
+                protocol = URLProtocol.HTTPS
+            }
+        }
+        return runCatching {
+            json.decodeFromString<BiliResponse<String>>(response.bodyAsText()).getResponseData()
+        }.getOrDefault("")
+    }
+
 }

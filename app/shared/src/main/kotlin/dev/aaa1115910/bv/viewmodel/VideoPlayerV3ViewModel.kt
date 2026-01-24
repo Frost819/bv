@@ -35,6 +35,7 @@ import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.entity.Audio
 import dev.aaa1115910.bv.player.entity.DanmakuType
 import dev.aaa1115910.bv.player.entity.PlayMode
+import dev.aaa1115910.bv.player.entity.PlayerDefaultStartPosition
 import dev.aaa1115910.bv.player.entity.PortraitVideoFixMode
 import dev.aaa1115910.bv.player.entity.RequestState
 import dev.aaa1115910.bv.player.entity.Resolution
@@ -477,6 +478,11 @@ class VideoPlayerV3ViewModel(
             logger.info { "Video url: $videoUrl" }
             logger.info { "Audio url: $audioUrl" }
             videoPlayer!!.playUrl(videoUrl, audioUrl)
+            // 根据 DefaultStartPosition 设置初始跳转位置，避免在 onReady 中 seekTo 导致的状态抖动
+            if (lastPlayed > 0 && Prefs.playerDefaultStartPosition == PlayerDefaultStartPosition.History) {
+                logger.info { "Set initial seek position to history: ${lastPlayed}ms" }
+                videoPlayer!!.setInitialSeekPosition(lastPlayed.toLong())
+            }
             videoPlayer!!.prepare()
             showBuffering = true
         }

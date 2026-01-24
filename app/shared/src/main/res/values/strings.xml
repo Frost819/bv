@@ -720,5 +720,11 @@
     <string name="settings_player_load_next_action_play_recommend">推荐视频</string>
     <string name="settings_player_load_next_action_play_next_part">剧集和分P的下一个</string>
     <string name="settings_player_load_next_action_play_next_part_or_recommend">剧集和分P的下一个或推荐视频</string>
+    <string name="settings_player_default_start_position_title">播放默认开始位置</string>
+    <string name="settings_player_default_start_position_text">设置视频开始播放的位置</string>
+    <string name="settings_player_default_start_position_history">历史位置</string>
+    <string name="settings_player_default_start_position_beginning">从开头开始</string>
+    <string name="player_skip_tip_back_to_history">上次看到 %s 点击确认键跳转</string>
+    <string name="player_skip_tip_go_to_beginning">点击确认键跳转到视频开头</string>
     <string name="about_statement">此项目是个人为了学习安卓开发而fork, 仅用于学习和测试，禁止在中国境内传播、宣传、分发，如有相关使用需求请使用 [哔哩哔哩官方APP](https://app.bilibili.com)，否则后果自负</string>
 </resources>

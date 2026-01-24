@@ -202,6 +202,10 @@ class LoginRepository {
         ).getResponseData()
         return SmsLoginResult.fromSmsLoginResponse(response)
     }
+
+    suspend fun getbuvid3 () : String {
+        return BiliPassportHttpApi.getbuvid3()
+    }
 }
 
 data class SendSmsResult(

@@ -131,6 +131,7 @@ data class VideoPlayerConfigData(
     var showDanmaku: Boolean = true,
     var showRelatedVideos: Boolean = false,
     var showNextVideoBtn: Boolean = false,
+    val defaultStartPosition: DefaultStartPosition = DefaultStartPosition.History,
 )
 
 data class VideoPlayerDanmakuMasksData(

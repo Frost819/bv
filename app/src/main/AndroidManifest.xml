@@ -1,12 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="MissingLeanbackSupport">
 
     <!-- 权限声明 -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
     <uses-permission android:name="android.permission.READ_LOGS" />
 
     <application
         tools:targetApi="tiramisu"
         android:hardwareAccelerated="true"
+        android:banner="@drawable/ic_banner"
+        android:icon="@drawable/ic_launcher"
         android:largeHeap="true"
         android:allowBackup="false"
         tools:ignore="DataExtractionRules">

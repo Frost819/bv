@@ -29,6 +29,7 @@ import androidx.tv.material3.Text
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
+import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
@@ -114,11 +115,20 @@ fun HistoryScreen(
                         SmallVideoCard(
                             data = history,
                             onClick = {
-                                VideoInfoActivity.actionStart(
-                                    context = context,
-                                    aid = history.avid,
-                                    proxyArea = ProxyArea.checkProxyArea(history.title)
-                                )
+                                if (history.jumpToSeason) {
+                                    SeasonInfoActivity.actionStart(
+                                        context = context,
+                                        epId = history.epId,
+                                        seasonId = history.seasonId,
+                                        proxyArea = ProxyArea.checkProxyArea(history.title)
+                                    )
+                                } else {
+                                    VideoInfoActivity.actionStart(
+                                        context = context,
+                                        aid = history.avid,
+                                        proxyArea = ProxyArea.checkProxyArea(history.title)
+                                    )
+                                }
                             },
                             onLongClick = { UpInfoActivity.actionStart( context, mid = history.upId, name = history.upName, face = history.upFace ) },
                             onFocus = {

@@ -16,6 +16,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
+import dev.aaa1115910.bv.player.entity.DefaultStartPosition
+import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerHistoryData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerStateData
 import dev.aaa1115910.bv.util.formatHourMinSec
@@ -27,10 +29,16 @@ fun BackToHistoryTip(
     show: Boolean,
     time: String
 ) {
+    val videoPlayerConfigData = LocalVideoPlayerConfigData.current
+    val text = if (videoPlayerConfigData.defaultStartPosition == DefaultStartPosition.History) {
+        "点击确认键跳转视频开头"
+    } else {
+        "上次看到 $time 点击确认键跳转"
+    }
     SkipTip(
         modifier = modifier,
         show = show,
-        text = "上次看到 $time 点击确认键跳转"
+        text = text
     )
 }
 

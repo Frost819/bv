@@ -68,6 +68,7 @@ import dev.aaa1115910.biliapi.http.entity.video.TimelineAppData
 import dev.aaa1115910.biliapi.http.entity.video.VideoDetail
 import dev.aaa1115910.biliapi.http.entity.video.VideoInfo
 import dev.aaa1115910.biliapi.http.entity.video.VideoMoreInfo
+import dev.aaa1115910.biliapi.http.entity.video.VideoOnlineTotal
 import dev.aaa1115910.biliapi.http.entity.video.VideoShot
 import dev.aaa1115910.biliapi.http.entity.web.NavResponseData
 import dev.aaa1115910.biliapi.http.plugins.BiliUserAgent
@@ -705,6 +706,20 @@ object BiliHttpApi {
 
         return response
     }
+
+    /**
+     * 获取视频在线观看人数
+     */
+    suspend fun getVideoOnlineTotal(
+        cid: Long,
+        bvid: String? = null,
+        aid: Long? = null
+    ): BiliResponse<VideoOnlineTotal> = client.get("/x/player/online/total") {
+        require(bvid != null || aid != null) { "bvid and aid cannot be null at the same time" }
+        parameter("cid", cid)
+        bvid?.let { parameter("bvid", it) }
+        aid?.let { parameter("aid", it) }
+    }.body()
 
     /**
      * 检查视频[avid]或[bvid]是否已点赞&收藏&投币

@@ -9,6 +9,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.webkit.WebViewCompat
+import coil.Coil
 import de.schnettler.datastore.manager.DataStoreManager
 import dev.aaa1115910.biliapi.http.BiliHttpProxyApi
 import dev.aaa1115910.biliapi.http.util.BiliAppConf
@@ -21,6 +22,7 @@ import dev.aaa1115910.bv.entity.AuthData
 import dev.aaa1115910.bv.entity.db.UserDB
 import dev.aaa1115910.bv.network.HttpServer
 import dev.aaa1115910.bv.util.BlacklistUtil
+import dev.aaa1115910.bv.util.CoilConfig
 import dev.aaa1115910.bv.util.FirebaseUtil
 import dev.aaa1115910.bv.util.LogCatcherUtil
 import dev.aaa1115910.bv.util.Prefs
@@ -64,6 +66,7 @@ class BVApp : Application() {
             androidContext(this@BVApp)
             modules(AppModule().module)
         }
+        initCoil()
         initFirebase()
         LogCatcherUtil.installLogCatcher()
         initApiConfig()
@@ -73,6 +76,14 @@ class BVApp : Application() {
         updateMigration()
         HttpServer.startServer()
         updateBlacklist()
+    }
+
+    /**
+     * 初始化 Coil 图片加载库
+     * 使用优化后的 ImageLoader 配置，支持多线程并发加载
+     */
+    private fun initCoil() {
+        Coil.setImageLoader(CoilConfig.createImageLoader(this))
     }
 
     private fun initFirebase() {

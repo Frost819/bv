@@ -4,6 +4,19 @@ abstract class AbstractVideoPlayer {
     /** 播放器事件回调 */
     protected var mPlayerEventListener: VideoPlayerListener? = null
 
+    /** 初始跳转位置（毫秒），用于避免在 onReady 中 seek 导致的状态抖动 */
+    protected var pendingSeekPosition: Long = 0L
+
+    /** 设置初始播放位置（毫秒），需在 prepare() 之前调用 */
+    open fun setInitialSeekPosition(position: Long) {
+        pendingSeekPosition = position
+    }
+
+    /** 清除初始播放位置 */
+    protected fun clearPendingSeekPosition() {
+        pendingSeekPosition = 0L
+    }
+
     /**
      * 初始化播放器实例
      * 视频播放器第一步：创建视频播放器

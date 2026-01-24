@@ -119,6 +119,11 @@ class ExoMediaPlayer(
     override fun prepare() {
         mPlayer?.setMediaSource(mMediaSource!!)
         mPlayer?.prepare()
+        // 处理初始跳转位置，避免在 onReady 中 seek 导致的状态抖动
+        if (pendingSeekPosition > 0) {
+            mPlayer?.seekTo(pendingSeekPosition)
+            clearPendingSeekPosition()
+        }
     }
 
     override fun start() {

@@ -18,3 +18,4 @@ bin
 keystore.jks
 signing.properties
 *.log
+/app/default/

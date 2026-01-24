@@ -1,21 +1,21 @@
 [versions]
-activity = "1.10.1"
-compose = "1.8.3"
+activity = "1.12.2"
+compose = "1.10.1"
 compose-constraintlayout = "1.1.1"
 compose-material-icons = "1.7.8"
-compose-material3 = "1.5.0-alpha03"
-compose-material3-adaptive = "1.1.0"
+compose-material3 = "1.5.0-alpha12"
+compose-material3-adaptive = "1.2.0"
 #noinspection GradleDependency https://issuetracker.google.com/issues/361611808
 compose-tv = "1.1.0-alpha01"
 compose-tv-foundation = "1.0.0-alpha12"
-core = "1.16.0"
-core-splashscreen = "1.0.1"
-dataStore = "1.1.7"
-lifecycle = "2.9.2"
-media3 = "1.9.0-rc01"
-navigation = "2.9.3"
-room = "2.7.2"
-webkit = "1.14.0"
+core = "1.17.0"
+core-splashscreen = "1.2.0"
+dataStore = "1.2.0"
+lifecycle = "2.10.0"
+media3 = "1.9.0"
+navigation = "2.9.6"
+room = "2.8.4"
+webkit = "1.15.0"
 
 [libraries]
 # https://developer.android.com/jetpack/androidx/releases/activity

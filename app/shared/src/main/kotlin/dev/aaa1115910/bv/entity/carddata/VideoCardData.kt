@@ -19,6 +19,7 @@ data class VideoCardData(
     var timeString: String = "",
     val jumpToSeason: Boolean = false,
     val epId: Int? = null,
+    val seasonId: Int? = null,
     val pubTime: String? = null,
     // var pubTimeString: String = "",
     val isChargingArc: Boolean = false,

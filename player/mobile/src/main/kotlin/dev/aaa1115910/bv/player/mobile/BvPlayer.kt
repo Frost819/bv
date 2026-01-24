@@ -217,6 +217,9 @@ fun BvPlayer(
 
         override fun onPlay() {
             logger.info { "onPlay" }
+            // 同步弹幕到视频当前位置
+            val currentPosition = videoPlayer.currentPosition
+            mDanmakuPlayer?.seekTo(currentPosition)
             mDanmakuPlayer?.start()
             isPlaying = true
             isBuffering = false
@@ -264,6 +267,11 @@ fun BvPlayer(
             updatePosition()
             delay(200)
         }
+    }
+
+    // 同步 videoPlayerHistoryData.lastPlayed 到本地变量
+    LaunchedEffect(videoPlayerHistoryData.lastPlayed) {
+        lastPlayed = videoPlayerHistoryData.lastPlayed.toLong()
     }
 
     LaunchedEffect(danmakuPlayer) {
