@@ -104,9 +104,13 @@ fun TopNav(
                     topNavItem = tab,
                     selected = index == selectedTabIndex,
                     onFocus = {
-                        tabMoved = tab == selectedNav
+                        // 只在切换到不同tab时阻止向下移动，需要在更新selectedNav前检查
+                        val isSameTab = tab == selectedNav
                         selectedNav = tab
                         selectedTabIndex = index
+                            if (!isSameTab) {
+                            tabMoved = false
+                        }
                     },
                     onClick = { onClick(tab) }
                 )

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.OndemandVideo
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
@@ -193,17 +194,23 @@ fun DrawerContent(
                 )
             }
         )
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
-        ) {
+        // 菜单项列表：直播始终显示
+        val menuItems = remember {
             listOf(
                 DrawerItem.Search,
                 DrawerItem.Home,
                 DrawerItem.UGC,
                 DrawerItem.PGC,
-            ).forEach { item ->
-                item {
-                    NavigationRailItem(
+                DrawerItem.Live
+            )
+        }
+        
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
+        ) {
+            items(menuItems.size) { index ->
+                val item = menuItems[index]
+                NavigationRailItem(
                         modifier = Modifier
                             .focusRequester(drawerItemFocusRequesters[item]!!)
                             // 立即更新focusedItem以反映视觉状态
@@ -241,7 +248,6 @@ fun DrawerContent(
                             )
                         }
                     )
-                }
             }
         }
         NavigationRailItem(
@@ -285,6 +291,7 @@ enum class DrawerItem(
     Home(displayName = "首页", displayIcon = Icons.Default.Home),
     UGC(displayName = "UGC", displayIcon = Icons.Default.OndemandVideo),
     PGC(displayName = "PGC", displayIcon = Icons.Default.Movie),
+    Live(displayName = "直播", displayIcon = Icons.Default.Videocam),
     Settings(displayName = "设置", displayIcon = Icons.Default.Settings), ;
 }
 

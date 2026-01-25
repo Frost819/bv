@@ -24,10 +24,7 @@ import dev.aaa1115910.biliapi.entity.video.SubtitleAiType
 import dev.aaa1115910.biliapi.entity.video.SubtitleType
 import dev.aaa1115910.biliapi.entity.video.VideoShot
 import dev.aaa1115910.biliapi.http.BiliHttpApi
-import dev.aaa1115910.biliapi.http.BiliLiveHttpApi
-import dev.aaa1115910.biliapi.http.entity.live.DanmakuEvent
 import dev.aaa1115910.biliapi.repositories.VideoPlayRepository
-import dev.aaa1115910.biliapi.websocket.LiveDataWebSocket
 import dev.aaa1115910.bilisubtitle.SubtitleParser
 import dev.aaa1115910.bilisubtitle.entity.SubtitleItem
 import dev.aaa1115910.bv.BVApp
@@ -54,14 +51,12 @@ import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.fWarn
 import dev.aaa1115910.bv.util.swapList
 import dev.aaa1115910.bv.util.swapListWithMainContext
-import dev.aaa1115910.bv.util.DanmakuRateLimiter
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.android.annotation.KoinViewModel
@@ -81,10 +76,6 @@ class VideoPlayerV3ViewModel(
     override fun onCleared() {
         super.onCleared()
         logger.fInfo { "VideoPlayerV3ViewModel onCleared" }
-        
-        // 清理直播弹幕资源
-        stopLiveDanmaku()
-        
         try {
             videoPlayer?.release()
             videoPlayer = null
@@ -139,7 +130,6 @@ class VideoPlayerV3ViewModel(
     var currentDanmakuMask by mutableStateOf(Prefs.defaultDanmakuMask)
     var currentSubtitleId by mutableLongStateOf(-1L)
     var currentSubtitleData = mutableStateListOf<SubtitleItem>()
-    var currentSubtitleType by mutableStateOf(SubtitleType.CC)
     var currentSubtitleFontSize by mutableStateOf(Prefs.defaultSubtitleFontSize)
     var currentSubtitleBackgroundOpacity by mutableFloatStateOf(Prefs.defaultSubtitleBackgroundOpacity)
     var currentSubtitleBottomPadding by mutableStateOf(Prefs.defaultSubtitleBottomPadding)
@@ -163,15 +153,6 @@ class VideoPlayerV3ViewModel(
     var isLive by mutableStateOf(false)
     var liveRoomId by mutableIntStateOf(0)
     var liveStreamUrl by mutableStateOf("")
-    
-    // 直播弹幕管理
-    private var liveWebSocket: Job? = null
-    private var liveWebSocketInner: Job? = null
-    private var danmakuRateLimiter: DanmakuRateLimiter? = null
-    private val liveDanmakuBuffer = mutableListOf<DanmakuItemData>()
-    private var lastLiveDanmakuTime = 0L
-    private var liveDanmakuCounter = 0
-    
     var coin by mutableStateOf(0)
     var favorite by mutableStateOf(0)
     var upName by mutableStateOf("")
@@ -197,11 +178,9 @@ class VideoPlayerV3ViewModel(
     private var currentEpid = 0
 
     private suspend fun ensureDanmakuPlayer() = withContext(Dispatchers.Main) {
-        logger.fInfo { "[Danmaku 调试] 开始创建弹幕播放器" }
         danmakuPlayer?.release()
         danmakuPlayer = DanmakuPlayer(SimpleRenderer())
         // danmakuPlayer = DanmakuPlayer(OptimizedTextRenderer.createHighPerformance())
-        logger.fInfo { "[Danmaku 调试] 弹幕播放器创建完成: $danmakuPlayer" }
         logger.fInfo { "(Re)create DanmakuPlayer" }
     }
 
@@ -657,7 +636,6 @@ class VideoPlayerV3ViewModel(
                 withContext(Dispatchers.Main) {
                     currentSubtitleData.clear()
                     currentSubtitleId = -1
-                    currentSubtitleType = SubtitleType.CC
                 }
                 return@launch
             }
@@ -665,21 +643,18 @@ class VideoPlayerV3ViewModel(
             runCatching {
                 val subtitle = availableSubtitle.find { it.id == id } ?: return@runCatching
                 subtitleName = subtitle.langDoc
-                val isAI = subtitle.type == SubtitleType.AI
-                logger.info { "Subtitle url: ${subtitle.url}, isAI: $isAI" }
+                logger.info { "Subtitle url: ${subtitle.url}" }
                 val client = HttpClient(OkHttp)
                 val responseText = client.get(subtitle.url).bodyAsText()
-                val subtitleData = SubtitleParser.fromBccString(responseText, isAI)
+                val subtitleData = SubtitleParser.fromBccString(responseText)
                 withContext(Dispatchers.Main) {
                     currentSubtitleId = id
-                    currentSubtitleType = subtitle.type
                     currentSubtitleData.swapList(subtitleData)
                 }
             }.onFailure {
                 withContext(Dispatchers.Main) {
                     currentSubtitleData.clear()
                     currentSubtitleId = -1
-                    currentSubtitleType = SubtitleType.CC
                 }
                 logger.fInfo { "Load subtitle failed: ${it.stackTraceToString()}" }
                 addLogs("加载字幕 $subtitleName 失败: ${it.localizedMessage}")
@@ -839,210 +814,5 @@ class VideoPlayerV3ViewModel(
                 continuePlayNext = true
             )
         }
-    }
-    
-    /**
-     * 加载直播流
-     */
-    fun loadLiveStream(streamUrl: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            logger.fInfo { "Load live stream: $streamUrl" }
-            withContext(Dispatchers.Main) { loadState = RequestState.Doing }
-            
-            // 初始化弹幕播放器
-            ensureDanmakuPlayer()
-            logger.fInfo { "[Danmaku 调试] 直播流弹幕播放器初始化完成" }
-            logger.fInfo { "Danmaku player initialized for live stream" }
-            
-            runCatching {
-                withContext(Dispatchers.Main) {
-                    videoPlayer?.playUrl(videoUrl = streamUrl)
-                    videoPlayer?.prepare()
-                    videoPlayer?.start()
-                    loadState = RequestState.Success
-                    logger.fInfo { "[Danmaku 调试] 直播流播放已开始, position: ${videoPlayer?.currentPosition}" }
-                }
-                logger.fInfo { "Live stream loaded successfully" }
-            }.onFailure { e ->
-                logger.fError { "Failed to load live stream: ${e.message}" }
-                withContext(Dispatchers.Main) {
-                    loadState = RequestState.Failed
-                    errorMessage = "加载直播流失败: ${e.message}"
-                }
-            }
-        }
-    }
-    
-    /**
-     * 启动直播弹幕
-     */
-    fun startLiveDanmaku(roomId: Int) {
-        if (roomId <= 0) {
-            logger.fWarn { "Invalid room id: $roomId" }
-            return
-        }
-        
-        logger.fInfo { "Starting live danmaku for room $roomId" }
-        stopLiveDanmaku()
-        
-        // 连接 WebSocket
-        liveWebSocket = viewModelScope.launch(Dispatchers.IO) {
-            runCatching {
-                logger.fInfo { "Getting live danmaku info for room $roomId" }
-                val danmuInfo = BiliLiveHttpApi.getLiveDanmuInfo(roomId)
-                logger.fInfo { "Danmaku info response: code=${danmuInfo.code}, message=${danmuInfo.message}" }
-                
-                if (danmuInfo.data == null) {
-                    logger.fError { "Failed to get danmaku info: data is null" }
-                    return@launch
-                }
-                
-                logger.fInfo { "Getting live room play info for room $roomId" }
-                val playInfo = BiliLiveHttpApi.getLiveRoomPlayInfo(roomId)
-                logger.fInfo { "Play info response: code=${playInfo.code}, message=${playInfo.message}" }
-                
-                val realRoomId = playInfo.data?.roomId
-                if (realRoomId == null) {
-                    logger.fError { "Failed to get real room id: data.roomId is null" }
-                    return@launch
-                }
-                
-                logger.fInfo { "Real room id: $realRoomId, starting WebSocket connection" }
-                
-                // 重新创建并启动流控器
-                logger.fInfo { "[Danmaku 调试] 重新创建弹幕流控器" }
-                danmakuRateLimiter = DanmakuRateLimiter(maxPerSecond = 100)
-                danmakuRateLimiter?.start(viewModelScope) { event ->
-                    logger.fInfo { "[Danmaku 调试] 流控器收到弹幕: ${event.content}" }
-                    viewModelScope.launch(Dispatchers.Main) {
-                        addLiveDanmaku(event)
-                    }
-                }
-                
-                logger.fInfo { "Connecting to live danmaku WebSocket for room $realRoomId" }
-                liveWebSocketInner = LiveDataWebSocket.connectLiveEvent(realRoomId) { event ->
-                    if (event is DanmakuEvent) {
-                        logger.fInfo { "[Danmaku 调试] WebSocket 收到弹幕事件: ${event.content}" }
-                        logger.fInfo { "Received live danmaku: ${event.content}" }
-                        viewModelScope.launch {
-                            val submitted = danmakuRateLimiter?.submitDanmaku(event) ?: false
-                            logger.fInfo { "[Danmaku 调试] 弹幕提交结果: $submitted, rateLimiter: ${danmakuRateLimiter != null}" }
-                        }
-                    }
-                }
-            }.onFailure { e ->
-                logger.fError { "Live danmaku connection failed: ${e.message}\n${e.stackTraceToString()}" }
-            }
-        }
-        
-        logger.fInfo { "Live danmaku started" }
-    }
-    
-    /**
-     * 停止直播弹幕
-     */
-    fun stopLiveDanmaku() {
-        logger.fInfo { "[Danmaku 调试] 开始停止直播弹幕" }
-        logger.fInfo { "Stopping live danmaku" }
-        
-        liveWebSocket?.cancel()
-        liveWebSocket = null
-        logger.fInfo { "[Danmaku 调试] 外部 WebSocket job 已取消" }
-        
-        liveWebSocketInner?.cancel()
-        liveWebSocketInner = null
-        logger.fInfo { "[Danmaku 调试] 内部 WebSocket job 已取消" }
-        
-        danmakuRateLimiter?.stop()
-        danmakuRateLimiter = null
-        logger.fInfo { "[Danmaku 调试] 流控器已停止" }
-        
-        // 重置弹幕时间计数器
-        lastLiveDanmakuTime = 0L
-        liveDanmakuCounter = 0
-        
-        viewModelScope.launch(Dispatchers.Main) {
-            liveDanmakuBuffer.clear()
-        }
-        
-        logger.fInfo { "[Danmaku 调试] 直播弹幕已完全停止" }
-        logger.fInfo { "Live danmaku stopped" }
-    }
-    
-    /**
-     * 添加直播弹幕到缓冲区
-     */
-    private fun addLiveDanmaku(event: DanmakuEvent) {
-        logger.fInfo { "[Danmaku 调试] 开始添加直播弹幕: ${event.content}" }
-        
-        // 对于直播弹幕，使用当前播放位置，并添加小的时间偏移以避免重叠
-        val currentPosition = videoPlayer?.currentPosition ?: 0L
-        val currentTime = System.currentTimeMillis()
-        
-        // 如果当前弹幕与上一条弹幕在100ms内，添加递增偏移量
-        val timeOffset = if (currentTime - lastLiveDanmakuTime < 100) {
-            liveDanmakuCounter++
-            liveDanmakuCounter * 50L // 每条弹幕偏移50ms
-        } else {
-            liveDanmakuCounter = 0
-            0L
-        }
-        lastLiveDanmakuTime = currentTime
-        
-        val adjustedPosition = currentPosition + timeOffset
-        
-        logger.fInfo { "[Danmaku 调试] 当前播放位置: $currentPosition, 偏移: $timeOffset, 调整后: $adjustedPosition, videoPlayer: ${videoPlayer != null}" }
-        
-        val danmakuItem = DanmakuItemData(
-            danmakuId = System.currentTimeMillis(),
-            position = adjustedPosition, // 使用调整后的位置，避免重叠
-            content = event.content,
-            mode = when (event.mode) {
-                4 -> DanmakuItemData.DANMAKU_MODE_CENTER_TOP
-                5 -> DanmakuItemData.DANMAKU_MODE_CENTER_BOTTOM
-                else -> DanmakuItemData.DANMAKU_MODE_ROLLING
-            },
-            textSize = event.fontSize,
-            textColor = Color(event.color).toArgb()
-        )
-        
-        logger.fInfo { "[Danmaku 调试] 创建弹幕数据: id=${danmakuItem.danmakuId}, pos=${danmakuItem.position}, mode=${danmakuItem.mode}, content=${danmakuItem.content}" }
-        
-        // 直接发送到弹幕播放器
-        val player = danmakuPlayer
-        logger.fInfo { "[Danmaku 调试] 弹幕播放器状态: player=$player" }
-        
-        if (player != null) {
-            try {
-                player.send(danmakuItem)
-                logger.fInfo { "[Danmaku 调试] ✓ 弹幕已发送到播放器: ${event.content}" }
-                logger.fInfo { "Sent live danmaku: ${event.content}, position: $adjustedPosition, player state: playing" }
-            } catch (e: Exception) {
-                logger.fError { "[Danmaku 调试] ✗ 发送弹幕失败: ${e.message}\n${e.stackTraceToString()}" }
-            }
-        } else {
-            logger.fWarn { "[Danmaku 调试] ✗ 无法发送弹幕: danmakuPlayer is null" }
-            logger.fWarn { "Cannot send danmaku: danmakuPlayer is null" }
-        }
-    }
-    
-    /**
-     * 刷新直播弹幕缓冲区
-     */
-    private fun flushLiveDanmakuBuffer() {
-        if (liveDanmakuBuffer.isEmpty()) return
-        
-        logger.fInfo { "Flushing ${liveDanmakuBuffer.size} danmaku items, total: ${danmakuData.size}" }
-        
-        // 将缓冲区中的弹幕添加到主弹幕列表
-        danmakuData.addAll(liveDanmakuBuffer)
-        
-        // 更新弹幕播放器
-        danmakuPlayer?.updateData(danmakuData)
-        
-        logger.fInfo { "Danmaku player updated, danmakuPlayer: $danmakuPlayer" }
-        
-        // 清空缓冲区
-        liveDanmakuBuffer.clear()
     }
 }

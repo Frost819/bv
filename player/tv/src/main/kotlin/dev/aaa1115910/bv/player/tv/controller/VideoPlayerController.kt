@@ -44,6 +44,7 @@ import dev.aaa1115910.bv.player.entity.DanmakuType
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerDebugInfoData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekState
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerStateData
+import dev.aaa1115910.bv.player.entity.LocalVideoPlayerVideoInfoData
 import dev.aaa1115910.bv.player.entity.PlayMode
 import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoAspectRatio
@@ -120,6 +121,7 @@ fun VideoPlayerController(
     val videoPlayerSeekState = LocalVideoPlayerSeekState.current
     val videoPlayerStateData = LocalVideoPlayerStateData.current
     val videoPlayerDebugInfoData = LocalVideoPlayerDebugInfoData.current
+    val videoPlayerVideoInfoData = LocalVideoPlayerVideoInfoData.current
     val logger = KotlinLogging.logger {}
     val scope = rememberCoroutineScope()
 
@@ -505,12 +507,12 @@ fun VideoPlayerController(
             onLoadNextVideo = onLoadNextVideo
         )
         SeekController(
-            show = showSeekController,
+            show = showSeekController && !videoPlayerVideoInfoData.isLive,
             goTime = goTime,
             moveState = moveState
         )
         VideoListController(
-            show = showListController,
+            show = showListController && !videoPlayerVideoInfoData.isLive,
             onPlayNewVideo = onPlayNewVideo
         )
         MenuController(
@@ -535,7 +537,7 @@ fun VideoPlayerController(
         // 缓存底部进度条显示条件，避免频繁计算
         val shouldShowBottomProgressBar by remember { 
             derivedStateOf { 
-                showBottomProgressBar && !showInfo && !showSeekController 
+                showBottomProgressBar && !showInfo && !showSeekController  && !videoPlayerVideoInfoData.isLive
             } 
         }
         

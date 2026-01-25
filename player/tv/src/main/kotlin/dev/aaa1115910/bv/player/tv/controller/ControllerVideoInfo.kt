@@ -219,6 +219,7 @@ fun ControllerVideoInfo(
                 onLoopPlayModeChange = onLoopPlayModeChange,
                 onRotationChange = onRotationChange,
                 fromSeason = videoPlayerVideoInfoData.fromSeason,
+                isLive = videoPlayerVideoInfoData.isLive,
                 userActionContent = userActionContent,
                 onSeekBack = onSeekBack,
                 onSeekForward = onSeekForward,
@@ -298,6 +299,7 @@ fun ControllerVideoInfoBottom(
     onLoopPlayModeChange: (Boolean) -> Unit,
     onRotationChange: (VideoRotation) -> Unit,
     fromSeason: Boolean = false,
+    isLive: Boolean = false,
     isFollowingUp: Boolean = false,
     userActionContent: @Composable (
         modifier: Modifier,
@@ -323,27 +325,28 @@ fun ControllerVideoInfoBottom(
     val danmakuIconId = if (showDanmaku) R.drawable.ic_danmaku_on else R.drawable.ic_danmaku_hide
     val subtitleIconId = if (currentSubtitleId > -1) R.drawable.ic_subtitle_on else R.drawable.ic_subtitle_off
     val upSpaceIconId = if (isFollowingUp) R.drawable.person_following else R.drawable.person
-    val buttons = remember(fromSeason, showDanmaku, isPlaying, isLoop, speed, rotation, currentSubtitleId, isFollowingUp) {
+    val buttons = remember(isLive, fromSeason, showDanmaku, isPlaying, isLoop, speed, rotation, currentSubtitleId, isFollowingUp, showNextVideoBtn) {
         listOf(
             ControlButton(
                 id = "nextVideo",
                 painterId = R.drawable.next_play_fill,
                 scale = 0.7f,
                 onClick = { onLoadNextVideo(true) },
-                visible = showNextVideoBtn
+                visible = showNextVideoBtn && !isLive
             ),
             ControlButton(
                 id = "speed",
                 text = formatSpeed(speed),
                 onClick = { showSpeedDialog = true },
-                width = 46
+                width = 46,
+                visible = !isLive
             ),
             ControlButton(
                 id = "upSpace",
                 painterId = upSpaceIconId,
                 scale = 0.72f,
                 onClick = onOpenUpSpace,
-                visible = !fromSeason
+                visible = !fromSeason && !isLive
             ),
             ControlButton(
                 id = "rotation",
@@ -354,14 +357,15 @@ fun ControllerVideoInfoBottom(
             ControlButton(
                 id = "refresh",
                 icon = Icons.Rounded.Refresh,
-                onClick = onRefreshVideo
+                onClick = onRefreshVideo,
+                visible = !isLive
             ),
             ControlButton(
                 id = "subtitle",
                 painterId = subtitleIconId,
                 scale = 0.97f,
                 onClick = { showSubtitleDialog = true },
-                visible = availableSubtitleTracks.count() > 1
+                visible = availableSubtitleTracks.count() > 1 && !isLive
             ),
             ControlButton(
                 id = "danmaku",
@@ -371,19 +375,21 @@ fun ControllerVideoInfoBottom(
             ControlButton(
                 id = "loop",
                 icon = if (isLoop) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-                onClick = { onLoopPlayModeChange(!isLoop) }
+                onClick = { onLoopPlayModeChange(!isLoop) },
+                visible = !isLive
             ),
             ControlButton(
                 id = "playlist",
                 icon = Icons.AutoMirrored.Rounded.PlaylistPlay,
                 onClick = onOpenPlayList,
-                scale = 1.2f
+                scale = 1.2f,
+                visible = !isLive
             ),
             ControlButton(
                 id = "related",
                 icon = Icons.Rounded.KeyboardDoubleArrowDown,
                 onClick = onOpenRelatedVideo,
-                visible = !fromSeason
+                visible = !fromSeason && !isLive
             ),
             ControlButton(
                 id = "settings",
@@ -393,6 +399,9 @@ fun ControllerVideoInfoBottom(
             )
         ).filter { it.visible }
     }
+
+    // 进度条向下移动时，聚焦到第一个可见的按钮
+    val firstVisibleButtonId = remember(buttons) { buttons.firstOrNull()?.id }
 
     val focusRequesters = remember(buttons) {
         buttons.associate { button ->
@@ -503,20 +512,22 @@ fun ControllerVideoInfoBottom(
             )
         }
         // 当前注入的是：点赞、收藏、投币
-        userActionContent(
-            Modifier.focusProperties {
-                down = seekbarFocusRequester
-            },
-            userActionFocusRequesters.value,
-            { id ->
-                // 当用户 action 获得焦点时，设置当前聚焦 id 并重置自动隐藏计时
-                scheduleHideJob()
-            },
-            { pause ->
-                pauseAutoHide = pause
-                if (pause) cancelHideJob() else scheduleHideJob()
-            }
-        )
+        if (!isLive) {
+            userActionContent(
+                Modifier.focusProperties {
+                    down = seekbarFocusRequester
+                },
+                userActionFocusRequesters.value,
+                { id ->
+                    // 当用户 action 获得焦点时，设置当前聚焦 id 并重置自动隐藏计时
+                    scheduleHideJob()
+                },
+                { pause ->
+                    pauseAutoHide = pause
+                    if (pause) cancelHideJob() else scheduleHideJob()
+                }
+            )
+        }
 //        Row(
 //            modifier = Modifier
 //                .fillMaxWidth()
@@ -540,7 +551,7 @@ fun ControllerVideoInfoBottom(
                 }
                 .focusProperties {
                     up = userActionFocusRequesters.value["like"] ?: FocusRequester()
-                    down = focusRequesters[if (showNextVideoBtn) "nextVideo" else "speed"] ?: FocusRequester()
+                    down = firstVisibleButtonId?.let { focusRequesters[it] } ?: FocusRequester()
                 }
                 .focusable()
                 .onPreviewKeyEvent {

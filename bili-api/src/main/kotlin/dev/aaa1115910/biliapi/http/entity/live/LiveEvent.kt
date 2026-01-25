@@ -7,5 +7,8 @@ data class DanmakuEvent(
     val mid: Long,
     val username: String,
     val medalName: String? = null,
-    val medalLevel: Int? = null
+    val medalLevel: Int? = null,
+    val mode: Int = 1,              // 弹幕模式：1=滚动，4=顶部，5=底部
+    val fontSize: Int = 25,         // 字号大小
+    val color: Int = 0xFFFFFF       // 颜色（十进制RGB整数）
 ) : LiveEvent

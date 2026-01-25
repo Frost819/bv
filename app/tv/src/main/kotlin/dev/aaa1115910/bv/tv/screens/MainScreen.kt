@@ -52,6 +52,7 @@ import dev.aaa1115910.bv.tv.activities.user.UserInfoActivity
 import dev.aaa1115910.bv.tv.screens.main.DrawerContent
 import dev.aaa1115910.bv.tv.screens.main.DrawerItem
 import dev.aaa1115910.bv.tv.screens.main.HomeContent
+import dev.aaa1115910.bv.tv.screens.main.LiveContent
 import dev.aaa1115910.bv.tv.screens.main.PgcContent
 import dev.aaa1115910.bv.tv.screens.main.UgcContent
 import dev.aaa1115910.bv.tv.screens.main.currentSelectedTabs
@@ -85,6 +86,7 @@ fun MainScreen(
     val mainFocusRequester = remember { FocusRequester() }
     val ugcFocusRequester = remember { FocusRequester() }
     val pgcFocusRequester = remember { FocusRequester() }
+    val liveFocusRequester = remember { FocusRequester() }
     val searchFocusRequester = remember { FocusRequester() }
 
     // 时间显示状态
@@ -119,16 +121,17 @@ fun MainScreen(
             DrawerItem.Home -> mainFocusRequester.requestFocus()
             DrawerItem.UGC -> ugcFocusRequester.requestFocus()
             DrawerItem.PGC -> pgcFocusRequester.requestFocus()
+            DrawerItem.Live -> liveFocusRequester.requestFocus()
             DrawerItem.Search -> searchFocusRequester.requestFocus()
             else -> {
                 // 搜索+右侧是搜索->用户+用户内容不是放右侧的，右侧还是搜索。
                 // 让内容对应的菜单获得焦点
                 drawerItemFocusRequesters[selectedDrawerItem]?.requestFocus()
-                // 让右侧内容获得焦点
                 when (selectedDrawerItem) {
                     DrawerItem.Home -> mainFocusRequester.requestFocus()
                     DrawerItem.UGC -> ugcFocusRequester.requestFocus()
                     DrawerItem.PGC -> pgcFocusRequester.requestFocus()
+                    DrawerItem.Live -> liveFocusRequester.requestFocus()
                     DrawerItem.Search -> searchFocusRequester.requestFocus()
                     else -> {}
                 }
@@ -221,6 +224,7 @@ fun MainScreen(
                     DrawerItem.Home -> HomeContent(navFocusRequester = mainFocusRequester)
                     DrawerItem.UGC -> UgcContent(navFocusRequester = ugcFocusRequester)
                     DrawerItem.PGC -> PgcContent(navFocusRequester = pgcFocusRequester)
+                    DrawerItem.Live -> LiveContent(navFocusRequester = liveFocusRequester)
                     DrawerItem.Search -> SearchInputScreen(defaultFocusRequester = searchFocusRequester)
                     else -> {}
                 }

@@ -53,6 +53,7 @@ data class VideoPlayerVideoInfoData(
     val fromSeason: Boolean = false,
     val isFollowingUp: Boolean = false,
     val isVerticalVideo: Boolean = false,
+    val isLive: Boolean = false
 )
 
 data class VideoPlayerClockData(

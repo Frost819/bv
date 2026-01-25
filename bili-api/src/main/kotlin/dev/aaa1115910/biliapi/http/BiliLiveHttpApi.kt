@@ -6,6 +6,7 @@ import dev.aaa1115910.biliapi.http.entity.live.DanmuInfoData
 import dev.aaa1115910.biliapi.http.entity.live.HistoryDanmaku
 import dev.aaa1115910.biliapi.http.entity.live.RoomPlayInfoData
 import dev.aaa1115910.biliapi.http.plugins.BiliUserAgent
+import dev.aaa1115910.biliapi.http.util.encWbi
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -53,10 +54,13 @@ object BiliLiveHttpApi {
 
     /**
      * 获取直播间[roomId]的弹幕连接地址等信息，例如 token
+     * 需要 WBI 签名
      */
     suspend fun getLiveDanmuInfo(roomId: Int): BiliResponse<DanmuInfoData> =
         client.get("/xlive/web-room/v1/index/getDanmuInfo") {
             parameter("id", roomId)
+            parameter("type", 0)
+            encWbi()
         }.body()
 
     /**

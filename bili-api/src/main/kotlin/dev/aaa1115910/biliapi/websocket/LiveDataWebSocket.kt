@@ -21,6 +21,7 @@ import io.ktor.utils.io.core.writePacket
 import io.ktor.websocket.Frame
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -64,7 +65,7 @@ object LiveDataWebSocket {
     suspend fun connectLiveEvent(
         roomId: Int,
         onEvent: (event: LiveEvent) -> Unit
-    ) {
+    ): Job {
         val danmuInfo =
             BiliLiveHttpApi.getLiveDanmuInfo(roomId).data ?: throw CancellationException()
         val realRoomId =
@@ -119,8 +120,9 @@ object LiveDataWebSocket {
             }
         }
         job.invokeOnCompletion {
-            it?.printStackTrace()
+            logger.info { "LiveDataWebSocket connection closed: ${it?.message ?: "normal"}" }
         }
+        return job
     }
 
     private suspend fun handleLiveEventData(data: ByteArray): List<LiveEvent> {
@@ -236,17 +238,31 @@ object LiveDataWebSocket {
             "COMBO_SEND" -> {}
             "DANMU_MSG" -> {
                 runCatching {
-                    val danmakuContent = dataJson["info"]!!.jsonArray[1].jsonPrimitive.content
-                    val senderMid = dataJson["info"]!!.jsonArray[2].jsonArray[0].jsonPrimitive.long
-                    val senderUsername =
-                        dataJson["info"]!!.jsonArray[2].jsonArray[1].jsonPrimitive.content
+                    val infoArray = dataJson["info"]!!.jsonArray
+                    
+                    // 弹幕内容 info[1]
+                    val danmakuContent = infoArray[1].jsonPrimitive.content
+                    
+                    // 弹幕属性 info[0]
+                    val attrArray = infoArray[0].jsonArray
+                    val mode = attrArray[1].jsonPrimitive.int          // 弹幕模式
+                    val fontSize = attrArray[2].jsonPrimitive.int      // 字号
+                    val color = attrArray[3].jsonPrimitive.int         // 颜色
+                    
+                    // 用户信息 info[2]
+                    val userArray = infoArray[2].jsonArray
+                    val senderMid = userArray[0].jsonPrimitive.long
+                    val senderUsername = userArray[1].jsonPrimitive.content
+                    
+                    // 粉丝勋章 info[3]（可能为空数组）
                     var medalLevel: Int? = null
                     var medalName: String? = null
                     runCatching {
-                        medalLevel =
-                            dataJson["info"]?.jsonArray?.get(3)?.jsonArray?.get(0)?.jsonPrimitive?.int
-                        medalName =
-                            dataJson["info"]?.jsonArray?.get(3)?.jsonArray?.get(1)?.jsonPrimitive?.content
+                        val medalArray = infoArray[3].jsonArray
+                        if (medalArray.size > 0) {
+                            medalLevel = medalArray[0].jsonPrimitive.int
+                            medalName = medalArray[1].jsonPrimitive.content
+                        }
                     }
 
                     return DanmakuEvent(
@@ -254,7 +270,10 @@ object LiveDataWebSocket {
                         mid = senderMid,
                         username = senderUsername,
                         medalName = medalName,
-                        medalLevel = medalLevel
+                        medalLevel = medalLevel,
+                        mode = mode,
+                        fontSize = fontSize,
+                        color = color
                     )
                 }.onFailure {
                     logger.warn { "Parse danmaku content failed: ${it.message}" }

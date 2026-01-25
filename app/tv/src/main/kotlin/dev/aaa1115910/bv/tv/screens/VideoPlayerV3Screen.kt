@@ -218,7 +218,8 @@ fun VideoPlayerV3Screen(
             pubTime = playerViewModel.pubTime,
             fromSeason = playerViewModel.fromSeason,
             isFollowingUp = playerViewModel.isFollowingUp,
-            isVerticalVideo = playerViewModel.isVerticalVideo
+            isVerticalVideo = playerViewModel.isVerticalVideo,
+            isLive = playerViewModel.isLive
         ),
         LocalVideoPlayerLogsData provides VideoPlayerLogsData(
             logs = playerViewModel.logs

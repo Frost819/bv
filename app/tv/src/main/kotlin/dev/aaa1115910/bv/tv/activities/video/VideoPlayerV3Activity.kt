@@ -6,7 +6,10 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
 import java.lang.ref.WeakReference
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import dev.aaa1115910.biliapi.entity.ApiType
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.entity.PlayerType
@@ -25,6 +28,42 @@ class VideoPlayerV3Activity : ComponentActivity() {
     companion object {
         private val logger = KotlinLogging.logger { }
         private var currentInstance: WeakReference<VideoPlayerV3Activity>? = null
+        
+        /**
+         * 启动直播播放
+         */
+        fun actionStartLive(
+            context: Context,
+            roomId: Int,
+            streamUrl: String,
+            title: String,
+            upName: String = ""
+        ) {
+            val runtime = Runtime.getRuntime()
+            val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+            val maxMemory = runtime.maxMemory()
+            logger.info { "Current memory usage VideoPlayerV3Activity.actionStartLive: ${usedMemory / 1024 / 1024} MB / ${maxMemory / 1024 / 1024} MB" }
+
+            // 先关闭旧的播放页面
+            currentInstance?.get()?.let { instance ->
+                logger.info { "Closing previous video player instance" }
+                instance.finish()
+            }
+            currentInstance = null
+            
+            context.startActivity(
+                Intent(
+                    context,
+                    VideoPlayerV3Activity::class.java
+                ).apply {
+                    putExtra("isLive", true)
+                    putExtra("liveRoomId", roomId)
+                    putExtra("liveStreamUrl", streamUrl)
+                    putExtra("title", title)
+                    putExtra("upName", upName)
+                }
+            )
+        }
         
         fun actionStart(
             context: Context,
@@ -137,6 +176,11 @@ class VideoPlayerV3Activity : ComponentActivity() {
         super.onPause()
         playerViewModel.videoPlayer?.pause()
         playerViewModel.danmakuPlayer?.pause()
+        
+        // 暂停直播弹幕
+        if (playerViewModel.isLive) {
+            playerViewModel.stopLiveDanmaku()
+        }
     }
 
     private fun initVideoPlayer() {
@@ -164,6 +208,34 @@ class VideoPlayerV3Activity : ComponentActivity() {
     }*/
 
     private fun getParamsFromIntent() {
+        // 检查是否为直播模式
+        if (intent.getBooleanExtra("isLive", false)) {
+            val roomId = intent.getIntExtra("liveRoomId", 0)
+            val streamUrl = intent.getStringExtra("liveStreamUrl") ?: ""
+            val title = intent.getStringExtra("title") ?: "Unknown Title"
+            val upName = intent.getStringExtra("upName") ?: ""
+            
+            logger.fInfo { "Launch live parameter: [roomId=$roomId, streamUrl=$streamUrl]" }
+            
+            playerViewModel.apply {
+                this.title = title
+                this.upName = upName
+                this.isLive = true
+                this.liveRoomId = roomId
+                this.liveStreamUrl = streamUrl
+                
+                // 加载直播流（内部会初始化弹幕播放器）
+                loadLiveStream(streamUrl)
+                
+                // 延迟启动直播弹幕，等待播放器初始化完成
+                lifecycleScope.launch {
+                    kotlinx.coroutines.delay(1000)
+                    startLiveDanmaku(roomId)
+                }
+            }
+            return
+        }
+        
         if (intent.hasExtra("avid")) {
             val aid = intent.getLongExtra("avid", 170001)
             val cid = intent.getLongExtra("cid", 170001)
