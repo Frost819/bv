@@ -42,8 +42,12 @@ BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三�
 - **动态页面**，聚焦在视频卡片上时，**按菜单键打开已关注UP列表页**，可以筛选想看的up
 - 动态、up空间、视频推荐，在充电视频的UGC视频卡片右上角增加闪电图标（web接口）
 - 在主屏右上角显示当前时间
+- 首页导航项、UGC导航项、PGC导航项支持自定义排序和隐藏
+  - 设置-界面设置
+- 添加直播
+- UGC详情页、PGC详情页、UGC&PGC视频播放页 增加评论功能
 
-  ![首页](https://github.com/user-attachments/assets/58b2b007-60f6-40a3-b2f6-50641a092e22)
+  ![首页](https://github.com/user-attachments/assets/f621d34b-d618-4ab2-a0ef-663cc8970664)
 - **UGC视频详情页增加点赞、投币功能**
 - 增加是否“显示UGC视频详情页”设置 （默认显示）
   - 关闭后，点击UGC视频卡片会**跳过详情页直接开始播放**
@@ -60,7 +64,7 @@ BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三�
   - 此时，按确认键会触发“播放/暂停”、按左右键回触发“快进/快退”
 - 播放器控制条，增加功能按钮（播放速度、up空间、画面旋转、字幕开关、重新加载当前视频、弹幕开关、播放清单、推荐视频、播放器设置、循环播放）
 
-  ![视频播放](https://github.com/user-attachments/assets/e341b54e-3af9-4c9f-ab68-791335864267)
+  ![视频播放](https://github.com/user-attachments/assets/8f14a371-4ff6-479e-9c25-2fe3868b1db6)
 - 调整设置，增加分类“播放设置”
   - 把 分辨率、视频编码、音频编码、启用音频软件 4个设置移入这个分类
   - 增加是否“显示UGC视频详情页”设置 （默认显示）
@@ -80,6 +84,7 @@ BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三�
   - 增加快退时间间隔设置（默认5秒）
   - 增加显示在线观看人数（默认一直显示，可选不显示、30秒后隐藏）
   - 增加开始播放位置设置（默认从头开始播放，可选从历史位置播放）
+  - 新增识别字幕类型，添加AI标识
 
   ![设置](https://github.com/user-attachments/assets/5e721ec3-e584-4233-a112-e7a3ee5f1afd)
 - 优化up空间页，丰富内容并增加关注功能

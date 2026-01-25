@@ -44,6 +44,7 @@ data class Comment(
     val pictures: List<Picture>,
     val replies: List<Comment>,
     val repliesCount: Int,
+    val like: Long = 0,
 ) {
     companion object {
         fun fromReply(reply: dev.aaa1115910.biliapi.http.entity.reply.CommentData.Reply): Comment {
@@ -63,7 +64,8 @@ data class Comment(
                 emotes = reply.content.emote.values.map { Emote.fromEmote(it) },
                 pictures = reply.content.pictures.map { Picture.fromPicture(it) },
                 replies = reply.replies.map { fromReply(it) },
-                repliesCount = reply.count
+                repliesCount = reply.count,
+                like = reply.like.toLong()
             )
         }
 
@@ -85,7 +87,8 @@ data class Comment(
                 pictures = reply.content.picturesList.map { Picture.fromPicture(it) },
                 replies = reply.repliesList.map { fromReplyInfo(it) },
                 repliesCount = runCatching { reply.replyControl.subReplyEntryText.split(" ")[1].toInt() }
-                    .getOrDefault(0)
+                    .getOrDefault(0),
+                like = reply.like
             )
         }
     }

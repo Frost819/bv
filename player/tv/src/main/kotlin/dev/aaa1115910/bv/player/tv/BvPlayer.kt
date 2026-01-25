@@ -109,6 +109,7 @@ fun BvPlayer(
     onShowDanmakuChange: (Boolean) -> Unit = {},
     onLoopPlayModeChange: (Boolean) -> Unit = {},
     onRefreshVideo: () -> Unit = {},
+    onShowComment: () -> Unit = {},
     userActionContent: @Composable (
         modifier: Modifier,
         focusMap: Map<String, FocusRequester>,
@@ -758,7 +759,8 @@ fun BvPlayer(
                 onLoopPlayModeChange(it)
             },
             userActionContent = userActionContent,
-            onLoadNextVideo = onLoadNextVideo
+            onLoadNextVideo = onLoadNextVideo,
+            onShowComment = onShowComment
         ) {
             LaunchedEffect(Unit) {
                 videoPlayer.setOptions()

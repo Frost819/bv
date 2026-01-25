@@ -2,6 +2,7 @@ package dev.aaa1115910.bv.network
 
 import dev.aaa1115910.bv.BuildConfig
 import dev.aaa1115910.bv.network.entity.Release
+import dev.aaa1115910.bv.util.NetworkUtil
 import dev.aaa1115910.bv.util.Prefs
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
@@ -128,7 +129,7 @@ object GithubApi {
 
     /**
      * 下载更新文件
-     * 策略：先尝试直连，失败后使用 ghfast.top 代理
+     * 策略：大陆用户优先使用 ghfast.top 代理，非大陆用户优先使用直连
      * 代理格式：https://ghfast.top/{原下载地址}
      */
     suspend fun downloadUpdate(
@@ -140,28 +141,51 @@ object GithubApi {
             if (isDebug) release.assets.firstOrNull { it.name.contains("debug") }?.browserDownloadUrl
             else release.assets.firstOrNull { it.name.contains("alpha") || it.name.contains("release") }?.browserDownloadUrl
         downloadUrl ?: throw IllegalStateException("Didn't find download url")
+        val isMainlandChina = NetworkUtil.isMainlandChina()
 
-        // 先尝试直连
-        val directResult = runCatching {
-            downloadFile(downloadUrl, file, downloadListener)
-        }
+        if (isMainlandChina) {
+            // 先尝试代理
+            val proxyUrl = PROXY_URL + downloadUrl
+            val proxyResult = runCatching {
+                downloadFile(proxyUrl, file, downloadListener)
+            }
+            if (proxyResult.isSuccess) {
+                logger.info { "Download successful via proxy" }
+                return
+            }
+            logger.warn(proxyResult.exceptionOrNull()) { "Proxy download failed, trying direct connection" }
 
-        if (directResult.isSuccess) {
-            logger.info { "Download successful via direct connection" }
-            return
-        }
+            // 代理失败，使用直连
+            try {
+                downloadFile(downloadUrl, file, downloadListener)
+                logger.info { "Download successful via direct connection" }
+            } catch (e: Exception) {
+                logger.error(e) { "Direct download failed" }
+                throw e
+            }
+        } else {
+            // 先尝试直连
+            val directResult = runCatching {
+                downloadFile(downloadUrl, file, downloadListener)
+            }
 
-        logger.warn(directResult.exceptionOrNull()) { "Direct download failed, trying proxy" }
+            if (directResult.isSuccess) {
+                logger.info { "Download successful via direct connection" }
+                return
+            }
 
-        // 直连失败，使用代理
-        val proxyUrl = PROXY_URL + downloadUrl
-        logger.info { "Trying proxy: $proxyUrl" }
-        try {
-            downloadFile(proxyUrl, file, downloadListener)
-            logger.info { "Download successful via proxy" }
-        } catch (e: Exception) {
-            logger.error(e) { "Proxy download failed" }
-            throw e
+            logger.warn(directResult.exceptionOrNull()) { "Direct download failed, trying proxy" }
+
+            // 直连失败，使用代理
+            val proxyUrl = PROXY_URL + downloadUrl
+            logger.info { "Trying proxy: $proxyUrl" }
+            try {
+                downloadFile(proxyUrl, file, downloadListener)
+                logger.info { "Download successful via proxy" }
+            } catch (e: Exception) {
+                logger.error(e) { "Proxy download failed" }
+                throw e
+            }
         }
     }
 

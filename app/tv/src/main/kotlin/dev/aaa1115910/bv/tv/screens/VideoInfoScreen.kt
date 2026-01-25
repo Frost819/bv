@@ -122,6 +122,7 @@ import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.TagActivity
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
+import dev.aaa1115910.bv.tv.component.CommentPanel
 import dev.aaa1115910.bv.tv.component.LoadingTip
 import dev.aaa1115910.bv.tv.component.TvAlertDialog
 import dev.aaa1115910.bv.tv.component.UpIcon
@@ -190,6 +191,10 @@ fun VideoInfoScreen(
     // 添加用于管理简介对话框的状态
     var showDescriptionDialog by remember { mutableStateOf(false) }
 
+    // 添加用于管理评论浮层的状态
+    var showCommentPanel by remember { mutableStateOf(false) }
+    val commentButtonFocusRequester = remember { FocusRequester() }
+
     var lastPlayedCid by remember { mutableLongStateOf(0) }
     var lastPlayedTime by remember { mutableIntStateOf(0) }
 
@@ -199,6 +204,7 @@ fun VideoInfoScreen(
     var fromPlayer by remember { mutableStateOf(false) }
     var paused by remember { mutableStateOf(false) }
     var proxyArea by remember { mutableStateOf(ProxyArea.MainLand) }
+    var intentAid by remember { mutableLongStateOf(0L) }
 
     val containsVerticalScreenVideo by remember {
         derivedStateOf {
@@ -410,6 +416,7 @@ fun VideoInfoScreen(
     LaunchedEffect(Unit) {
         if (intent.hasExtra("aid")) {
             val aid = intent.getLongExtra("aid", 170001)
+            intentAid = aid
             var cid = intent.getLongExtra("cid", 0)
             fromSeason = intent.getBooleanExtra("fromSeason", false)
             fromPlayer = intent.getBooleanExtra("fromPlayer", false)
@@ -860,7 +867,11 @@ fun VideoInfoScreen(
                             },
                             onShowDescription = {
                                 showDescriptionDialog = true
-                            }
+                            },
+                            onShowComment = {
+                                showCommentPanel = true
+                            },
+                            commentButtonFocusRequester = commentButtonFocusRequester
                         )
                     }
                     if (videoDetailViewModel.videoDetail?.ugcSeason == null) {
@@ -1003,6 +1014,41 @@ fun VideoInfoScreen(
         onHideDialog = { showDescriptionDialog = false },
         description = videoDetailViewModel.videoDetail?.description ?: ""
     )
+
+    // 计算评论面板的初始 episode id（用于 UGC 合集）
+    val commentInitialEpisodeId = remember(lastPlayedCid, intentAid, videoDetailViewModel.videoDetail?.ugcSeason) {
+        val sections = videoDetailViewModel.videoDetail?.ugcSeason?.sections ?: return@remember -1
+        val allEpisodes = sections.flatMap { it.episodes }
+
+        // 优先使用历史记录对应的 episode
+        if (lastPlayedCid != 0L) {
+            allEpisodes.find { ep ->
+                ep.cid == lastPlayedCid || ep.pages.any { it.cid == lastPlayedCid }
+            }?.id?.let { return@remember it }
+        }
+
+        // 没有历史记录时，使用与 intentAid 匹配的 episode
+        if (intentAid != 0L) {
+            allEpisodes.find { it.aid == intentAid }?.id?.let { return@remember it }
+        }
+
+        -1
+    }
+
+    CommentPanel(
+        show = showCommentPanel,
+        oid = videoDetailViewModel.videoDetail?.aid ?: 0L,
+        onHide = { showCommentPanel = false },
+        sections = videoDetailViewModel.videoDetail?.ugcSeason?.sections ?: emptyList(),
+        initialEpisodeId = commentInitialEpisodeId
+    )
+
+    // 浮层关闭后，焦点返回评论按钮
+    LaunchedEffect(showCommentPanel) {
+        if (!showCommentPanel) {
+            commentButtonFocusRequester.requestFocus()
+        }
+    }
 }
 
 @Composable
@@ -1062,7 +1108,9 @@ fun VideoInfoData(
     onDelLike: () -> Unit = {},
     isCoin: Boolean = false,
     onAddCoin: () -> Unit = {},
-    onShowDescription: () -> Unit = {}
+    onShowDescription: () -> Unit = {},
+    onShowComment: () -> Unit = {},
+    commentButtonFocusRequester: FocusRequester
 ) {
 //    val localDensity = LocalDensity.current
 //    var heightIs by remember { mutableStateOf(0.dp) }
@@ -1295,6 +1343,26 @@ fun VideoInfoData(
                                     color = Color.White
                                 )
                             }
+                        }
+                    }
+
+                    // 评论按钮
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .clip(MaterialTheme.shapes.small)
+                                .background(Color.White.copy(alpha = 0.2f))
+                                .focusedBorder(MaterialTheme.shapes.small)
+                                .padding(horizontal = 4.dp)
+                                .focusRequester(commentButtonFocusRequester)
+                                .clickable { onShowComment() }
+                                .height(30.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = "评论>>",
+                                color = Color.White
+                            )
                         }
                     }
                 }

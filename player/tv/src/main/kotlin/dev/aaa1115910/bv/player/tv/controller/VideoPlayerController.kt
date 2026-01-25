@@ -115,6 +115,7 @@ fun VideoPlayerController(
     onLoadNextVideo: (Boolean) -> Unit,
 
     onRequestFocus: () -> Unit,
+    onShowComment: () -> Unit = {},
     content: @Composable BoxScope.() -> Unit
 ) {
     val context = LocalContext.current
@@ -504,7 +505,8 @@ fun VideoPlayerController(
                 }
             },
             onSubtitleChange = onSubtitleChange,
-            onLoadNextVideo = onLoadNextVideo
+            onLoadNextVideo = onLoadNextVideo,
+            onShowComment = onShowComment
         )
         SeekController(
             show = showSeekController && !videoPlayerVideoInfoData.isLive,
