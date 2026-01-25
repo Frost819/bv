@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -36,6 +37,8 @@ import dev.aaa1115910.bv.tv.screens.user.FavoriteScreen
 import dev.aaa1115910.bv.tv.screens.user.FollowingSeasonScreen
 import dev.aaa1115910.bv.tv.screens.user.HistoryScreen
 import dev.aaa1115910.bv.tv.screens.user.ToViewScreen
+import dev.aaa1115910.bv.tv.util.homeNavItemsFlow
+import dev.aaa1115910.bv.tv.util.parseHomeNavItemsOrder
 import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.requestFocus
@@ -83,6 +86,18 @@ fun HomeContent(
     
     // 用于管理延迟加载的Job
     var loadJob by remember { mutableStateOf<Job?>(null) }
+
+    // 根据设置获取过滤和排序后的导航项列表
+    val homeNavItems by homeNavItemsFlow.collectAsState(
+        initial = remember { parseHomeNavItemsOrder(Prefs.homeNavItemsOrder) }
+    )
+
+    // 处理空列表情况：如果所有导航项都被隐藏，强制显示推荐
+    val effectiveNavItems = if (homeNavItems.isEmpty()) {
+        listOf(HomeTopNavItem.Recommend)
+    } else {
+        homeNavItems
+    }
 
     // 从全局状态获取上次选择的标签位置，如果没有则默认为Recommend
     var selectedTab by remember {
@@ -203,7 +218,7 @@ fun HomeContent(
                     .focusRequester(navFocusRequester)
                     .padding(end = 80.dp)
                     .onFocusChanged { topNavHasFocus = it.hasFocus },
-                items = HomeTopNavItem.entries,
+                items = effectiveNavItems,
                 isLargePadding = !focusOnContent && currentListOnTop,
                 initialSelectedItem = selectedTab,
                 onSelectedChanged = { nav ->

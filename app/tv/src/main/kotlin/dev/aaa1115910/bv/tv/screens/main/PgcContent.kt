@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +34,9 @@ import dev.aaa1115910.bv.tv.screens.main.pgc.GuoChuangContent
 import dev.aaa1115910.bv.tv.screens.main.pgc.MovieContent
 import dev.aaa1115910.bv.tv.screens.main.pgc.TvContent
 import dev.aaa1115910.bv.tv.screens.main.pgc.VarietyContent
+import dev.aaa1115910.bv.tv.util.parsePgcTopNavItemsOrder
+import dev.aaa1115910.bv.tv.util.pgcNavItemsFlow
+import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.util.rememberDebouncer
@@ -71,13 +75,32 @@ fun PgcContent(
     var focusOnContent by remember { mutableStateOf(false) }
     var topNavHasFocus by remember { mutableStateOf(false) }
 
+    // 根据设置获取过滤和排序后的导航项列表
+    val pgcNavItems by pgcNavItemsFlow.collectAsState(
+        initial = remember { parsePgcTopNavItemsOrder(Prefs.pgcNavItemsOrder) }
+    )
+
+    // 处理空列表情况：如果全部被隐藏，强制显示第一个
+    val effectiveNavItems = if (pgcNavItems.isEmpty()) {
+        listOf(PgcTopNavItem.entries.first())
+    } else {
+        pgcNavItems
+    }
+
     // 使用remember的key参数确保只有在DrawerItem.PGC的tab状态变化时才重新计算
     var selectedTab by remember {
         mutableStateOf(
             currentSelectedTabs[DrawerItem.PGC]
                 ?.let { PgcTopNavItem.entries.getOrNull(it) }
-                ?: PgcTopNavItem.Anime
+                ?: effectiveNavItems.first()
         )
+    }
+
+    // 如果当前选中项被隐藏，则自动切换到第一个可见项
+    LaunchedEffect(effectiveNavItems) {
+        if (selectedTab !in effectiveNavItems) {
+            selectedTab = effectiveNavItems.first()
+        }
     }
 
     // 当选中标签变化时，保存到全局状态
@@ -173,7 +196,7 @@ fun PgcContent(
                     .focusRequester(navFocusRequester)
                     .padding(end = 80.dp)
                     .onFocusChanged { topNavHasFocus = it.hasFocus },
-                items = PgcTopNavItem.entries,
+                items = effectiveNavItems,
                 isLargePadding = !focusOnContent && currentListOnTop,
                 initialSelectedItem = selectedTab,
                 onSelectedChanged = { nav ->

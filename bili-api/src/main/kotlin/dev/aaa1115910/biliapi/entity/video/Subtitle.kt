@@ -26,7 +26,7 @@ data class Subtitle(
             Subtitle(
                 id = data.id,
                 lang = data.lan,
-                langDoc = data.lanDoc,
+                langDoc = data.lanDoc + if (data.type == SubtitleType.AI.ordinal) "(AI)" else "",
                 url = data.subtitleUrl,
                 type = when (data.type) {
                     0 -> SubtitleType.CC

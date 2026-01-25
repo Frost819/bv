@@ -114,7 +114,8 @@ fun BvPlayer(
         focusMap: Map<String, FocusRequester>,
         onFocus: (String) -> Unit,
         onPauseAutoHide: (Boolean) -> Unit
-    ) -> Unit = { _, _, _, _ -> }
+    ) -> Unit = { _, _, _, _ -> },
+    onOnlineViewerCountTipCanShowChanged: (Boolean) -> Unit = {},
 ) {
 //    // 调试重组次数: AtomicInteger，不被 Compose 追踪，只记录真实由外部状态引起的重组次数。
 //    val recomposeCounter = remember { java.util.concurrent.atomic.AtomicInteger(0) }
@@ -577,6 +578,7 @@ fun BvPlayer(
             showRelatedVideos = videoPlayerConfigData.showRelatedVideos,
             onToggleRelatedVideos = onToggleRelatedVideos,
             registerShowInfoProvider = { provider -> showInfoProvider = provider },
+            onOnlineViewerCountTipCanShowChanged = onOnlineViewerCountTipCanShowChanged,
 
             onPlay = { videoPlayer.start() },
             onPause = {

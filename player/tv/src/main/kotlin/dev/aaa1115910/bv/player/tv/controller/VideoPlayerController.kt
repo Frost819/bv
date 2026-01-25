@@ -72,6 +72,7 @@ fun VideoPlayerController(
     showRelatedVideos: Boolean = false,
     onToggleRelatedVideos: (Boolean) -> Unit,
     registerShowInfoProvider: ((() -> Boolean) -> Unit) = {},
+    onOnlineViewerCountTipCanShowChanged: (Boolean) -> Unit = {},
 
     //player events
     onPlay: () -> Unit,
@@ -197,6 +198,9 @@ fun VideoPlayerController(
 
     // 对外暴露 showInfo
     LaunchedEffect(Unit) { registerShowInfoProvider { showInfo } }
+    LaunchedEffect(showInfo, showSeekController, showListController) {
+        onOnlineViewerCountTipCanShowChanged(!showInfo && !showSeekController && !showListController)
+    }
 
     Box(
         modifier = modifier

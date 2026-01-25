@@ -49,7 +49,7 @@ fun OnlineViewerCountTip(
                     .padding(start = 20.dp, bottom = 32.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val color = Color.White.copy(alpha = 0.5f)
+                val color = Color.White.copy(alpha = 0.6f)
 
                 Icon(
                     modifier = Modifier.scale(0.8f),
@@ -63,7 +63,7 @@ fun OnlineViewerCountTip(
                     style = MaterialTheme.typography.titleMedium.copy(
                         color = color,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Light
+                        fontWeight = FontWeight.Normal
                     ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis

@@ -34,7 +34,7 @@ class BiliUserAgentConfig(
         appUserAgent =
             "Mozilla/5.0 BiliDroid/$version (bbcallen@gmail.com) os/$platform model/$model mobi_app/$mobiApp build/$buildCode channel/$channel innerVer/$buildCode osVer/$osVersion network/$network"
         webUserAgent =
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/$webViewVersion.0.0.0 Safari/537.36"
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/$webViewVersion.0.0.0 Safari/537.36"
     }
 }
 

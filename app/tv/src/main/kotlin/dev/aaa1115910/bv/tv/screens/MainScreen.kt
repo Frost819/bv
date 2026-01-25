@@ -234,7 +234,7 @@ fun MainScreen(
                     .padding(end = 8.dp, top = 0.dp)
                     .offset(y=(-2).dp),
                 style = MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 12.sp
+                    fontSize = 13.sp
                 ),
                 color = MaterialTheme.colorScheme.onSurface
             )

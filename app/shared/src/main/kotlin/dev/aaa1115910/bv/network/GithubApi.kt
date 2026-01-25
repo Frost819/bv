@@ -2,8 +2,8 @@ package dev.aaa1115910.bv.network
 
 import dev.aaa1115910.bv.BuildConfig
 import dev.aaa1115910.bv.network.entity.Release
-import dev.aaa1115910.bv.util.NetworkUtil
 import dev.aaa1115910.bv.util.Prefs
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.content.ProgressListener
 import io.ktor.client.engine.okhttp.OkHttp
@@ -26,14 +26,15 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.OkHttpClient
 import java.io.File
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
+import java.util.concurrent.TimeUnit
 
 object GithubApi {
     private var endPoint = "api.github.com"
     private const val OWNER = "fantasytyx"
     private const val REPO = "bv"
+    private const val PROXY_URL = "https://ghfast.top/"
     private lateinit var client: HttpClient
     private val json = Json {
         coerceInputValues = true
@@ -42,13 +43,23 @@ object GithubApi {
     }
     private val isDebug get() = BuildConfig.DEBUG
     private val isAlpha get() = Prefs.updateAlpha
+    private val logger = KotlinLogging.logger("GithubApi")
 
     init {
         createClient()
     }
 
     private fun createClient() {
+        val okHttpClient = OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+
         client = HttpClient(OkHttp) {
+            engine {
+                this.preconfigured = okHttpClient
+            }
             install(UserAgent) {
                 agent = dev.aaa1115910.biliapi.BiliApiConstants.USER_AGENT_WEB
             }
@@ -115,6 +126,11 @@ object GithubApi {
         check(responseObject.size != 2 && responseObject["message"] == null) { responseObject["message"]!!.jsonPrimitive.content }
     }
 
+    /**
+     * 下载更新文件
+     * 策略：先尝试直连，失败后使用 ghfast.top 代理
+     * 代理格式：https://ghfast.top/{原下载地址}
+     */
     suspend fun downloadUpdate(
         release: Release,
         file: File,
@@ -124,17 +140,108 @@ object GithubApi {
             if (isDebug) release.assets.firstOrNull { it.name.contains("debug") }?.browserDownloadUrl
             else release.assets.firstOrNull { it.name.contains("alpha") || it.name.contains("release") }?.browserDownloadUrl
         downloadUrl ?: throw IllegalStateException("Didn't find download url")
-        val isMainlandChina = NetworkUtil.isMainlandChina()
+
+        // 先尝试直连
+        val directResult = runCatching {
+            downloadFile(downloadUrl, file, downloadListener)
+        }
+
+        if (directResult.isSuccess) {
+            logger.info { "Download successful via direct connection" }
+            return
+        }
+
+        logger.warn(directResult.exceptionOrNull()) { "Direct download failed, trying proxy" }
+
+        // 直连失败，使用代理
+        val proxyUrl = PROXY_URL + downloadUrl
+        logger.info { "Trying proxy: $proxyUrl" }
+        try {
+            downloadFile(proxyUrl, file, downloadListener)
+            logger.info { "Download successful via proxy" }
+        } catch (e: Exception) {
+            logger.error(e) { "Proxy download failed" }
+            throw e
+        }
+    }
+
+    /**
+     * 执行实际的文件下载
+     */
+    private suspend fun downloadFile(
+        url: String,
+        file: File,
+        downloadListener: ProgressListener
+    ) {
         client.prepareRequest {
-            url(if (isMainlandChina) toGhProxyUrl(downloadUrl) else downloadUrl)
+            url(url)
             onDownload(downloadListener)
         }.execute { response ->
             response.bodyAsChannel().copyAndClose(file.writeChannel())
         }
     }
 
-    private fun toGhProxyUrl(originalUrl: String): String {
-        val prefix = "https://ghfast.top/"
-        return prefix + URLEncoder.encode(originalUrl, StandardCharsets.UTF_8.toString())
+    /**
+     * 测试代理连接
+     * @return 测试结果信息
+     */
+    suspend fun testProxyConnection(): String {
+        val results = StringBuilder()
+        results.appendLine("=== 代理连接测试 ===")
+
+        // 1. 测试直连 GitHub API
+        results.appendLine("\n1. 测试直连 GitHub API:")
+        var release: Release? = null
+        try {
+            release = getLatestBuild()
+            results.appendLine("   成功! 最新版本: ${release.name}")
+        } catch (e: Exception) {
+            results.appendLine("   失败: ${e.message}")
+        }
+
+        // 2. 测试代理下载（使用实际的 APK 下载链接）
+        results.appendLine("\n2. 测试代理下载 (ghfast.top):")
+        try {
+            // 获取实际的 APK 下载链接
+            val downloadUrl = release?.assets
+                ?.firstOrNull { it.name.endsWith(".apk") }
+                ?.browserDownloadUrl
+            
+            if (downloadUrl == null) {
+                results.appendLine("   未找到 APK 下载链接")
+            } else {
+                val proxyUrl = PROXY_URL + downloadUrl
+                results.appendLine("   代理链接: $proxyUrl")
+                
+                val tempClient = HttpClient(OkHttp) {
+                    engine {
+                        val okHttp = OkHttpClient.Builder()
+                            .connectTimeout(5, TimeUnit.SECONDS)
+                            .readTimeout(10, TimeUnit.SECONDS)
+                            .build()
+                        this.preconfigured = okHttp
+                    }
+                    install(UserAgent) {
+                        agent = dev.aaa1115910.biliapi.BiliApiConstants.USER_AGENT_WEB
+                    }
+                }
+                // 使用 HEAD 请求测试代理是否可用（不下载整个文件）
+                val response = tempClient.prepareRequest {
+                    url(proxyUrl)
+                    method = io.ktor.http.HttpMethod.Head
+                }.execute { it }
+                tempClient.close()
+                
+                if (response.status.value in 200..399) {
+                    results.appendLine("   代理可用 ✓ (状态码: ${response.status.value})")
+                } else {
+                    results.appendLine("   代理响应异常 ✗ (状态码: ${response.status.value})")
+                }
+            }
+        } catch (e: Exception) {
+            results.appendLine("   代理失败: ${e.message}")
+        }
+
+        return results.toString()
     }
 }

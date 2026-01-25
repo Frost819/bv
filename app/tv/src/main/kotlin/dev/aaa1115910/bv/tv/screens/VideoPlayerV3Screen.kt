@@ -128,6 +128,7 @@ fun VideoPlayerV3Screen(
     // 在线观看人数状态
     var onlineViewerCount by remember { mutableStateOf("") }
     var showOnlineViewerCountTip by remember { mutableStateOf(false) }
+    var canShowOnlineViewerCountTip by remember { mutableStateOf(true) }
 
     // 焦点管理
     val relatedVideosFocusRequester = remember { FocusRequester() }
@@ -295,6 +296,11 @@ fun VideoPlayerV3Screen(
                 playerSeekBackwardStep = Prefs.playerSeekBackwardStep,
                 showBottomProgressBar = Prefs.playerShowBottomProgressBar,
                 useTextureViewFixPortraitVideo = Prefs.portraitVideoFixMode == PortraitVideoFixMode.UseTextureView && playerViewModel.isVerticalVideo && playerViewModel.currentQuality >= Resolution.R4K,
+                onOnlineViewerCountTipCanShowChanged = { canShow ->
+                    if (canShowOnlineViewerCountTip != canShow) {
+                        canShowOnlineViewerCountTip = canShow
+                    }
+                },
                 onToggleRelatedVideos = { state ->
                     playerViewModel.showRelatedVideos = if (playerViewModel.relatedVideos.isNotEmpty()) state else false
                 },
@@ -357,7 +363,7 @@ fun VideoPlayerV3Screen(
                                 if (!immediate) {
                                     autoActionTipText = "播放结束，即将播放下一集"
                                     autoActionTipVisible = true
-                                    delay(1600)
+                                    delay(1200)
                                 }
                                 autoActionTipVisible = false
                                 if (autoActionCountdownJob != null) {
@@ -415,7 +421,7 @@ fun VideoPlayerV3Screen(
                             try {
                                 autoActionTipText = "播放结束，即将退出"
                                 autoActionTipVisible = true
-                                delay(1600)
+                                delay(1200)
                                 autoActionTipVisible = false
                                 if (autoActionCountdownJob != null) {
                                     autoActionCountdownJob = null
@@ -761,7 +767,7 @@ fun VideoPlayerV3Screen(
 
             // 在线观看人数 Tip
             OnlineViewerCountTip(
-                show = showOnlineViewerCountTip,
+                show = showOnlineViewerCountTip && canShowOnlineViewerCountTip,
                 count = onlineViewerCount
             )
         }

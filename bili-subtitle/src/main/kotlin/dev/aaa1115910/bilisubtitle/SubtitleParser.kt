@@ -7,7 +7,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
 object SubtitleParser {
-    fun fromBccString(bcc: String): List<SubtitleItem> {
+    fun fromBccString(bcc: String, isAI: Boolean = false): List<SubtitleItem> {
         val result = mutableListOf<SubtitleItem>()
         val bccResult = runCatching {
             Json.decodeFromString<BiliSubtitle>(bcc)
@@ -19,14 +19,15 @@ object SubtitleParser {
                 SubtitleItem(
                     from = Timestamp.fromBccString(bccItem.from),
                     to = Timestamp.fromBccString(bccItem.to),
-                    content = bccItem.content
+                    content = bccItem.content,
+                    isAI = isAI
                 )
             )
         }
         return result
     }
 
-    fun fromSrtString(srt: String): List<SubtitleItem> {
+    fun fromSrtString(srt: String, isAI: Boolean = false): List<SubtitleItem> {
         val result = mutableListOf<SubtitleItem>()
         val lines = srt.lines()
         var position = 0
@@ -43,7 +44,8 @@ object SubtitleParser {
                 SubtitleItem(
                     from = Timestamp.fromSrtString(from),
                     to = Timestamp.fromSrtString(to),
-                    content = content
+                    content = content,
+                    isAI = isAI
                 )
             )
         }

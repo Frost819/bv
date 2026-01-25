@@ -398,6 +398,30 @@ object Prefs {
 
     val showOnlineViewerCountFlow: Flow<Int>
         get() = dsm.getPreferenceFlow(PrefKeys.prefShowOnlineViewerCountRequest)
+
+    // 首页导航项排序和隐藏状态
+    val homeNavItemsOrderFlow: Flow<String>
+        get() = dsm.getPreferenceFlow(PrefKeys.prefHomeNavItemsOrderRequest)
+
+    var homeNavItemsOrder: String
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefHomeNavItemsOrderRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefHomeNavItemsOrderKey, value) }
+
+    // UGC 顶部导航项排序和隐藏状态
+    val ugcNavItemsOrderFlow: Flow<String>
+        get() = dsm.getPreferenceFlow(PrefKeys.prefUgcNavItemsOrderRequest)
+
+    var ugcNavItemsOrder: String
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefUgcNavItemsOrderRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefUgcNavItemsOrderKey, value) }
+
+    // PGC 顶部导航项排序和隐藏状态
+    val pgcNavItemsOrderFlow: Flow<String>
+        get() = dsm.getPreferenceFlow(PrefKeys.prefPgcNavItemsOrderRequest)
+
+    var pgcNavItemsOrder: String
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPgcNavItemsOrderRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPgcNavItemsOrderKey, value) }
 }
 
 object PrefKeys {
@@ -458,6 +482,9 @@ object PrefKeys {
     val prefPlayerLoadNextActionKey = intPreferencesKey("player_load_next_action")
     val prefPlayerDefaultStartPositionKey = intPreferencesKey("player_default_start_position")
     val prefShowOnlineViewerCountKey = intPreferencesKey("show_online_viewer_count")
+    val prefHomeNavItemsOrderKey = stringPreferencesKey("home_nav_items_order")
+    val prefUgcNavItemsOrderKey = stringPreferencesKey("ugc_nav_items_order")
+    val prefPgcNavItemsOrderKey = stringPreferencesKey("pgc_nav_items_order")
 
 
     val prefIsLoginRequest = PreferenceRequest(prefIsLoginKey, false)
@@ -531,4 +558,8 @@ object PrefKeys {
     val prefPlayerLoadNextActionRequest = PreferenceRequest(prefPlayerLoadNextActionKey, PlayerLoadNextAction.DoNothing.value)
     val prefPlayerDefaultStartPositionRequest = PreferenceRequest(prefPlayerDefaultStartPositionKey, PlayerDefaultStartPosition.Beginning.value)
     val prefShowOnlineViewerCountRequest = PreferenceRequest(prefShowOnlineViewerCountKey, 2)  // 0 = 不显示, 1 = 30 秒后隐藏, 2 = 始终显示
+    // 默认留空：表示按枚举原始顺序全部显示（解析侧会处理 blank）
+    val prefHomeNavItemsOrderRequest = PreferenceRequest(prefHomeNavItemsOrderKey, "")
+    val prefUgcNavItemsOrderRequest = PreferenceRequest(prefUgcNavItemsOrderKey, "")
+    val prefPgcNavItemsOrderRequest = PreferenceRequest(prefPgcNavItemsOrderKey, "")
 }

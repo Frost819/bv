@@ -83,7 +83,11 @@ suspend fun HttpRequestBuilder.encWbi() {
     val sortedParams = url.encodedParameters.entries()
         .associate { it.key to it.value.first() }
         .toSortedMap()
-        .map { (key, value) -> "$key=$value" }
+        .map { (key, value) ->
+            // 过滤特殊字符 !"!'()*
+            val filteredValue = value.filter { c -> c !in setOf('!', '\'', '(', ')', '*') }
+            "$key=$filteredValue"
+        }
         .joinToString("&")
 
     val wRid = MessageDigest.getInstance("MD5").digest((sortedParams + mixinKey).toByteArray())

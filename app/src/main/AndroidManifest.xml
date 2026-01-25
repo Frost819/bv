@@ -14,6 +14,7 @@
         android:hardwareAccelerated="true"
         android:banner="@drawable/ic_banner"
         android:icon="@drawable/ic_launcher"
+        android:roundIcon="@drawable/ic_launcher_round"
         android:largeHeap="true"
         android:allowBackup="false"
         tools:ignore="DataExtractionRules">

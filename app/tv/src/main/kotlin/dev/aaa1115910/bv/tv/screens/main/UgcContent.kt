@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,6 +27,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import dev.aaa1115910.bv.tv.component.TopNav
 import dev.aaa1115910.bv.tv.component.UgcTopNavItem
 import dev.aaa1115910.bv.tv.screens.main.ugc.CreateUgcContent
+import dev.aaa1115910.bv.tv.util.parseUgcTopNavItemsOrder
+import dev.aaa1115910.bv.tv.util.ugcNavItemsFlow
+import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.viewmodel.ugc.UgcAiViewModel
@@ -106,13 +110,32 @@ fun UgcContent(
     var focusOnContent by remember { mutableStateOf(false) }
     var topNavHasFocus by remember { mutableStateOf(false) }
 
+    // 根据设置获取过滤和排序后的导航项列表
+    val ugcNavItems by ugcNavItemsFlow.collectAsState(
+        initial = remember { parseUgcTopNavItemsOrder(Prefs.ugcNavItemsOrder) }
+    )
+
+    // 处理空列表情况：如果全部被隐藏，强制显示第一个
+    val effectiveNavItems = if (ugcNavItems.isEmpty()) {
+        listOf(UgcTopNavItem.entries.first())
+    } else {
+        ugcNavItems
+    }
+
     // 使用remember的key参数确保只有在DrawerItem.UGC的tab状态变化时才重新计算
     var selectedTab by remember {
         mutableStateOf(
             currentSelectedTabs[DrawerItem.UGC]
                 ?.let { UgcTopNavItem.entries.getOrNull(it) }
-                ?: UgcTopNavItem.Douga
+                ?: effectiveNavItems.first()
         )
+    }
+
+    // 如果当前选中项被隐藏，则自动切换到第一个可见项
+    LaunchedEffect(effectiveNavItems) {
+        if (selectedTab !in effectiveNavItems) {
+            selectedTab = effectiveNavItems.first()
+        }
     }
 
     // 获取所有ViewModels的映射
@@ -185,7 +208,7 @@ fun UgcContent(
                 modifier = Modifier
                     .focusRequester(navFocusRequester)
                     .onFocusChanged { topNavHasFocus = it.hasFocus },
-                items = UgcTopNavItem.entries,
+                items = effectiveNavItems,
                 isLargePadding = !focusOnContent,
                 initialSelectedItem = selectedTab,
                 onSelectedChanged = { nav ->

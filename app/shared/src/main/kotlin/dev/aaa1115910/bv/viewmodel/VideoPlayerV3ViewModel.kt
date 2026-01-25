@@ -130,6 +130,7 @@ class VideoPlayerV3ViewModel(
     var currentDanmakuMask by mutableStateOf(Prefs.defaultDanmakuMask)
     var currentSubtitleId by mutableLongStateOf(-1L)
     var currentSubtitleData = mutableStateListOf<SubtitleItem>()
+    var currentSubtitleType by mutableStateOf(SubtitleType.CC)
     var currentSubtitleFontSize by mutableStateOf(Prefs.defaultSubtitleFontSize)
     var currentSubtitleBackgroundOpacity by mutableFloatStateOf(Prefs.defaultSubtitleBackgroundOpacity)
     var currentSubtitleBottomPadding by mutableStateOf(Prefs.defaultSubtitleBottomPadding)
@@ -631,6 +632,7 @@ class VideoPlayerV3ViewModel(
                 withContext(Dispatchers.Main) {
                     currentSubtitleData.clear()
                     currentSubtitleId = -1
+                    currentSubtitleType = SubtitleType.CC
                 }
                 return@launch
             }
@@ -638,18 +640,21 @@ class VideoPlayerV3ViewModel(
             runCatching {
                 val subtitle = availableSubtitle.find { it.id == id } ?: return@runCatching
                 subtitleName = subtitle.langDoc
-                logger.info { "Subtitle url: ${subtitle.url}" }
+                val isAI = subtitle.type == SubtitleType.AI
+                logger.info { "Subtitle url: ${subtitle.url}, isAI: $isAI" }
                 val client = HttpClient(OkHttp)
                 val responseText = client.get(subtitle.url).bodyAsText()
-                val subtitleData = SubtitleParser.fromBccString(responseText)
+                val subtitleData = SubtitleParser.fromBccString(responseText, isAI)
                 withContext(Dispatchers.Main) {
                     currentSubtitleId = id
+                    currentSubtitleType = subtitle.type
                     currentSubtitleData.swapList(subtitleData)
                 }
             }.onFailure {
                 withContext(Dispatchers.Main) {
                     currentSubtitleData.clear()
                     currentSubtitleId = -1
+                    currentSubtitleType = SubtitleType.CC
                 }
                 logger.fInfo { "Load subtitle failed: ${it.stackTraceToString()}" }
                 addLogs("加载字幕 $subtitleName 失败: ${it.localizedMessage}")
