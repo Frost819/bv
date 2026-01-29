@@ -187,6 +187,10 @@ fun VideoPlayerV3Screen(
         onSubtitleSettingChange = { action ->
             logger.info { "On subtitle config change" }
             playerViewModel.updateSubtitleState(action)
+        },
+
+        onEnsureUgcPagesLoaded = { aid ->
+            playerViewModel.ensureUgcPagesLoaded(aid)
         }
     ) {
         Box(

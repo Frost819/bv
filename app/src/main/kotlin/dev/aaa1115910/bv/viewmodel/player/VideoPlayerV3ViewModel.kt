@@ -554,6 +554,12 @@ class VideoPlayerV3ViewModel(
         }
     }
 
+    fun ensureUgcPagesLoaded(aid: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            videoInfoRepository.ensureUgcPagesLoaded(aid = aid, preferApiType = Prefs.apiType)
+        }
+    }
+
     private fun loadPlayUrl(
         avid: Long,
         cid: Long,
@@ -727,9 +733,21 @@ class VideoPlayerV3ViewModel(
     }
 
     // 加载合集内的分P
+    /*
     private fun updateVideoPages() {
         viewModelScope.launch(Dispatchers.IO) {
             videoInfoRepository.updateUgcPages(Prefs.apiType)
+        }
+    }
+     */
+    // 加载当前视频的分P（仅 UGC，多P才会写入 ugcPages；番剧集不加载片段）
+    private fun updateVideoPages() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val state = _uiState.value
+            val currentItem = state.availableVideoList.firstOrNull { it.aid == state.aid }
+            // 番剧集（epid != null）不加载片段子项
+            if (currentItem?.epid != null || state.epid != null) return@launch
+            videoInfoRepository.ensureUgcPagesLoaded(aid = state.aid, preferApiType = Prefs.apiType)
         }
     }
 

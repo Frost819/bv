@@ -47,13 +47,48 @@ fun VideoListController(
     currentCid: Long,
     videoList: List<VideoListItem>,
     onPlayNewVideo: (VideoListItem) -> Unit,
+    onEnsureUgcPagesLoaded: (aid: Long) -> Unit,
 ) {
     val listState = rememberLazyListState()
+
+    var pendingFocusCid by remember { mutableStateOf<Long?>(null) }
+
+    // 每次打开时标记一次“待聚焦 cid”
+    LaunchedEffect(show, currentCid) {
+        if (show) pendingFocusCid = currentCid
+    }
+
+    // 推导 pinnedParent：命中父项或子项所属父项
+    val pinnedParent = remember(videoList, currentCid) {
+        videoList.firstOrNull { it.cid == currentCid }
+            ?: videoList.firstOrNull { it.ugcPages?.any { p -> p.cid == currentCid } == true }
+    }
+
+    // 打开时：预取 pinnedParent 的子项数据（番剧集跳过）
+    LaunchedEffect(show, pinnedParent, videoList) {
+        if (!show) return@LaunchedEffect
+
+        // 兜底：UGC 多P常见场景 videoList 只有 1 个父项，但 ugcPages 尚未加载且 currentCid 是子项
+        val probableParent = pinnedParent ?: videoList.singleOrNull()
+
+        if (probableParent != null && probableParent.epid == null) {
+            onEnsureUgcPagesLoaded(probableParent.aid)
+        }
+
+        val targetIndex = videoList.indexOfFirst { v ->
+            v.cid == currentCid || (v.ugcPages?.any { p -> p.cid == currentCid } == true)
+        }
+        if (targetIndex != -1) {
+            // 大列表避免长动画：先瞬移，再可选短动画微调
+            listState.scrollToItem(targetIndex)
+        }
+    }
 
     val parentFocusRequester = remember { FocusRequester() }
     val childFocusRequester = remember { FocusRequester() }
 
     // 自动定位到当前分P
+    /*
     LaunchedEffect(show) {
         if (show) {
             val currentIndex = videoList.indexOfFirst { video ->
@@ -77,6 +112,7 @@ fun VideoListController(
             }
         }
     }
+    */
 
     AnimatedVisibility(
         visible = show,
@@ -105,8 +141,10 @@ fun VideoListController(
                         key = { it.cid }
                     ) { video ->
 
-                        val hasSubPages = !video.ugcPages.isNullOrEmpty()
+
                         val isParentSelected = video.cid == currentCid
+                        /*
+                        val hasSubPages = !video.ugcPages.isNullOrEmpty()
                         val isChildSelected = video.ugcPages?.any { it.cid == currentCid } == true
 
                         var expanded by remember(video.cid) {
@@ -116,6 +154,38 @@ fun VideoListController(
                         // 如果当前正在播放的是子项，则自动展开父项
                         LaunchedEffect(isChildSelected) {
                             if (isChildSelected) expanded = true
+                        }
+                        */
+                        val isSeasonEpisode = video.epid != null
+                        val enableChildrenUi = !isSeasonEpisode
+                        val hasSubPages = enableChildrenUi && !video.ugcPages.isNullOrEmpty()
+                        val isChildSelected = enableChildrenUi && (video.ugcPages?.any { it.cid == currentCid } == true)
+                        val isPinned = pinnedParent?.aid == video.aid || isChildSelected || isParentSelected
+
+                        var expanded by remember(video.cid) { mutableStateOf(false) }
+
+                        // pinnedParent：永远展开（命中父项或子项都成立）
+                        LaunchedEffect(isPinned) {
+                            if (isPinned) expanded = true
+                        }
+
+                        // 组焦点跟踪：父项或子项任意获得焦点 => 认为组聚焦
+                        var groupHasFocus by remember(video.cid) { mutableStateOf(false) }
+                        var collapseToken by remember(video.cid) { mutableStateOf(0) }
+
+                        // 负责更新 Token（数字加 1）
+                        fun scheduleCollapseIfNeeded() {
+                            if (isPinned) return
+                            collapseToken++
+                        }
+
+                        // 监听 Token 变化并执行逻辑
+                        LaunchedEffect(collapseToken) {
+                            // 只有当 token 变化且不为 0 时才执行
+                            if (collapseToken > 0) {
+                                kotlinx.coroutines.android.awaitFrame() // 等待一帧
+                                if (!groupHasFocus && !isPinned) expanded = false
+                            }
                         }
 
                         Column(
@@ -127,14 +197,43 @@ fun VideoListController(
                                     Modifier.focusRequester(parentFocusRequester)
                                 else Modifier
 
+                            // 如果当前 cid 匹配父项，且不是因为子项匹配导致的（即纯粹是父项被选中），则请求焦点
+                            LaunchedEffect(show, isParentSelected, pendingFocusCid) {
+                                if (show && isParentSelected && pendingFocusCid == currentCid && !isChildSelected) {
+                                    parentFocusRequester.requestFocus()
+                                    pendingFocusCid = null // 消耗掉，防止重复请求
+                                }
+                            }
+
                             DenseListItem(
                                 modifier = Modifier
                                     .padding(horizontal = 16.dp)
+                                    .onFocusChanged { state ->
+                                        if (state.hasFocus) {
+                                            groupHasFocus = true
+                                            if (enableChildrenUi) onEnsureUgcPagesLoaded(video.aid) // 预取但不展开
+                                        } else {
+                                            groupHasFocus = false
+                                            scheduleCollapseIfNeeded()
+                                        }
+                                    }
                                     .then(parentModifier),
                                 selected = isParentSelected && !isChildSelected,
+                                /*
                                 onClick = {
                                     if (hasSubPages) {
                                         expanded = !expanded
+                                    } else if (!isParentSelected) {
+                                        onPlayNewVideo(video)
+                                    }
+                                },
+                                 */
+                                onClick = {
+                                    // 确认键行为：
+                                    // - UGC 且有子项能力：切换展开/折叠（pinned 不允许折叠）
+                                    // - 否则：播放新视频（与你现有逻辑一致）
+                                    if (hasSubPages) {
+                                        if (!isPinned) expanded = !expanded
                                     } else if (!isParentSelected) {
                                         onPlayNewVideo(video)
                                     }
@@ -177,13 +276,24 @@ fun VideoListController(
                                                     Modifier.focusRequester(childFocusRequester)
                                                 else Modifier
 
+                                            // 子项请求焦点逻辑
+                                            LaunchedEffect(show, isPageSelected, pendingFocusCid) {
+                                                if (show && isPageSelected && pendingFocusCid == currentCid) {
+                                                    childFocusRequester.requestFocus()
+                                                    pendingFocusCid = null
+                                                }
+                                            }
+
                                             MenuListItem(
                                                 modifier = Modifier
                                                     .padding(horizontal = 16.dp)
                                                     .then(childModifier),
                                                 text = page.title,
                                                 selected = isPageSelected,
-                                                textAlign = TextAlign.Start
+                                                textAlign = TextAlign.Start,
+                                                onFocus = {
+                                                    groupHasFocus = true
+                                                }
                                             ) {
                                                 if (!isPageSelected) {
                                                     onPlayNewVideo(video.copy(cid = page.cid))
