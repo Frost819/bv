@@ -198,6 +198,7 @@ fun VideoPlayerV3Screen(
                 ))
             }
         },
+        onEnsureUgcPagesLoaded = playerViewModel::ensureUgcPagesLoaded,
     ) {
         Box(
             modifier = Modifier.background(Color.Black),

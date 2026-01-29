@@ -80,6 +80,8 @@ fun VideoPlayerController(
     onSubtitleSettingChange: (SubtitleSettingAction) -> Unit,
     onRelatedVideoClicked: (VideoCardData) -> Unit,
 
+    onEnsureUgcPagesLoaded: (aid: Long) -> Unit,
+
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -386,7 +388,7 @@ fun VideoPlayerController(
             show = showListController,
             currentCid = uiState.cid,
             videoList = uiState.availableVideoList,
-            onPlayNewVideo = onPlayNewVideo
+            onEnsureUgcPagesLoaded = onEnsureUgcPagesLoaded,onPlayNewVideo = onPlayNewVideo
         )
 
         MenuController(
