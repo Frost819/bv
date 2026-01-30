@@ -560,6 +560,7 @@ class VideoPlayerV3ViewModel(
         }
     }
 
+    /*
     private fun loadPlayUrl(
         avid: Long,
         cid: Long,
@@ -580,6 +581,43 @@ class VideoPlayerV3ViewModel(
                 avid,
                 cid,
                 epid ?: 0,
+                preferApi = Prefs.apiType,
+                proxyArea = _uiState.value.proxyArea
+            )
+
+            loadDanmaku(cid)
+            updateDanmakuMask()
+            updateSubtitle()
+            updateVideoShot()
+            updateVideoPages()
+            clearVideoShotCache()
+            */
+    private fun loadPlayUrl(
+        avid: Long,
+        cid: Long,
+        epid: Int? = null,
+        seasonId: Int? = null,
+    ) {
+        // 在 UI State 中保持 epid 的真实语义：
+        // - UGC：null
+        // - PGC：非 null
+        // 同时兼容外部偶发传入 0 的情况（0 视作无 epid）
+        val normalizedEpid = epid?.takeIf { it != 0 }
+
+        _uiState.update {
+            it.copy(
+                aid = avid,
+                cid = cid,
+                epid = normalizedEpid,
+                seasonId = seasonId ?: 0,
+            )
+        }
+
+        viewModelScope.launch(Dispatchers.Default) {
+            loadPlayUrlImpl(
+                avid,
+                cid,
+                normalizedEpid ?: 0,
                 preferApi = Prefs.apiType,
                 proxyArea = _uiState.value.proxyArea
             )

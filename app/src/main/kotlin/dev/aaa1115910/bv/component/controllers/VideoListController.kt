@@ -44,6 +44,7 @@ import dev.aaa1115910.bv.entity.VideoListItem
 fun VideoListController(
     modifier: Modifier = Modifier,
     show: Boolean,
+    currentAid: Long,
     currentCid: Long,
     videoList: List<VideoListItem>,
     onPlayNewVideo: (VideoListItem) -> Unit,
@@ -58,9 +59,12 @@ fun VideoListController(
         if (show) pendingFocusCid = currentCid
     }
 
-    // 推导 pinnedParent：命中父项或子项所属父项
-    val pinnedParent = remember(videoList, currentCid) {
-        videoList.firstOrNull { it.cid == currentCid }
+    // 推导 pinnedParent：
+    // 优先用 currentAid 锁定“当前父项”（即使当前 pages 还没加载）
+    // 其次再用 cid 在父项/子项里兜底
+    val pinnedParent = remember(videoList, currentAid, currentCid) {
+        videoList.firstOrNull { it.aid == currentAid }
+            ?: videoList.firstOrNull { it.cid == currentCid }
             ?: videoList.firstOrNull { it.ugcPages?.any { p -> p.cid == currentCid } == true }
     }
 
@@ -76,7 +80,7 @@ fun VideoListController(
         }
 
         val targetIndex = videoList.indexOfFirst { v ->
-            v.cid == currentCid || (v.ugcPages?.any { p -> p.cid == currentCid } == true)
+            v.aid == currentAid || v.cid == currentCid || (v.ugcPages?.any { p -> p.cid == currentCid } == true)
         }
         if (targetIndex != -1) {
             // 大列表避免长动画：先瞬移，再可选短动画微调
@@ -158,8 +162,13 @@ fun VideoListController(
                         */
                         val isSeasonEpisode = video.epid != null
                         val enableChildrenUi = !isSeasonEpisode
-                        val hasSubPages = enableChildrenUi && !video.ugcPages.isNullOrEmpty()
-                        val isChildSelected = enableChildrenUi && (video.ugcPages?.any { it.cid == currentCid } == true)
+
+                        // 三态：null=未加载/失败，empty=已加载但单P，notEmpty=多P
+                        val pages = if (enableChildrenUi) video.ugcPages else null
+                        val pagesLoaded = pages != null
+                        val hasSubPages = pages?.isNotEmpty() == true
+
+                        val isChildSelected = enableChildrenUi && (pages?.any { it.cid == currentCid } == true)
                         val isPinned = pinnedParent?.aid == video.aid || isChildSelected || isParentSelected
 
                         var expanded by remember(video.cid) { mutableStateOf(false) }
@@ -229,9 +238,16 @@ fun VideoListController(
                                 },
                                  */
                                 onClick = {
-                                    // 确认键行为：
-                                    // - UGC 且有子项能力：切换展开/折叠（pinned 不允许折叠）
-                                    // - 否则：播放新视频（与你现有逻辑一致）
+                                    // 1) UGC 子项未加载：先触发加载，并允许展开（展示“加载中”占位）
+                                    // 2) 已加载且多P：切换展开/折叠（pinned 不允许折叠）
+                                    // 3) 已加载但单P：走原有播放逻辑
+                                    if (enableChildrenUi && !pagesLoaded) {
+                                        onEnsureUgcPagesLoaded(video.aid)
+                                        // 让用户看到“展开动作”生效；pinned 会被强制展开也没问题
+                                        if (!isPinned) expanded = true
+                                        return@DenseListItem
+                                    }
+
                                     if (hasSubPages) {
                                         if (!isPinned) expanded = !expanded
                                     } else if (!isParentSelected) {
