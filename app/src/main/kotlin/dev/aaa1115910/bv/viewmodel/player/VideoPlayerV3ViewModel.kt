@@ -111,6 +111,18 @@ class VideoPlayerV3ViewModel(
     private var backToStartCountdownJob: Job? = null
     private var playNextCountdownJob: Job? = null
 
+    // --- UGC 分P后台预取（以当前父项为中心，向两侧交替） ---
+    private var ugcPagesPrefetchJob: Job? = null
+
+    // 防止 videoList 因 ugcPages 填充而频繁 emit 导致反复重启：
+    // 仅当“中心 aid 变化”或“父项列表(aid顺序)变化”时重启。
+    private var lastPrefetchCenterAid: Long = -1L
+    private var lastPrefetchAidsHash: Int = 0
+
+    // 降速参数：避免风控/限流（可按需调整）
+    private val ugcPagesPrefetchDelayMs = 800L
+    private val ugcPagesPrefetchFailureDelayMs = 3000L
+
     private val videoPlayerListener = object : VideoPlayerListener {
         override fun onError(error: Exception) {
             logger.info { "onError: $error" }
@@ -182,6 +194,8 @@ class VideoPlayerV3ViewModel(
                     currentState.copy(availableVideoList = newList)
                 }
                 logger.fInfo { "Sync video list from repo, size: ${newList.size}" }
+                // 尝试启动/重启：用于“首次拿到小合集父项列表”时开始后台预取
+                restartUgcPagesPrefetchIfNeeded(newList)
             }
             .launchIn(viewModelScope)
 
@@ -463,14 +477,14 @@ class VideoPlayerV3ViewModel(
         val videoList = currentState.availableVideoList
         val currentCid = currentState.cid
 
-        // 1. 查找当前视频在列表中的位置
+        // 查找当前视频在列表中的位置
         val videoListIndex = videoList.indexOfFirst { it.aid == currentState.aid }
         val currentVideoItem = videoList.getOrNull(videoListIndex)
 
-        // 2. 预计算下一个播放项 (NextTarget)
+        // 预计算下一个播放项 (NextTarget)
         var nextTarget: NextPlayTarget? = null
 
-        // 逻辑 A: 检查是否有下一个分 P (UGC Page)
+        // 检查是否有下一个分 P (UGC Page)
         if (currentVideoItem?.ugcPages?.isNotEmpty() == true) {
             val currentInnerIndex = currentVideoItem.ugcPages.indexOfFirst { it.cid == currentCid }
             if (currentInnerIndex != -1 && currentInnerIndex + 1 < currentVideoItem.ugcPages.size) {
@@ -479,13 +493,13 @@ class VideoPlayerV3ViewModel(
             }
         }
 
-        // 逻辑 B: 如果没有分 P，检查是否有下一个视频
+        // 如果没有分 P，检查是否有下一个视频
         if (nextTarget == null && videoListIndex + 1 < videoList.size) {
             val nextVideo = videoList[videoListIndex + 1]
             nextTarget = NextPlayTarget.VideoItem(nextVideo)
         }
 
-        // 3. 根据查找结果执行操作
+        // 根据查找结果执行操作
         if (nextTarget != null) {
             startNextEpisodeCountdown(nextTarget)
         } else {
@@ -581,6 +595,75 @@ class VideoPlayerV3ViewModel(
         }
     }
 
+    private fun computeAidsHash(list: List<VideoListItem>): Int {
+        var hash = 1
+        list.forEach { item ->
+            hash = 31 * hash + item.aid.hashCode()
+        }
+        return hash
+    }
+
+    private fun restartUgcPagesPrefetchIfNeeded(videoList: List<VideoListItem>) {
+        val state = _uiState.value
+
+        // PGC 不加载子项
+        if (state.epid != null) return
+
+        val centerAid = state.aid
+        if (centerAid <= 0L) return
+        if (videoList.isEmpty()) return
+
+        val aidsHash = computeAidsHash(videoList)
+        val shouldRestart = centerAid != lastPrefetchCenterAid || aidsHash != lastPrefetchAidsHash
+
+        // 如果已经在跑且 key 没变，就不重启（避免 ugcPages 填充导致的频繁 emit 重启）
+        if (!shouldRestart && ugcPagesPrefetchJob?.isActive == true) return
+
+        lastPrefetchCenterAid = centerAid
+        lastPrefetchAidsHash = aidsHash
+
+        ugcPagesPrefetchJob?.cancel()
+        ugcPagesPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
+            val centerIndex = videoList.indexOfFirst { it.aid == centerAid }
+            if (centerIndex == -1) return@launch
+
+            suspend fun prefetchItem(item: VideoListItem) {
+                // PGC 父项跳过
+                if (item.epid != null) return
+
+                val delayMs = runCatching {
+                    videoInfoRepository.ensureUgcPagesLoaded(aid = item.aid, preferApiType = Prefs.apiType)
+                }.fold(
+                    onSuccess = { ugcPagesPrefetchDelayMs },
+                    onFailure = { throwable ->
+                        if (throwable is CancellationException) throw throwable
+                        logger.fWarn { "UGC pages prefetch failed: aid=${item.aid}, error=${throwable.stackTraceToString()}" }
+                        ugcPagesPrefetchFailureDelayMs
+                    }
+                )
+                delay(delayMs)
+            }
+
+            // 立刻确保当前父项已触发加载（repository 会去重）
+            prefetchItem(videoList[centerIndex])
+
+            // 以当前父项为中心，向上/向下交替，直到遍历完当前小合集所有父项
+            val lastIndex = videoList.lastIndex
+            val maxDelta = maxOf(centerIndex, lastIndex - centerIndex)
+            for (delta in 1..maxDelta) {
+                val upIndex = centerIndex - delta
+                if (upIndex >= 0) {
+                    prefetchItem(videoList[upIndex])
+                }
+
+                val downIndex = centerIndex + delta
+                if (downIndex <= lastIndex) {
+                    prefetchItem(videoList[downIndex])
+                }
+            }
+        }
+    }
+
     /*
     private fun loadPlayUrl(
         avid: Long,
@@ -635,6 +718,9 @@ class VideoPlayerV3ViewModel(
                 seasonId = seasonId ?: 0,
             )
         }
+
+        // 切换父项时重启后台预取（切换中心）
+        restartUgcPagesPrefetchIfNeeded(_uiState.value.availableVideoList)
 
         viewModelScope.launch(Dispatchers.Default) {
             loadPlayUrlImpl(
