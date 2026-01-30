@@ -386,7 +386,7 @@ fun VideoPlayerController(
 
         VideoListController(
             show = showListController,
-            currentCid = uiState.cid,
+            currentAid = uiState.aid,currentCid = uiState.cid,
             videoList = uiState.availableVideoList,
             onEnsureUgcPagesLoaded = onEnsureUgcPagesLoaded,onPlayNewVideo = onPlayNewVideo
         )

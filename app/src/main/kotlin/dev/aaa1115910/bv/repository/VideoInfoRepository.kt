@@ -42,10 +42,20 @@ class VideoInfoRepository(private val videoDetailRepository: VideoDetailReposito
 
         try {
             val pages = videoDetailRepository.getUgcPages(aid = aid, preferApiType = preferApiType)
+
+            // 失败/取不到数据：不要把 aid 标记为 loaded，否则会“锁死”永远不再重试
+            if (pages.isEmpty()) return
+
             _videoList.update { oldList ->
                 oldList.map { item ->
                     if (item.aid != aid) return@map item
-                    if (pages.size > 1) item.copy(ugcPages = pages) else item
+
+                    // 这里用 nullable 的 ugcPages 做三态：
+                    // null      -> 未加载 / 上次失败
+                    // emptyList -> 已加载但单P（无可展示子项）
+                    // notEmpty  -> 多P
+                    if (pages.size > 1) item.copy(ugcPages = pages)
+                    else item.copy(ugcPages = emptyList())
                 }
             }
 
@@ -66,6 +76,7 @@ class VideoInfoRepository(private val videoDetailRepository: VideoDetailReposito
             oldList.map { item ->
                 val pages =
                     videoDetailRepository.getUgcPages(aid = item.aid, preferApiType = preferApiType)
+                /*
                 if (pages.size > 1) {
                     item.copy(
                         ugcPages = pages,
@@ -73,6 +84,8 @@ class VideoInfoRepository(private val videoDetailRepository: VideoDetailReposito
                 } else {
                     item
                 }
+                */
+                item.copy(ugcPages = pages)
             }
         }
     }
