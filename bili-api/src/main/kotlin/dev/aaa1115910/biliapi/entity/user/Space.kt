@@ -5,7 +5,9 @@ import dev.aaa1115910.biliapi.http.util.toSmartDate
 
 data class SpaceVideoData(
     val videos: List<SpaceVideo>,
-    val page: SpaceVideoPage
+    val page: SpaceVideoPage,
+    // Web: page.count; App: count。取不到时为 null
+    val totalCount: Int? = null
 ) {
     companion object {
         fun fromWebSpaceVideoData(webSpaceVideoData: dev.aaa1115910.biliapi.http.entity.user.WebSpaceVideoData) =
@@ -19,7 +21,8 @@ data class SpaceVideoData(
                             * (webSpaceVideoData.page?.pageSize ?: 0)),
                     nextWebPageSize = webSpaceVideoData.page?.pageSize ?: 0,
                     nextWebPageNumber = (webSpaceVideoData.page?.pageNumber ?: 0) + 1
-                )
+                ),
+                totalCount = webSpaceVideoData.page?.count
             )
 
         fun fromAppSpaceVideoData(appSpaceVideoData: dev.aaa1115910.biliapi.http.entity.user.AppSpaceVideoData) =
@@ -29,7 +32,8 @@ data class SpaceVideoData(
                 page = SpaceVideoPage(
                     hasNext = appSpaceVideoData.hasNext,
                     lastAvid = appSpaceVideoData.item.lastOrNull()?.param?.toLong() ?: 0
-                )
+                ),
+                totalCount = appSpaceVideoData.count
             )
     }
 }
