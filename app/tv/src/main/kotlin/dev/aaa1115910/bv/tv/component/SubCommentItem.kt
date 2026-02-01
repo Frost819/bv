@@ -220,7 +220,7 @@ fun SubCommentRootItem(
                     Text(
                         text = if (expanded) "右键收起 <<" else "右键展开 >>",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
+                        color = Color.White
                     )
 
                     Row(

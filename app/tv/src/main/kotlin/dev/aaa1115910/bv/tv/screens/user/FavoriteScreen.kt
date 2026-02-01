@@ -151,7 +151,7 @@ fun FavoriteScreen(
                 state = lazyGridState,
                 columns = GridCells.Fixed(4),
                 contentPadding = PaddingValues(
-                    top = if (showPageTitle) 24.dp else 8.dp,
+                    top = if (showPageTitle) 24.dp else 4.dp,
                     bottom = 24.dp,
                     start = 24.dp,
                     end = 24.dp

@@ -744,7 +744,7 @@ fun VideoPlayerV3Screen(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth(),
-                visible = playerViewModel.showRelatedVideos,
+                visible = playerViewModel.showRelatedVideos && !playerViewModel.isLive,
                 enter = expandVertically(),
                 exit = shrinkVertically(),
                 label = "RelatedVideosForPlayer"

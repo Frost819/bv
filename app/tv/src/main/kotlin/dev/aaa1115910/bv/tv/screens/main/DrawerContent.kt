@@ -206,7 +206,7 @@ fun DrawerContent(
         }
         
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
+            verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically)
         ) {
             items(menuItems.size) { index ->
                 val item = menuItems[index]
@@ -242,7 +242,7 @@ fun DrawerContent(
                         },
                         label = {
                             Text(
-                                modifier = Modifier.offset(y = (-3).dp),
+                                modifier = Modifier.offset(y = (-4).dp),
                                 text = item.displayName,
                                 style = MaterialTheme.typography.bodySmall
                             )

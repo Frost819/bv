@@ -4,7 +4,6 @@ import android.graphics.Matrix
 import android.view.SurfaceView
 import android.view.TextureView
 import androidx.annotation.OptIn
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -17,6 +16,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 import dev.aaa1115910.bv.player.impl.exo.ExoMediaPlayer
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
@@ -30,6 +31,7 @@ fun BvVideoPlayer(
     rotationDegrees: Float = 0f, // 新增参数，视频旋转角度
     danmakuPlayer: DanmakuPlayer? = null,
     forceUseTextureView: Boolean = false,
+    isLive: Boolean = false
 ) {
     val logger = logger("BvVideoPlayer")
     val context = LocalContext.current
@@ -60,8 +62,21 @@ fun BvVideoPlayer(
                     videoPlayer.mPlayer?.clearVideoTextureView(it)
                 }
             }
-
-            if (forceUseTextureView || rotationDegrees != 0f) {
+            if (isLive) {
+                AndroidView(
+                    modifier = modifier,
+                    factory = { ctx ->
+                        lastRotationDegrees = 0f
+                        clearVideoView()
+                        PlayerView(ctx).apply {
+                            player = videoPlayer.mPlayer
+                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                            useController = false
+                            logger.info { "Current view type is PlayerView" }
+                        }
+                    }
+                )
+            } else if (forceUseTextureView || rotationDegrees != 0f) {
                 fun applyTextureTransform(tv: TextureView?, degreesRaw: Float) {
                     tv ?: return
                     if (rotationDegrees != lastRotationDegrees) {
@@ -102,7 +117,7 @@ fun BvVideoPlayer(
                 }
 
                 AndroidView(
-                    modifier = modifier.fillMaxSize(),
+                    modifier = modifier,
                     factory = { ctx ->
                         clearVideoView()
                         TextureView(ctx).also { tv ->
@@ -121,7 +136,7 @@ fun BvVideoPlayer(
             } else {
                 // SurfaceView 渲染
                 AndroidView(
-                    modifier = modifier.fillMaxSize(),
+                    modifier = modifier,
                     factory = { ctx ->
                         lastRotationDegrees = rotationDegrees
                         clearVideoView()

@@ -45,7 +45,7 @@ class LiveRepository {
      */
     suspend fun getLiveRoomList(
         parentAreaId: String,
-        areaId: String,
+        areaId: String = "0",
         page: Int = 1,
         pageSize: Int = 30,
         sortType: String = "online"

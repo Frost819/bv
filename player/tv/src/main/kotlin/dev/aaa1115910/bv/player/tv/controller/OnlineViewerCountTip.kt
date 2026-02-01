@@ -1,8 +1,8 @@
 package dev.aaa1115910.bv.player.tv.controller
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,8 +37,8 @@ fun OnlineViewerCountTip(
 ) {
     AnimatedVisibility(
         visible = show,
-        enter = expandHorizontally(),
-        exit = shrinkHorizontally()
+        enter = fadeIn(),
+        exit = fadeOut()
     ) {
         Box(
             modifier = modifier.fillMaxSize()

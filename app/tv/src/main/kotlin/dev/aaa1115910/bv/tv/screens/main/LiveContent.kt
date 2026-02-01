@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -20,13 +21,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.aaa1115910.biliapi.entity.live.LiveAreaItem
 import dev.aaa1115910.bv.tv.activities.video.VideoPlayerV3Activity
 import dev.aaa1115910.bv.tv.component.LoadingTip
@@ -95,6 +96,13 @@ fun LiveContent(
         }
     }
 
+    LaunchedEffect(liveViewModel.roomList, liveViewModel.loading) {
+        if (liveViewModel.roomList.isEmpty() && liveViewModel.loading) {
+            liveViewModel.lastFocusedRoomIndex = 0
+            gridState.scrollToItem(0)
+        }
+    }
+
     BackHandler(focusOnContent || subNavHasFocus || parentNavHasFocus) {
         logger.info { "onFocusBackToNav" }
         if (subNavHasFocus) {
@@ -152,6 +160,7 @@ fun LiveContent(
                             .focusRequester(subNavFocusRequester)
                             .padding(end = 80.dp)
                             .onFocusChanged { subNavHasFocus = it.hasFocus },
+                        paddingTop = 4.dp,
                         items = subNavItems,
                         isLargePadding = !focusOnContent && currentListOnTop,
                         initialSelectedItem = subNavItems.firstOrNull { it.area.id == liveViewModel.currentSubArea?.id },
@@ -180,7 +189,11 @@ fun LiveContent(
                 .onFocusChanged { focusOnContent = it.hasFocus }
         ) {
             if (liveViewModel.roomList.isEmpty() && liveViewModel.loading) {
-                LoadingTip()
+                Row(
+                    modifier = Modifier.align(Alignment.Center)
+                ){
+                    LoadingTip()
+                }
             } else {
                 LazyVerticalGrid(
                     modifier = Modifier.fillMaxSize(),

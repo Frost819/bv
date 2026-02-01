@@ -422,6 +422,14 @@ object Prefs {
     var pgcNavItemsOrder: String
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPgcNavItemsOrderRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPgcNavItemsOrderKey, value) }
+    
+    var enableAudioPlaybackParams: Boolean
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefEnableAudioPlaybackParamsRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefEnableAudioPlaybackParams, value) }
+
+    var enableAsyncQueueing: Boolean
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefEnableAsyncQueueingRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefEnableAsyncQueueing, value) }
 }
 
 object PrefKeys {
@@ -485,6 +493,8 @@ object PrefKeys {
     val prefHomeNavItemsOrderKey = stringPreferencesKey("home_nav_items_order")
     val prefUgcNavItemsOrderKey = stringPreferencesKey("ugc_nav_items_order")
     val prefPgcNavItemsOrderKey = stringPreferencesKey("pgc_nav_items_order")
+    val prefEnableAudioPlaybackParams = booleanPreferencesKey("enable_audio_playback_params")
+    val prefEnableAsyncQueueing = booleanPreferencesKey("enable_async_queueing")
 
 
     val prefIsLoginRequest = PreferenceRequest(prefIsLoginKey, false)
@@ -562,4 +572,6 @@ object PrefKeys {
     val prefHomeNavItemsOrderRequest = PreferenceRequest(prefHomeNavItemsOrderKey, "")
     val prefUgcNavItemsOrderRequest = PreferenceRequest(prefUgcNavItemsOrderKey, "")
     val prefPgcNavItemsOrderRequest = PreferenceRequest(prefPgcNavItemsOrderKey, "")
+    val prefEnableAudioPlaybackParamsRequest = PreferenceRequest(prefEnableAudioPlaybackParams, true)
+    val prefEnableAsyncQueueingRequest = PreferenceRequest(prefEnableAsyncQueueing, true)
 }

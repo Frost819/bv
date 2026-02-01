@@ -78,8 +78,8 @@ fun CommentItem(
                 Text(
                     text = "${comment.repliesCount} 条回复 >>",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(start = 4.dp)
+                    color = Color.White,
+                    modifier = Modifier.padding(start = 52.dp)
                 )
             }
         }
@@ -116,7 +116,7 @@ private fun CommentMainContent(
             Text(
                 text = comment.member.name,
                 style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -138,7 +138,7 @@ private fun CommentMainContent(
                 Text(
                     text = comment.timeDesc,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    color = Color.White.copy(alpha = 0.5f)
                 )
 
                 // 点赞数
@@ -150,12 +150,12 @@ private fun CommentMainContent(
                         modifier = Modifier.size(14.dp),
                         imageVector = androidx.compose.material.icons.Icons.Rounded.ThumbUp,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        tint = Color.White.copy(alpha = 0.5f)
                     )
                     Text(
                         text = formatLikeCount(comment.like),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        color = Color.White.copy(alpha = 0.5f)
                     )
                 }
 
@@ -164,7 +164,7 @@ private fun CommentMainContent(
                     Text(
                         text = "${comment.repliesCount} 回复",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        color = Color.White.copy(alpha = 0.5f)
                     )
                 }
             }
@@ -212,7 +212,7 @@ fun CommentContent(
         },
         inlineContent = inlineContentMap,
         style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurface,
+        color = Color.White,
         maxLines = maxLines,
         overflow = overflow
     )

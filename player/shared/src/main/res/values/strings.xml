@@ -39,6 +39,7 @@
     <string name="video_aspect_ratio_default">默认</string>
     <string name="video_aspect_ratio_four_to_three">4:3</string>
     <string name="video_aspect_ratio_sixteen_to_nine">16:9</string>
+    <string name="video_aspect_ratio_nine_to_sixteen">9:16</string>
     <string name="video_codec_av1" tools:ignore="Typos">AV1</string>
     <string name="video_codec_avc">H.264</string>
     <string name="video_codec_dvh1" tools:ignore="Typos">Dolby Vision (DVH1)</string>

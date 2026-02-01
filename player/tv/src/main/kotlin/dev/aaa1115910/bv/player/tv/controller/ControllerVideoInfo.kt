@@ -357,7 +357,8 @@ fun ControllerVideoInfoBottom(
                 id = "rotation",
                 icon = Icons.TwoTone.ScreenRotation,
                 onClick = { showRotationDialog = true },
-                scale = 0.75f
+                scale = 0.75f,
+                visible = !isLive
             ),
             ControlButton(
                 id = "refresh",
@@ -408,7 +409,8 @@ fun ControllerVideoInfoBottom(
                 id = "settings",
                 icon = Icons.Outlined.Settings,
                 onClick = onOpenSetting,
-                scale = 0.9f
+                scale = 0.9f,
+                visible = !isLive
             )
         ).filter { it.visible }
     }
@@ -438,7 +440,9 @@ fun ControllerVideoInfoBottom(
 
     val statString by remember {
         mutableStateOf(
-            if (upName.isNotEmpty()) {
+            if(isLive && upName.isNotEmpty()) {
+                upName
+            } else if (upName.isNotEmpty()) {
                 "$upName  ·  ${
                     if (play >= 10000) String.format("%.1f", play / 10000.0) + " 万" else "$play "
                 }播放  ·  ${

@@ -88,9 +88,11 @@ class LiveViewModel(
                             val firstGroup = response.data[0]
                             currentParentGroup = firstGroup
                             subAreaList.clear()
+                            // 添加"全部"分区项
+                            subAreaList.add(LiveAreaItem(id = "0", parentId = firstGroup.id.toString(), oldAreaId = "0", name = "全部", pic = "", parentName = firstGroup.name, areaType = 0))
                             subAreaList.addAll(firstGroup.list)
-                            if (firstGroup.list.isNotEmpty()) {
-                                currentSubArea = firstGroup.list[0]
+                            if (subAreaList.isNotEmpty()) {
+                                currentSubArea = subAreaList[0]
                                 loadRooms(refresh = true)
                             }
                         }
@@ -117,10 +119,12 @@ class LiveViewModel(
         if (currentParentGroup?.id == group.id) return
         currentParentGroup = group
         subAreaList.clear()
+        // 添加"全部"分区项
+        subAreaList.add(LiveAreaItem(id = "0", parentId = group.id.toString(), oldAreaId = "0", name = "全部", pic = "", parentName = group.name, areaType = 0))
         subAreaList.addAll(group.list)
         // 默认选中第一个子分区
-        if (group.list.isNotEmpty()) {
-            currentSubArea = group.list[0]
+        if (subAreaList.isNotEmpty()) {
+            currentSubArea = subAreaList[0]
             loadRooms(refresh = true)
         }
     }

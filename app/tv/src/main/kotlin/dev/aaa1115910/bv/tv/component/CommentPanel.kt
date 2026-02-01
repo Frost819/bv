@@ -235,10 +235,10 @@ fun CommentPanel(
     }
 
     // 显示后请求焦点（初次显示时或子评论浮窗关闭后）
-    LaunchedEffect(show, showSubCommentPanel, comments.isNotEmpty()) {
-        if (show && !showSubCommentPanel && comments.isNotEmpty()) {
+    LaunchedEffect(show, showSubCommentPanel, comments.size) {
+        if (show && !showSubCommentPanel) {
             // 子评论浮窗刚关闭，需要恢复焦点到之前点击的评论
-            if (wasSubCommentPanelShown) {
+            if (wasSubCommentPanelShown && comments.isNotEmpty()) {
                 delay(300) // 等待动画完成
                 listState.scrollToItem(selectedCommentIndex)
                 delay(100)
@@ -396,17 +396,35 @@ fun CommentPanel(
 
                         // 评论列表
                         if (error != null) {
-                            Text(
-                                text = error ?: "加载失败",
-                                color = Color.Red,
-                                modifier = Modifier.padding(16.dp)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                                    .focusRequester(focusRequester)
+                                    .focusable(),
+                                contentAlignment = Alignment.TopStart
+                            ) {
+                                Text(
+                                    text = error ?: "加载失败",
+                                    color = Color.Red,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
                         } else if (comments.isEmpty() && !loading) {
-                            Text(
-                                text = "暂无评论",
-                                color = Color.White.copy(alpha = 0.5f),
-                                modifier = Modifier.padding(16.dp)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                                    .focusRequester(focusRequester)
+                                    .focusable(),
+                                contentAlignment = Alignment.TopStart
+                            ) {
+                                Text(
+                                    text = "暂无评论",
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
                         } else {
                             LazyColumn(
                                 modifier = Modifier
@@ -692,18 +710,23 @@ private fun EpisodeSidebarItem(
             } else {
                 Color.Transparent
             },
-            focusedContainerColor = MaterialTheme.colorScheme.inverseSurface
+            focusedContainerColor = if (isSelected) {
+                Color.White.copy(alpha = 0.15f)
+            } else {
+                Color.Transparent
+            }
+        ),
+        scale = ClickableSurfaceDefaults.scale(
+            focusedScale = 1f
         ),
         border = ClickableSurfaceDefaults.border(
             border = borderColor?.let {
                 Border(border = BorderStroke(width = 2.dp, color = it))
             } ?: Border.None,
-            focusedBorder = borderColor?.let {
-                Border(
-                    border = BorderStroke(width = 2.dp, color = it),
-                    shape = MaterialTheme.shapes.small
-                )
-            } ?: Border.None
+            focusedBorder = Border(
+                border = BorderStroke(width = 2.dp, color = MaterialTheme.colorScheme.primary),
+                shape = MaterialTheme.shapes.small
+            )
         ),
         shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.small)
     ) {

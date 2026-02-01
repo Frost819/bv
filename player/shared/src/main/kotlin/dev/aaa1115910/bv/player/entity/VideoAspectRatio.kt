@@ -6,7 +6,8 @@ import dev.aaa1115910.bv.player.shared.R
 enum class VideoAspectRatio(private val strRes: Int) {
     Default(R.string.video_aspect_ratio_default),
     FourToThree(R.string.video_aspect_ratio_four_to_three),
-    SixteenToNine(R.string.video_aspect_ratio_sixteen_to_nine);
+    SixteenToNine(R.string.video_aspect_ratio_sixteen_to_nine),
+    NineToSixteen(R.string.video_aspect_ratio_nine_to_sixteen);
 
     fun getDisplayName(context: Context) = context.getString(strRes)
 }

@@ -61,6 +61,7 @@ import dev.aaa1115910.bv.player.tv.controller.VideoPlayerController
 import dev.aaa1115910.bv.util.countDownTimer
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.formatHourMinSec
+import dev.aaa1115910.bv.util.ifElse
 import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.util.timeTask
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -235,6 +236,7 @@ fun BvPlayer(
             VideoAspectRatio.Default -> defaultAspectRatio
             VideoAspectRatio.FourToThree -> 4 / 3f
             VideoAspectRatio.SixteenToNine -> 16 / 9f
+            VideoAspectRatio.NineToSixteen -> 9 / 16f
         }
         logger.info { "Update video player aspectRatio: $aspectRatioValue" }
     }
@@ -246,7 +248,7 @@ fun BvPlayer(
                 val totalTime = (videoPlayer.duration.coerceAtLeast(0L) / 1000).toInt()
 
                 if (totalTime == 0) {
-                    -2 // 无法正常博凡
+                    -2 // 无法正常播放
                 } else if (currentTime >= totalTime - 1) {
                     -1 // 播放完后上报的时间应为 -1
                 } else {
@@ -777,14 +779,14 @@ fun BvPlayer(
 
             BvVideoPlayer(
                 modifier = Modifier
-//                    .fillMaxHeight()
-                    .aspectRatio(aspectRatioValue)
+                    .ifElse(!videoPlayerVideoInfoData.isLive, Modifier.aspectRatio(aspectRatioValue))
                     .align(Alignment.Center),
                 videoPlayer = videoPlayer,
                 playerListener = videoPlayerListener,
                 rotationDegrees = currentVideoRotation.degrees,
                 danmakuPlayer = danmakuPlayer,
-                forceUseTextureView = useTextureViewFixPortraitVideo
+                forceUseTextureView = useTextureViewFixPortraitVideo,
+                isLive = videoPlayerVideoInfoData.isLive
             )
 
             DanmakuLayer(
