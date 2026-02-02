@@ -62,6 +62,7 @@ fun PlayerSetting(
     val showOnlineViewerCount by Prefs.showOnlineViewerCountFlow.collectAsState(Prefs.showOnlineViewerCount)
     var enableAudioPlaybackParams by remember { mutableStateOf(Prefs.enableAudioPlaybackParams) }
     var enableAsyncQueueing by remember { mutableStateOf(Prefs.enableAsyncQueueing) }
+    var skipPgcIntroOutro by remember { mutableStateOf(Prefs.skipPgcIntroOutro) }
 
     Column(
         modifier = modifier.fillMaxSize(),
@@ -291,6 +292,17 @@ fun PlayerSetting(
                         else -> "30 秒后隐藏"
                     },
                     onClick = { showOnlineViewerCountDialog = true }
+                )
+            }
+            item {
+                SettingSwitchListItem(
+                    title = "跳过 PGC 片头片尾(实验性)",
+                    supportText = "自动跳过 PGC 片头片尾",
+                    checked = skipPgcIntroOutro,
+                    onCheckedChange = {
+                        skipPgcIntroOutro = it
+                        Prefs.skipPgcIntroOutro = it
+                    }
                 )
             }
         }

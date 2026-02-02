@@ -46,12 +46,13 @@ fun BackToHistoryTip(
 @Composable
 fun SkipOpTip(
     modifier: Modifier = Modifier,
-    show: Boolean
+    show: Boolean,
+    text: String = "即将跳过片头"
 ) {
     SkipTip(
         modifier = modifier,
         show = show,
-        text = "跳过片头"
+        text = text
     )
 }
 
@@ -59,12 +60,13 @@ fun SkipOpTip(
 @Composable
 fun SkipEdTip(
     modifier: Modifier = Modifier,
-    show: Boolean
+    show: Boolean,
+    text: String = "即将跳过片尾"
 ) {
     SkipTip(
         modifier = modifier,
         show = show,
-        text = "跳过片尾"
+        text = text
     )
 }
 

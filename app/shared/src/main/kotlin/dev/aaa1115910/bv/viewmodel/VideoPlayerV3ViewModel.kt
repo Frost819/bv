@@ -17,6 +17,7 @@ import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 import dev.aaa1115910.biliapi.entity.ApiType
 import dev.aaa1115910.biliapi.entity.PlayData
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuMaskSegment
+import dev.aaa1115910.biliapi.http.entity.video.ClipInfo
 import dev.aaa1115910.biliapi.entity.video.HeartbeatVideoType
 import dev.aaa1115910.biliapi.entity.video.Subtitle
 import dev.aaa1115910.biliapi.entity.video.SubtitleAiStatus
@@ -112,6 +113,7 @@ class VideoPlayerV3ViewModel(
     val danmakuData: MutableList<DanmakuItemData> = ArrayList()
     val danmakuMasks = mutableStateListOf<DanmakuMaskSegment>()
     var videoShot: VideoShot? by mutableStateOf(null)
+    var clipInfoList: List<ClipInfo> by mutableStateOf(emptyList())
 
     var availableQuality = mutableStateListOf<Resolution>()
     var availableVideoCodec = mutableStateListOf<VideoCodec>()
@@ -286,6 +288,7 @@ class VideoPlayerV3ViewModel(
             if (needPay) return@runCatching
 
             withContext(Dispatchers.Main) { this@VideoPlayerV3ViewModel.playData = playData }
+            withContext(Dispatchers.Main) { this@VideoPlayerV3ViewModel.clipInfoList = playData.clipInfoList }
             logger.fInfo { "Load play data response success" }
             //logger.info { "Play data: $playData" }
 

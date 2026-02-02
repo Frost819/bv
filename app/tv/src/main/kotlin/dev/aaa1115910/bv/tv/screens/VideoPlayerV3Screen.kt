@@ -269,7 +269,9 @@ fun VideoPlayerV3Screen(
             showDanmaku = playerViewModel.showDanmaku,
             showRelatedVideos = playerViewModel.showRelatedVideos,
             showNextVideoBtn = Prefs.playerLoadNextAction != PlayerLoadNextAction.DoNothing,
-            defaultStartPosition = Prefs.playerDefaultStartPosition.toPlayerType()
+            defaultStartPosition = Prefs.playerDefaultStartPosition.toPlayerType(),
+            clipInfoList = playerViewModel.clipInfoList,
+            skipPgcIntroOutro = Prefs.skipPgcIntroOutro
         ),
         LocalVideoPlayerDanmakuMasksData provides VideoPlayerDanmakuMasksData(
             danmakuMasks = playerViewModel.danmakuMasks,

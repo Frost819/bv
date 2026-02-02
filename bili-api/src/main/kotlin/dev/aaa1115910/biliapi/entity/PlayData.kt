@@ -6,6 +6,7 @@ import bilibili.pgc.gateway.player.v2.dolbyOrNull
 import bilibili.playershared.dashVideoOrNull
 import bilibili.playershared.dolbyOrNull
 import bilibili.playershared.lossLessItemOrNull
+import dev.aaa1115910.biliapi.http.entity.video.ClipInfo
 
 data class PlayData(
     val dashVideos: List<DashVideo>,
@@ -14,6 +15,7 @@ data class PlayData(
     val flac: DashAudio? = null,
     val codec: Map<Int, List<String>> = emptyMap(),
     val needPay: Boolean = false,
+    val clipInfoList: List<ClipInfo> = emptyList(),
 ) {
     companion object {
         fun fromPlayViewUniteReply(playViewUniteReply: PlayViewUniteReply): PlayData {
@@ -180,7 +182,8 @@ data class PlayData(
                 dolby = dolby,
                 flac = flac,
                 codec = codec,
-                needPay = needPay
+                needPay = needPay,
+                clipInfoList = playUrlData.clipInfoList
             )
         }
 
@@ -238,7 +241,8 @@ data class PlayData(
                 dolby = dolby,
                 flac = flac,
                 codec = codec,
-                needPay = needPay
+                needPay = needPay,
+                clipInfoList = playUrlData.clipInfoList
             )
         }
 
@@ -296,7 +300,8 @@ data class PlayData(
                 dolby = dolby,
                 flac = flac,
                 codec = codec,
-                needPay = needPay
+                needPay = needPay,
+                clipInfoList = playUrlData.clipInfoList
             )
         }
     }
@@ -316,7 +321,8 @@ data class PlayData(
                     .distinct()
                     .filter { it != "none" }
             }.toMap(),
-            needPay = needPay || other.needPay
+            needPay = needPay || other.needPay,
+            clipInfoList = clipInfoList + other.clipInfoList
         )
     }
 }

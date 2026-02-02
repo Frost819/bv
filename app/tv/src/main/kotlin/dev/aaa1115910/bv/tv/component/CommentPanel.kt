@@ -235,10 +235,10 @@ fun CommentPanel(
     }
 
     // 显示后请求焦点（初次显示时或子评论浮窗关闭后）
-    LaunchedEffect(show, showSubCommentPanel, comments.size) {
+    LaunchedEffect(show, showSubCommentPanel, comments.isNotEmpty(), loading) {
         if (show && !showSubCommentPanel) {
             // 子评论浮窗刚关闭，需要恢复焦点到之前点击的评论
-            if (wasSubCommentPanelShown && comments.isNotEmpty()) {
+            if (wasSubCommentPanelShown) {
                 delay(300) // 等待动画完成
                 listState.scrollToItem(selectedCommentIndex)
                 delay(100)
@@ -248,14 +248,20 @@ fun CommentPanel(
             // 切换剧集后评论加载完成，请求焦点到评论列表
             else if (pendingFocusToComments) {
                 delay(100) // 等待渲染完成
-                focusRequester.requestFocus(scope)
-                pendingFocusToComments = false
+                if (!loading && comments.isNotEmpty()) {
+                    delay(100) // 等待渲染完成
+                    focusRequester.requestFocus(scope)
+                    pendingFocusToComments = false
+                }
             }
             // 初次显示父评论浮窗，请求焦点
             else if (!hasRequestedFocus) {
-                delay(300) // 等待动画和渲染完成
-                focusRequester.requestFocus(scope)
-                hasRequestedFocus = true
+                delay(200) // 等待请求完成
+                if(!loading){
+                    delay(200) // 等待动画完成
+                    focusRequester.requestFocus(scope)
+                    hasRequestedFocus = true
+                }
             }
         }
         // 记录子评论浮窗显示状态

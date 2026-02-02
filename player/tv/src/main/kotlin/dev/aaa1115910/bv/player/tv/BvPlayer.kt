@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -29,6 +30,7 @@ import com.kuaishou.akdanmaku.ecs.component.filter.TypeFilter
 import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuMaskFrame
+import dev.aaa1115910.biliapi.http.entity.video.ClipType
 import dev.aaa1115910.biliapi.entity.video.Subtitle
 import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.BvVideoPlayer
@@ -57,6 +59,8 @@ import dev.aaa1115910.bv.player.entity.VideoPlayerDebugInfoData
 import dev.aaa1115910.bv.player.entity.VideoPlayerSeekState
 import dev.aaa1115910.bv.player.entity.VideoPlayerStateData
 import dev.aaa1115910.bv.player.entity.DefaultStartPosition
+import dev.aaa1115910.bv.player.tv.controller.SkipEdTip
+import dev.aaa1115910.bv.player.tv.controller.SkipOpTip
 import dev.aaa1115910.bv.player.tv.controller.VideoPlayerController
 import dev.aaa1115910.bv.util.countDownTimer
 import dev.aaa1115910.bv.util.fInfo
@@ -169,6 +173,90 @@ fun BvPlayer(
     var hideBackToHistoryTimer: CountDownTimer? by remember { mutableStateOf(null) }
 
     var currentDanmakuMaskFrame: DanmakuMaskFrame? by remember { mutableStateOf(null) }
+
+    // 跳过片头片尾相关状态
+    var showSkipOpTip by remember { mutableStateOf(false) }
+    var showSkipEdTip by remember { mutableStateOf(false) }
+    var skipOpTipText by remember { mutableStateOf("即将跳过片头") }
+    var skipEdTipText by remember { mutableStateOf("即将跳过片尾") }
+    var processedClipIndices by remember { mutableStateOf(setOf<Int>()) }
+
+    // 使用 rememberUpdatedState 来跟踪 clipInfoList 和 skipPgcIntroOutro 的最新值
+    // 这样可以在非 Composable 上下文（定时器回调）中读取到最新值
+    val currentClipInfoList by rememberUpdatedState(videoPlayerConfigData.clipInfoList)
+    val currentSkipPgcIntroOutro by rememberUpdatedState(videoPlayerConfigData.skipPgcIntroOutro)
+
+    // 当 clipInfoList 变化时，重置已处理的 clip 索引
+    // 这确保了切换到新视频时，跳过片头/片尾功能能够正常工作
+    LaunchedEffect(videoPlayerConfigData.clipInfoList) {
+        processedClipIndices = emptySet()
+    }
+
+    // 跳过片头片尾检测任务
+    val checkSkipTask: () -> Unit = {
+        val currentPosition = (seekState.position / 1000).toInt()  // 毫秒转秒
+        // 使用 rememberUpdatedState 获取最新值
+        if (currentSkipPgcIntroOutro && currentClipInfoList.isNotEmpty() && isPlaying) {
+            currentClipInfoList.forEachIndexed { index, clipInfo ->
+                // 跳过已处理的 clip
+                if (index in processedClipIndices) return@forEachIndexed
+
+                when (clipInfo.clipType) {
+                    ClipType.CLIP_TYPE_OP -> {
+                        // 检测是否到达片头开始时间
+                        val inRange = currentPosition >= clipInfo.start && currentPosition < clipInfo.end
+                        if (inRange) {
+                            scope.launch(Dispatchers.Main) {
+                                skipOpTipText = clipInfo.toastText.ifBlank { "即将跳过片头" }
+                                showSkipOpTip = true
+                                // 显示提示后短暂延迟再跳转
+                                delay(1500)
+                                videoPlayer.seekTo(clipInfo.end * 1000L)
+                                mDanmakuPlayer?.seekTo(clipInfo.end * 1000L)
+                                mDanmakuPlayer?.pause()
+                                videoPlayer.start()
+                                showSkipOpTip = false
+                            }
+                            processedClipIndices = processedClipIndices + index
+                        }
+                    }
+                    ClipType.CLIP_TYPE_ED -> {
+                        // 检测是否到达片尾开始时间
+                        val inRange = currentPosition >= clipInfo.start && currentPosition < clipInfo.end
+                        if (inRange) {
+                            scope.launch(Dispatchers.Main) {
+                                skipEdTipText = clipInfo.toastText.ifBlank { "即将跳过片尾" }
+                                showSkipEdTip = true
+                                delay(1500)
+                                videoPlayer.seekTo(clipInfo.end * 1000L)
+                                mDanmakuPlayer?.seekTo(clipInfo.end * 1000L)
+                                mDanmakuPlayer?.pause()
+                                videoPlayer.start()
+                                showSkipEdTip = false
+                            }
+                            processedClipIndices = processedClipIndices + index
+                        }
+                    }
+                    else -> {}  // 忽略其他类型
+                }
+            }
+        }
+    }
+
+    // 按需启动跳过检测定时器
+    // 只有当 skipPgcIntroOutro 开启且有 clipInfoList 时才启动
+    DisposableEffect(videoPlayerConfigData.skipPgcIntroOutro, videoPlayerConfigData.clipInfoList) {
+        var checkSkipTimer: Timer? = null
+        if (videoPlayerConfigData.skipPgcIntroOutro && videoPlayerConfigData.clipInfoList.isNotEmpty()) {
+            checkSkipTimer = timeTask(500, 500, "checkSkipTimer") {
+                checkSkipTask()
+            }
+        }
+        onDispose {
+            checkSkipTimer?.cancel()
+        }
+    }
+
 
     // 独立弹幕层句柄（Stable），父级重组频率降低
     val danmakuLayerHandle = remember { DanmakuLayerHandle() }
@@ -793,6 +881,22 @@ fun BvPlayer(
                 modifier = Modifier.align(Alignment.TopCenter),
                 handle = danmakuLayerHandle
             )
+
+            // 跳过片头片尾提示
+            if (showSkipOpTip) {
+                SkipOpTip(
+                    modifier = Modifier.align(Alignment.BottomStart),
+                    show = true,
+                    text = skipOpTipText
+                )
+            }
+            if (showSkipEdTip) {
+                SkipEdTip(
+                    modifier = Modifier.align(Alignment.BottomStart),
+                    show = true,
+                    text = skipEdTipText
+                )
+            }
 
             if (showLogs) {
                 Column(

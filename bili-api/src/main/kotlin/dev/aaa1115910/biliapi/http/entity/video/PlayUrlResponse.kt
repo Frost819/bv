@@ -5,6 +5,49 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
 /**
+ * 跳过片头/片尾配置
+ *
+ * @param materialNo 素材编号
+ * @param start DASH分段开始
+ * @param end DASH分段结束
+ * @param clipType Clip类型 (CLIP_TYPE_OP/CLIP_TYPE_ED/CLIP_TYPE_HE/CLIP_TYPE_MULTI_VIEW/CLIP_TYPE_AD)
+ * @param toastText 跳过时的提示语
+ * @param multiView 多视图信息
+ */
+@Serializable
+data class ClipInfo(
+    val materialNo: Long = 0L,
+    val start: Int = 0, // 开始时间点，单位秒
+    val end: Int = 0, // 结束时间点，单位秒
+    val clipType: ClipType = ClipType.Unknown,
+    val toastText: String = "",
+    val multiView: MultiView? = null
+)
+
+/**
+ * 跳过片头/片尾配置: Clip类型
+ * JSON 中为字符串值: "CLIP_TYPE_OP", "CLIP_TYPE_ED" 等
+ */
+@Serializable
+enum class ClipType {
+    Unknown,
+    CLIP_TYPE_OP,         // 跳过OP
+    CLIP_TYPE_ED,         // 跳过ED
+    CLIP_TYPE_HE,
+    CLIP_TYPE_MULTI_VIEW,
+    CLIP_TYPE_AD
+}
+
+/**
+ * 多视图信息
+ */
+@Serializable
+data class MultiView(
+    val mainViewEndTime: Int? = null,
+    val subViewStartTime: Int? = null
+)
+
+/**
  * @param code 作用尚不明确 pcg独有
  * @param isPreview 作用尚不明确 pcg独有
  * @param fnver 请求时提供的 fnver pcg独有
@@ -36,7 +79,7 @@ import kotlinx.serialization.json.JsonElement
  * @param high_format null
  * @param lastPlayTime 上次播放进度 毫秒值 非pgc接口独有
  * @param lastPlayCid 上次播放分p的cid 非pgc接口独有
- * @param clipInfoList 作用尚不明确 pcg独有
+ * @param clipInfoList 跳过片头/片尾配置 pcg独有
  * @param recordInfo 备案登记信息 pcg独有
  */
 @Serializable
@@ -89,7 +132,7 @@ data class PlayUrlData(
     @SerialName("last_play_cid")
     val lastPlaycid: Long = 0,
     @SerialName("clip_info_list")
-    val clipInfoList: List<JsonElement> = emptyList(),
+    val clipInfoList: List<ClipInfo> = emptyList(),
     @SerialName("record_info")
     val recordInfo: RecordInfo? = null
 )
