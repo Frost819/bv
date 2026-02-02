@@ -829,20 +829,21 @@ object BiliHttpApi {
     ): Pair<Boolean, String> {
         checkToken(accessKey, sessData)
         require(avid != null || bvid != null) { "avid and bvid cannot be null at the same time" }
-        val response = client.post("/x/web-interface/coin/add") {
+//        val response = client.post("/x/web-interface/coin/add") {
+        val response = client.post("https://app.bilibili.com/x/v2/view/coin/add") {
             setBody(FormDataContent(
                 Parameters.build {
                     avid?.let { append("aid", "$it") }
                     bvid?.let { append("bvid", it) }
                     append("multiply", "$multiply")
                     append("select_like", "${if (like) 1 else 0}")
-                    csrf?.let { append("csrf", it) }
+//                    csrf?.let { append("csrf", it) }
                     accessKey?.let { append("access_key", it) }
                 }
             ))
-            if (sessData != null && buvid3 != null) {
-                header("Cookie", "SESSDATA=$sessData;buvid3=$buvid3")
-            }
+//            if (sessData != null && buvid3 != null) {
+//                header("Cookie", "SESSDATA=$sessData;buvid3=$buvid3")
+//            }
         }.body<BiliResponse<AddCoin>>()
         return Pair(response.code == 0, response.message)
     }

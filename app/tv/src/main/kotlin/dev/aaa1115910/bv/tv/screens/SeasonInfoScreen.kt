@@ -668,9 +668,11 @@ fun SeasonEpisodeButton(
     cover: String,
     duration: Int,
     played: Int = 0,
+    isLastPlayed: Boolean = false,
     onClick: () -> Unit
 ) {
     val isPreview = LocalInspectionMode.current
+    val borderColor = if (isLastPlayed) Color(0xFFE39B17) else null
 
     Surface(
         modifier = modifier,
@@ -679,7 +681,28 @@ fun SeasonEpisodeButton(
             focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
             pressedContainerColor = MaterialTheme.colorScheme.inverseSurface
         ),
+        scale = ClickableSurfaceDefaults.scale(scale = 1f, focusedScale = 1f),
         shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.medium),
+        border = ClickableSurfaceDefaults.border(
+            border = borderColor?.let {
+                Border(
+                    border = BorderStroke(2.dp, it),
+                    shape = MaterialTheme.shapes.medium
+                )
+            } ?: Border.None,
+            focusedBorder = borderColor?.let {
+                Border(
+                    border = BorderStroke(2.dp, it),
+                    shape = MaterialTheme.shapes.medium
+                )
+            } ?: Border.None,
+            pressedBorder = borderColor?.let {
+                Border(
+                    border = BorderStroke(2.dp, it),
+                    shape = MaterialTheme.shapes.medium
+                )
+            } ?: Border.None
+        ),
         onClick = onClick
     ) {
         Row {
@@ -857,6 +880,7 @@ fun SeasonEpisodesDialog(
                                 title = episodeTitle,
                                 cover = episode.cover,
                                 played = if (episode.id == lastPlayedId) lastPlayedTime else 0,
+                                isLastPlayed = episode.id == lastPlayedId,
                                 duration = episode.duration,
                                 onClick = {
                                     onClick(
@@ -886,6 +910,7 @@ fun SeasonEpisodeRow(
     onClick: (avid: Long, cid: Long, epid: Int, episodeTitle: String, startTime: Int) -> Unit
 ) {
     val focusRequester = remember { FocusRequester() }
+    val rowState = rememberLazyListState()
     var hasFocus by remember { mutableStateOf(false) }
     val titleColor = if (hasFocus) Color.White else Color.White.copy(alpha = 0.6f)
     val titleFontSize by animateFloatAsState(
@@ -894,6 +919,16 @@ fun SeasonEpisodeRow(
     )
 
     var showEpisodesDialog by remember { mutableStateOf(false) }
+
+    // 当存在历史记录时，滚动到对应集
+    LaunchedEffect(lastPlayedId, episodes) {
+        if (lastPlayedId != 0 && episodes.isNotEmpty()) {
+            val lastPlayedIndex = episodes.indexOfFirst { it.id == lastPlayedId }
+            if (lastPlayedIndex != -1) {
+                rowState.scrollToItem(lastPlayedIndex)
+            }
+        }
+    }
 
     Column(
         modifier = modifier
@@ -911,6 +946,7 @@ fun SeasonEpisodeRow(
             modifier = Modifier
                 .padding(top = 15.dp)
                 .focusRestorer(focusRequester),
+            state = rowState,
             contentPadding = PaddingValues(horizontal = 32.dp),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
         ) {
@@ -956,6 +992,7 @@ fun SeasonEpisodeRow(
                     title = episodeTitle,
                     cover = episode.cover,
                     played = if (episode.id == lastPlayedId) lastPlayedTime else 0,
+                    isLastPlayed = episode.id == lastPlayedId,
                     duration = episode.duration,
                     onClick = {
                         val pTitle = generateEpisodeTitle(episode, title)
@@ -976,6 +1013,8 @@ fun SeasonEpisodeRow(
         show = showEpisodesDialog,
         title = title,
         episodes = episodes,
+        lastPlayedId = lastPlayedId,
+        lastPlayedTime = lastPlayedTime,
         onHideDialog = { showEpisodesDialog = false },
         onClick = onClick
     )

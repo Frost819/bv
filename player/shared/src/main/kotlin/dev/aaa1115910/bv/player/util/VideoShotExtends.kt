@@ -60,15 +60,6 @@ class VideoShotImageCache {
         val bitmapOptions = BitmapFactory.Options().apply {
             inPreferredConfig = Bitmap.Config.RGB_565
             inScaled = false
-            
-            // 内存管理
-            inTempStorage = ByteArray(16 * 1024) // 16KB临时缓冲区，减少内存分配
-            inSampleSize = 1 // 采样率，1表示原始大小
-            
-            // 其他性能优化
-            inJustDecodeBounds = false // 实际解码像素数据
-            inPremultiplied = false // 不进行预乘处理，节省计算
-            
         }
     }
 

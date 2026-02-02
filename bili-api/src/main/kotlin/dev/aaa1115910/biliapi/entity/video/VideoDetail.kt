@@ -174,12 +174,12 @@ data class VideoDetail(
     ) {
         companion object {
             fun fromPlayerIcon(playerIcon: dev.aaa1115910.biliapi.http.entity.video.VideoMoreInfo.PlayerIcon?) =
-                playerIcon?.let {
+                if (playerIcon != null && playerIcon.url1 != null && playerIcon.url2 != null)
                     PlayerIcon(
                         idle = playerIcon.url2,
                         moving = playerIcon.url1
                     )
-                }
+                else null
 
             fun fromPlayerIcon(playerIcon: bilibili.app.view.v1.PlayerIcon) = PlayerIcon(
                 idle = playerIcon.url2,

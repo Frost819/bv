@@ -256,7 +256,7 @@
     <string name="settings_ui_pgc_nav_items_hint">使用左右键移动顺序，按确认键切换显示/隐藏</string>
     <string name="settings_live_enable">显示直播</string>
     <string name="settings_live_enable_desc">在侧边栏显示直播入口</string>
-    <string name="settings_version_check_update_button">爷要更新</string>
+    <string name="settings_version_check_update_button">去更新</string>
     <string name="settings_version_current_version">当前版本: %1$s</string>
     <string name="settings_version_latest_version">最新版本: %1$s</string>
 

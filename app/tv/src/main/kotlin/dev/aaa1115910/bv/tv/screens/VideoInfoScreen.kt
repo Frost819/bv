@@ -77,7 +77,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -917,6 +920,7 @@ fun VideoInfoScreen(
                                 episodes = section.episodes,
                                 lastPlayedCid = lastPlayedCid,
                                 lastPlayedTime = lastPlayedTime,
+                                intentAid = intentAid,
                                 enableUgcListDialog = section.episodes.size > 5,
                                 onClickEp = { aid, cid ->
                                     logger.fInfo { "Click ugc season episode: [av:${videoDetailViewModel.videoDetail?.aid}, bv:${videoDetailViewModel.videoDetail?.bvid}, cid:$cid]" }
@@ -1525,9 +1529,22 @@ private fun VideoPartButton(
     title: String,
     duration: Int,
     played: Int = 0,
+    isLastPlayed: Boolean = false,
+    isCurrentIntent: Boolean = false,
     type: VideoPartType = VideoPartType.Part,
     onClick: () -> Unit
 ) {
+    val borderColor = when {
+        isLastPlayed -> Color(0xFFE39B17)
+        isCurrentIntent -> MaterialTheme.colorScheme.primary
+        else -> null
+    }
+    val focusedBorderColor = when {
+        isLastPlayed -> Color(0xFFE39B17)
+        isCurrentIntent -> Color(0xFF00BFFF)
+        else -> null
+    }
+
     Surface(
         modifier = modifier,
         colors = ClickableSurfaceDefaults.colors(
@@ -1535,7 +1552,28 @@ private fun VideoPartButton(
             focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
             pressedContainerColor = MaterialTheme.colorScheme.inverseSurface
         ),
+        scale = ClickableSurfaceDefaults.scale(scale = 1f, focusedScale = 1f),
         shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.medium),
+        border = ClickableSurfaceDefaults.border(
+            border = borderColor?.let {
+                Border(
+                    border = BorderStroke(2.dp, it),
+                    shape = MaterialTheme.shapes.medium
+                )
+            } ?: Border.None,
+            focusedBorder = focusedBorderColor?.let {
+                Border(
+                    border = BorderStroke(2.dp, it),
+                    shape = MaterialTheme.shapes.medium
+                )
+            } ?: Border.None,
+            pressedBorder = focusedBorderColor?.let {
+                Border(
+                    border = BorderStroke(2.dp, it),
+                    shape = MaterialTheme.shapes.medium
+                )
+            } ?: Border.None
+        ),
         onClick = { onClick() }
     ) {
         Box(
@@ -1544,17 +1582,24 @@ private fun VideoPartButton(
         ) {
             Box(
                 modifier = Modifier
-                    .background(Color.Black.copy(alpha = 0.2f))
+                    .background(Color.Black.copy(alpha = 0.5f))
                     .fillMaxHeight()
                     .fillMaxWidth(if (played < 0) 1f else (played / duration.toFloat()))
             ) {}
             Text(
                 modifier = Modifier
                     .padding(8.dp),
-                text = when (type) {
-                    VideoPartType.Episode -> "EP"
-                    VideoPartType.Part -> "P"
-                } + "$index $title",
+                text = buildAnnotatedString {
+                    if (isLastPlayed) {
+                        withStyle(style = SpanStyle(color = Color(0xFFE39B17))) {
+                            append("继续播放 ")
+                        }
+                    }
+                    append(when (type) {
+                        VideoPartType.Episode -> "EP"
+                        VideoPartType.Part -> "P"
+                    } + "$index $title")
+                },
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -1572,7 +1617,7 @@ private fun VideoPartRowButton(
     onClick: () -> Unit
 ) {
     Surface(
-        modifier = modifier.height(64.dp),
+        modifier = modifier.size(width = 40.dp, height = 45.dp),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
@@ -1587,7 +1632,7 @@ private fun VideoPartRowButton(
         ) {
             Icon(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(32.dp)
                     .rotate(90f),
                 imageVector = Icons.Rounded.ViewModule,
                 contentDescription = null
@@ -1610,6 +1655,7 @@ fun VideoPartRow(
     val focusRequester = remember { FocusRequester() }
     var hasFocus by remember { mutableStateOf(false) }
     var showPartListDialog by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
     val titleFontSize by animateFloatAsState(
         targetValue = if (hasFocus) 30f else 14f,
         label = "title font size",
@@ -1618,36 +1664,49 @@ fun VideoPartRow(
         )
     )
 
+    // 滚动到有历史记录的那一集
+    LaunchedEffect(lastPlayedCid, pages) {
+        if (lastPlayedCid != 0L && pages.isNotEmpty()) {
+            val index = pages.indexOfFirst { it.cid == lastPlayedCid }
+            if (index > 0) {
+                listState.scrollToItem(index)
+            }
+        }
+    }
+
     Column(
         modifier = modifier
             .ifElse(!nested, Modifier.padding(start = 26.dp))
             .onFocusChanged { hasFocus = it.hasFocus },
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            modifier = Modifier
-                .padding(start = 10.dp),
-            text = stringResource(R.string.video_info_part_row_title)
-                    + (" - $subtitle".takeIf { subtitle.isNotBlank() } ?: ""),
-            fontSize = titleFontSize.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Row(
+            modifier = Modifier.padding(start = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.video_info_part_row_title)
+                        + (" - $subtitle".takeIf { subtitle.isNotBlank() } ?: ""),
+                fontSize = titleFontSize.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (enablePartListDialog) {
+                VideoPartRowButton(
+                    onClick = { showPartListDialog = true }
+                )
+            }
+        }
 
         LazyRow(
             modifier = Modifier
                 .padding(top = 4.dp)
                 .focusRestorer(focusRequester),
+            state = listState,
             contentPadding = PaddingValues(12.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (enablePartListDialog) {
-                item {
-                    VideoPartRowButton(
-                        onClick = { showPartListDialog = true }
-                    )
-                }
-            }
             itemsIndexed(items = pages, key = { _, page -> page.cid }) { index, page ->
                 VideoPartButton(
                     modifier = Modifier
@@ -1655,6 +1714,7 @@ fun VideoPartRow(
                     index = index + 1,
                     title = page.title,
                     played = if (page.cid == lastPlayedCid) lastPlayedTime else 0,
+                    isLastPlayed = page.cid == lastPlayedCid,
                     duration = page.duration,
                     onClick = { onClick(page.cid) }
                 )
@@ -1666,6 +1726,8 @@ fun VideoPartRow(
         show = showPartListDialog,
         onHideDialog = { showPartListDialog = false },
         pages = pages,
+        lastPlayedCid = lastPlayedCid,
+        lastPlayedTime = lastPlayedTime,
         title = "分 P 列表",
         onClick = onClick
     )
@@ -1678,6 +1740,7 @@ fun VideoUgcSeasonRow(
     episodes: List<Episode>,
     lastPlayedCid: Long = 0,
     lastPlayedTime: Int = 0,
+    intentAid: Long = 0,
     enableUgcListDialog: Boolean = false,
     onClickEp: (avid: Long, cid: Long) -> Unit,
     onClickEpPart: (episode: Episode, cid: Long) -> Unit
@@ -1685,6 +1748,7 @@ fun VideoUgcSeasonRow(
     val focusRequester = remember { FocusRequester() }
     var hasFocus by remember { mutableStateOf(false) }
     var showUgcListDialog by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
     val titleFontSize by animateFloatAsState(
         targetValue = if (hasFocus) 30f else 14f,
         label = "title font size",
@@ -1694,33 +1758,55 @@ fun VideoUgcSeasonRow(
     )
     var focusingEpisode by remember { mutableStateOf<Episode?>(null) }
 
+    // 滚动到有历史记录的那一集，如果没有历史记录则滚动到与 intentAid 相同的视频
+    LaunchedEffect(lastPlayedCid, intentAid, episodes) {
+        if (episodes.isEmpty()) return@LaunchedEffect
+
+        val index = if (lastPlayedCid != 0L) {
+            // 优先使用历史记录
+            episodes.indexOfFirst { it.cid == lastPlayedCid || it.pages.any { page -> page.cid == lastPlayedCid } }
+        } else if (intentAid != 0L) {
+            // 没有历史记录时，滚动到与 intentAid 相同的视频
+            episodes.indexOfFirst { it.aid == intentAid }
+        } else {
+            -1
+        }
+
+        if (index > 0) {
+            listState.scrollToItem(index)
+        }
+    }
+
     Column(
         modifier = modifier
             .padding(start = 26.dp)
             .onFocusChanged { hasFocus = it.hasFocus },
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            modifier = Modifier
-                .padding(start = 10.dp),
-            text = title,
-            fontSize = titleFontSize.sp
-        )
+        Row(
+            modifier = Modifier.padding(start = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = title,
+                fontSize = titleFontSize.sp
+            )
+            if (enableUgcListDialog) {
+                VideoPartRowButton(
+                    onClick = { showUgcListDialog = true }
+                )
+            }
+        }
 
         LazyRow(
             modifier = Modifier
                 .padding(top = 4.dp)
                 .focusRestorer(focusRequester),
+            state = listState,
             contentPadding = PaddingValues(12.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (enableUgcListDialog) {
-                item {
-                    VideoPartRowButton(
-                        onClick = { showUgcListDialog = true }
-                    )
-                }
-            }
             itemsIndexed(items = episodes) { index, episode ->
                 VideoPartButton(
                     modifier = Modifier
@@ -1729,6 +1815,8 @@ fun VideoUgcSeasonRow(
                     index = index + 1,
                     title = episode.title,
                     played = if (episode.cid == lastPlayedCid) lastPlayedTime else 0,
+                    isLastPlayed = episode.cid == lastPlayedCid || episode.pages.any { it.cid == lastPlayedCid },
+                    isCurrentIntent = episode.aid == intentAid,
                     duration = episode.duration,
                     type = VideoPartType.Episode,
                     onClick = { onClickEp(episode.aid, episode.cid) }
@@ -1754,6 +1842,9 @@ fun VideoUgcSeasonRow(
         show = showUgcListDialog,
         onHideDialog = { showUgcListDialog = false },
         episodes = episodes,
+        lastPlayedCid = lastPlayedCid,
+        lastPlayedTime = lastPlayedTime,
+        intentAid = intentAid,
         title = "合集列表",
         onClick = onClickEp
     )
@@ -1765,6 +1856,8 @@ private fun VideoPartListDialog(
     show: Boolean,
     title: String,
     pages: List<VideoPage>,
+    lastPlayedCid: Long = 0,
+    lastPlayedTime: Int = 0,
     onHideDialog: () -> Unit,
     onClick: (cid: Long) -> Unit
 ) {
@@ -1862,7 +1955,8 @@ private fun VideoPartListDialog(
                                 modifier = buttonModifier,
                                 index = page.index,
                                 title = page.title,
-                                played = 0,
+                                played = if (page.cid == lastPlayedCid) lastPlayedTime else 0,
+                                isLastPlayed = page.cid == lastPlayedCid,
                                 duration = page.duration,
                                 onClick = { onClick(page.cid) }
                             )
@@ -1880,6 +1974,9 @@ private fun VideoUgcListDialog(
     show: Boolean,
     title: String,
     episodes: List<Episode>,
+    lastPlayedCid: Long = 0,
+    lastPlayedTime: Int = 0,
+    intentAid: Long = 0,
     onHideDialog: () -> Unit,
     onClick: (avid: Long, cid: Long) -> Unit
 ) {
@@ -1978,7 +2075,9 @@ private fun VideoUgcListDialog(
                                 index = selectedTabIndex * 20 + index + 1,
                                 type = VideoPartType.Episode,
                                 title = episode.title,
-                                played = 0,
+                                played = if (episode.cid == lastPlayedCid) lastPlayedTime else 0,
+                                isLastPlayed = episode.cid == lastPlayedCid || episode.pages.any { it.cid == lastPlayedCid },
+                                isCurrentIntent = episode.aid == intentAid,
                                 duration = episode.duration,
                                 onClick = { onClick(episode.aid, episode.cid) }
                             )

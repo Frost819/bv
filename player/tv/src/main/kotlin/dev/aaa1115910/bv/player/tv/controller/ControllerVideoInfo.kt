@@ -739,10 +739,10 @@ private fun SpeedDialog(
         focusRequester.requestFocus(scope)
     }
 
-    // 15s 无操作自动关闭
+    // 10 秒无操作自动关闭
     LaunchedEffect(lastInteractionTime) {
         val base = lastInteractionTime
-        delay(15000)
+        delay(10000)
         // 如果期间没有新的交互，则关闭
         if (base == lastInteractionTime) onHideDialog()
     }

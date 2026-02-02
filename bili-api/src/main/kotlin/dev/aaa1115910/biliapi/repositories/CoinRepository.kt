@@ -36,6 +36,7 @@ class CoinRepository(
                 csrf = authRepository.biliJct?: "",
                 sessData = authRepository.sessionData!!,
                 buvid3 = authRepository.buvid3!!,
+                accessKey = authRepository.accessToken
             )
 
             ApiType.App -> BiliHttpApi.sendVideoCoin(

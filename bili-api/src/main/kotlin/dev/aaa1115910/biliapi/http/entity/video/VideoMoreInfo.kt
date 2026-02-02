@@ -215,10 +215,10 @@ data class VideoMoreInfo(
      */
     @Serializable
     data class PlayerIcon(
-        val url1: String,
-        val hash1: String,
-        val url2: String,
-        val hash2: String,
+        val url1: String? = null,
+        val hash1: String? = null,
+        val url2: String? = null,
+        val hash2: String? = null,
         val ctime: Int
     )
 

@@ -142,11 +142,11 @@ private fun FavoriteDialog(
             touch()
         }
     }
-    // 15 秒无操作自动关闭
+    // 10 秒无操作自动关闭
     LaunchedEffect(lastInteractionTime, show) {
         if (show) {
             val base = lastInteractionTime
-            delay(15000)
+            delay(10000)
             if (base == lastInteractionTime) onHideDialog()
         }
     }

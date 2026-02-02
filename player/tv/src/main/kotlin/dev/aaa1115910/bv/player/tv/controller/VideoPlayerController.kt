@@ -564,7 +564,7 @@ fun VideoPlayerController(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .height(2.2.dp),
+                    .height(2.5.dp),
                 progress = { throttledProgress },
                 color = SliderDefaults.colors().activeTrackColor,
                 trackColor = Color.Black.copy(alpha = 0.4f),

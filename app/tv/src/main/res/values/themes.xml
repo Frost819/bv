@@ -6,5 +6,7 @@
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
     </style>
 
-    <style name="Theme.BV.TV" parent="Theme.Material3.DayNight.NoActionBar" />
+    <style name="Theme.BV.TV" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
 </resources>

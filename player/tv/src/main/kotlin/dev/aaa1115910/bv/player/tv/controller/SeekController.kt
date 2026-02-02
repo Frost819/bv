@@ -2,6 +2,7 @@ package dev.aaa1115910.bv.player.tv.controller
 
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
@@ -47,8 +48,8 @@ fun SeekController(
         AnimatedVisibility(
             modifier = Modifier.align(Alignment.BottomCenter),
             visible = show,
-            enter = expandVertically(),
-            exit = shrinkVertically(),
+            enter = expandVertically(tween(150)),
+            exit = shrinkVertically(tween(150)),
             label = "SeekControllerVisible"
         ) {
             SeekController(
