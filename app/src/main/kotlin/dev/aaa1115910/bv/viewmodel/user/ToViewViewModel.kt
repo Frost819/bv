@@ -100,6 +100,10 @@ class ToViewViewModel(
             )
 
             data.data.forEach { ToViewItem ->
+                if (dev.aaa1115910.bv.block.BlockManager.isPageEnabled(dev.aaa1115910.bv.block.BlockPage.ToView)
+                    && dev.aaa1115910.bv.block.BlockManager.isBlocked(ToViewItem.mid)
+                ) return@forEach
+
                 histories.addWithMainContext(
                     VideoCardData(
                         avid = ToViewItem.oid,

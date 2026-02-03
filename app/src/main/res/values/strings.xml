@@ -239,6 +239,17 @@
     <string name="settings_item_network">网络设置</string>
     <string name="settings_item_other">更多设置</string>
     <string name="settings_item_player_type">播放器内核</string>
+    <string name="settings_item_block">黑名单</string>
+    <string name="block_setting_groups_title">需要屏蔽的关注分组</string>
+    <string name="block_setting_groups_support">当前：已选择 %1$d 个分组</string>
+    <string name="block_setting_groups_dialog_title">选择要屏蔽的分组</string>
+    <string name="block_setting_pages_title">需要屏蔽视频的页面</string>
+    <string name="block_setting_pages_support_empty">当前：未选择</string>
+    <string name="block_setting_pages_support">当前：%1$s</string>
+    <string name="block_setting_pages_dialog_title">选择在哪些页面屏蔽</string>
+    <string name="block_setting_update_now_title">立即更新</string>
+    <string name="block_setting_update_now_support_updating">正在更新，请勿退出设置界面（退出将停止更新）</string>
+    <string name="block_setting_update_now_need_login">未登录，无法更新</string>
     <string name="settings_item_audio_video_settings">播放设置</string>
     <string name="settings_item_resolution">默认分辨率</string>
     <string name="settings_item_storage">存储管理</string>

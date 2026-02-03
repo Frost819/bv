@@ -50,7 +50,11 @@ class PopularViewModel(
             )
             beforeAppendData()
             nextPage = popularVideoData.nextPage
-            popularVideoList.addAllWithMainContext(popularVideoData.list)
+            val filtered = dev.aaa1115910.bv.block.BlockManager.filterList(
+                page = dev.aaa1115910.bv.block.BlockPage.Popular,
+                list = popularVideoData.list
+            ) { it.authorMid }
+            popularVideoList.addAllWithMainContext(filtered)
         }.onFailure {
             logger.fError { "Load popular video list failed: ${it.stackTraceToString()}" }
             withContext(Dispatchers.Main) {

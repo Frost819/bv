@@ -108,6 +108,9 @@ class FavoriteViewModel(
                 )
                 favoriteFolderData.medias.forEach { favoriteItem ->
                     if (favoriteItem.type != FavoriteItemType.Video) return@forEach
+                    if (dev.aaa1115910.bv.block.BlockManager.isPageEnabled(dev.aaa1115910.bv.block.BlockPage.Favorite)
+                        && dev.aaa1115910.bv.block.BlockManager.isBlocked(favoriteItem.upper.mid)
+                    ) return@forEach
                     favorites.addWithMainContext(
                         VideoCardData(
                             avid = favoriteItem.id,

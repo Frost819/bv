@@ -19,6 +19,7 @@ import dev.aaa1115910.bv.dao.AppDatabase
 import dev.aaa1115910.bv.network.HttpServer
 import dev.aaa1115910.bv.util.LogCatcherUtil
 import dev.aaa1115910.bv.util.Prefs
+import dev.aaa1115910.bv.block.BlockManager
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.KoinApplication
@@ -58,6 +59,7 @@ class BVApp : Application(), KoinComponent {
 
         initCoreLibraries()
         Prefs.init()
+        BlockManager.reloadFromPrefs() // 启动即从本地恢复，保证过滤一直有效
         initDeviceInfo()
         initRepository()
         initProxy()

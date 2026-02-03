@@ -63,7 +63,10 @@ class VideoInfoRepository(private val videoDetailRepository: VideoDetailReposito
             argueTip = videoDetail.argueTip,
             description = videoDetail.description,
             pages = videoDetail.pages,
-            relatedVideos = mapToVideoCardData(videoDetail.relatedVideos),
+            relatedVideos = dev.aaa1115910.bv.block.BlockManager.filterList(
+                page = dev.aaa1115910.bv.block.BlockPage.Related,
+                list = mapToVideoCardData(videoDetail.relatedVideos)
+            ) { it.upMid },
             ugcSeason = videoDetail.ugcSeason,
         )
 

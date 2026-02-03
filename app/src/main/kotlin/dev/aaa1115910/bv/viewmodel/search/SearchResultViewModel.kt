@@ -95,10 +95,23 @@ class SearchResultViewModel(
                     preferApiType = Prefs.apiType,
                     enableProxy = enableProxySearchResult
                 )
+
+                val filteredSearchResultResponse = if (searchType == SearchType.Video
+                    && dev.aaa1115910.bv.block.BlockManager.isPageEnabled(dev.aaa1115910.bv.block.BlockPage.SearchVideo)
+                ) {
+                    searchResultResponse.copy(
+                        videos = searchResultResponse.videos.filter { v ->
+                            !dev.aaa1115910.bv.block.BlockManager.isBlocked(v.mid)
+                        }
+                    )
+                } else {
+                    searchResultResponse
+                }
+
                 withContext(Dispatchers.Main) {
                     when (searchType) {
                         SearchType.Video -> {
-                            videoSearchResult = videoSearchResult.appendSearchResultData(searchResultResponse)
+                            videoSearchResult = videoSearchResult.appendSearchResultData(filteredSearchResultResponse)
 
                         }
 

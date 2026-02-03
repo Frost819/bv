@@ -125,6 +125,9 @@ android {
             }
         }
     }
+    kotlinOptions {
+        freeCompilerArgs = listOf("-XXLanguage:+BreakContinueInInlineLambdas")
+    }
 
     /*splits {
         if (gradle.startParameter.taskNames.find { it.startsWith("assembleDefault") } != null) {

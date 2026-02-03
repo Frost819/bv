@@ -70,6 +70,10 @@ class HistoryViewModel(
             )
 
             data.data.forEach { historyItem ->
+                if (dev.aaa1115910.bv.block.BlockManager.isPageEnabled(dev.aaa1115910.bv.block.BlockPage.History)
+                    && dev.aaa1115910.bv.block.BlockManager.isBlocked(historyItem.mid)
+                ) return@forEach
+
                 histories.addWithMainContext(
                     VideoCardData(
                         avid = historyItem.oid,

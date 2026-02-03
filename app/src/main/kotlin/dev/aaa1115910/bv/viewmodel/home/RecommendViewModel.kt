@@ -63,7 +63,11 @@ class RecommendViewModel(
             )
             beforeAppendData()
             nextPage = recommendData.nextPage
-            recommendVideoList.addAllWithMainContext(recommendData.items)
+            val filtered = dev.aaa1115910.bv.block.BlockManager.filterList(
+                page = dev.aaa1115910.bv.block.BlockPage.Recommend,
+                list = recommendData.items
+            ) { it.authorMid }
+            recommendVideoList.addAllWithMainContext(filtered)
         }.onFailure {
             logger.fError { "Load recommend video list failed: ${it.stackTraceToString()}" }
             withContext(Dispatchers.Main) {

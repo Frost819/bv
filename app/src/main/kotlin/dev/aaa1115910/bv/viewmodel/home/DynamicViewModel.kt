@@ -63,7 +63,11 @@ class DynamicViewModel(
             )
 
             currentPage = nextPage
-            dynamicList.addAllWithMainContext(data.videos)
+            val filtered = dev.aaa1115910.bv.block.BlockManager.filterList(
+                page = dev.aaa1115910.bv.block.BlockPage.Dynamics,
+                list = data.videos
+            ) { it.authorMid }
+            dynamicList.addAllWithMainContext(filtered)
 
             historyOffset = data.historyOffset
             updateBaseline = data.updateBaseline

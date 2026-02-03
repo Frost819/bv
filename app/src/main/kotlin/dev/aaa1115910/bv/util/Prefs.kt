@@ -122,6 +122,50 @@ object Prefs {
 
     var defaultDanmakuArea by pref(PrefKeys.prefDefaultDanmakuAreaKey, 0.5f)
 
+    // -------------------------
+    // 屏蔽功能（默认都不勾选）
+    // -------------------------
+
+    // 选中的关注分组 tagid 列表（CSV）
+    var blockSelectedTagIds by pref(
+        PrefKeys.prefBlockSelectedTagIdsKey,
+        emptyList(),
+        save = { list -> list.joinToString(",") },
+        restore = { str ->
+            if (str.isEmpty()) emptyList()
+            else str.split(",")
+                .mapNotNull { it.trim().toIntOrNull() }
+                .distinct()
+        }
+    )
+
+    // 选中的屏蔽页面列表（CSV，最小实现：用 BlockPage.ordinal）
+    var blockEnabledPages by pref(
+        PrefKeys.prefBlockEnabledPagesKey,
+        emptyList(),
+        save = { list -> list.joinToString(",") { it.code } },
+        restore = { str ->
+            if (str.isEmpty()) emptyList()
+            else str.split(",")
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .mapNotNull { code -> dev.aaa1115910.bv.block.BlockPage.entries.firstOrNull { it.code == code } }
+                .distinct()
+        }
+    )
+
+    // following 总数缓存（用于隐藏“全量分组”）
+    var followingTotalCache by pref(PrefKeys.prefFollowingTotalCacheKey, 0)
+
+    // 分组列表缓存（JSON，已排除全量分组）
+    var followTagsCacheJson by pref(PrefKeys.prefFollowTagsCacheJsonKey, "")
+
+    // 分组成员缓存（JSON map）
+    var followTagMembersCacheJson by pref(PrefKeys.prefFollowTagMembersCacheJsonKey, "")
+
+    // 汇总屏蔽 mid（CSV，用于快速启动恢复）
+    var blockedMidsCsv by pref(PrefKeys.prefBlockedMidsCsvKey, "")
+
     var defaultVideoCodec by pref(
         PrefKeys.prefDefaultVideoCodecKey,
         VideoCodec.AVC,
@@ -330,4 +374,10 @@ private object PrefKeys {
     val prefEnableFfmpegAudioRenderer = booleanPreferencesKey("enable_ffmpeg_audio_renderer")
     val prefEnableSoftwareVideoDecoder = booleanPreferencesKey("enable_software_video_decoder")
     val prefActionAfterPlayKey = intPreferencesKey("action_after_play")
+    val prefBlockSelectedTagIdsKey = stringPreferencesKey("block_selected_tagids")
+    val prefBlockEnabledPagesKey = stringPreferencesKey("block_enabled_pages")
+    val prefFollowingTotalCacheKey = intPreferencesKey("following_total_cache")
+    val prefFollowTagsCacheJsonKey = stringPreferencesKey("follow_tags_cache_json")
+    val prefFollowTagMembersCacheJsonKey = stringPreferencesKey("follow_tag_members_cache_json")
+    val prefBlockedMidsCsvKey = stringPreferencesKey("blocked_mids_csv")
 }

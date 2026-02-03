@@ -46,6 +46,8 @@ import dev.aaa1115910.biliapi.http.entity.user.favorite.FavoriteItemIdListRespon
 import dev.aaa1115910.biliapi.http.entity.user.favorite.UserFavoriteFoldersData
 import dev.aaa1115910.biliapi.http.entity.user.garb.Equip
 import dev.aaa1115910.biliapi.http.entity.user.garb.EquipPart
+import dev.aaa1115910.biliapi.http.entity.relation.RelationTag
+import dev.aaa1115910.biliapi.http.entity.relation.RelationTagMember
 import dev.aaa1115910.biliapi.http.entity.video.AddCoin
 import dev.aaa1115910.biliapi.http.entity.video.CheckSentCoin
 import dev.aaa1115910.biliapi.http.entity.video.CheckVideoFavoured
@@ -1188,6 +1190,44 @@ object BiliHttpApi {
         parameter("mid", mid)
         accessKey?.let { parameter("access_key", accessKey) }
         sessData?.let { header("Cookie", "SESSDATA=$sessData;") }
+    }.body()
+
+    /**
+     * 获取关注分组列表
+     *
+     * GET https://api.bilibili.com/x/relation/tags
+     * 认证：Cookie(SESSDATA) 或 access_key
+     */
+    suspend fun getRelationTags(
+        accessKey: String? = null,
+        sessData: String? = null
+    ): BiliResponse<List<RelationTag>> = client.get("/x/relation/tags") {
+        checkToken(accessKey, sessData)
+        sessData?.let { header("Cookie", "SESSDATA=$sessData;") }
+        accessKey?.let { parameter("access_key", accessKey) }
+    }.body()
+
+    /**
+     * 获取关注分组成员列表（分页）
+     *
+     * GET https://api.bilibili.com/x/relation/tag
+     * 认证：Cookie(SESSDATA) 或 access_key
+     */
+    suspend fun getRelationTagMembers(
+        tagId: Int,
+        pageNumber: Int = 1,
+        pageSize: Int = 50,
+        orderType: String? = null,
+        accessKey: String? = null,
+        sessData: String? = null
+    ): BiliResponse<List<RelationTagMember>> = client.get("/x/relation/tag") {
+        checkToken(accessKey, sessData)
+        parameter("tagid", tagId)
+        parameter("pn", pageNumber)
+        parameter("ps", pageSize)
+        orderType?.let { parameter("order_type", it) }
+        sessData?.let { header("Cookie", "SESSDATA=$sessData;") }
+        accessKey?.let { parameter("access_key", accessKey) }
     }.body()
 
     /**
