@@ -33,6 +33,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -43,8 +44,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.tv.material3.Text
 import dev.aaa1115910.bv.activities.video.VideoInfoActivity
+import dev.aaa1115910.bv.component.HomeTopNavItem
 import dev.aaa1115910.bv.component.TvLazyVerticalGrid
 import dev.aaa1115910.bv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
@@ -52,6 +58,8 @@ import dev.aaa1115910.bv.ui.effect.UiEffect
 import dev.aaa1115910.bv.util.toast
 import dev.aaa1115910.bv.viewmodel.user.ToViewViewModel
 import dev.aaa1115910.bv.viewmodel.user.UpInfoViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 import org.koin.androidx.compose.koinViewModel
 
@@ -71,6 +79,7 @@ fun UpSpaceScreen(
 
     var searchCanFocus by remember { mutableStateOf(false) }
     var searchFieldHasFocus by remember { mutableStateOf(false) }
+    val searchFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
         val intent = (context as Activity).intent
@@ -147,7 +156,19 @@ fun UpSpaceScreen(
     }
 
     Scaffold(
-        modifier = modifier,
+        modifier = modifier
+            .onKeyEvent {
+                if (it.key == Key.Menu ||it.key == Key(763) && !searchCanFocus) {
+                    // 确保是按键抬起事件，防止重复触发
+                    // 同时检查焦点是否确实在内容区域
+                    if (it.type == KeyEventType.KeyUp) {
+                        searchFocusRequester.requestFocus()
+                        // 返回 true 表示我们已经处理了这个事件，
+                        return@onKeyEvent true
+                    }
+                }
+                return@onKeyEvent false
+            },
         topBar = {
             Box(
                 modifier = Modifier.padding(start = 48.dp, top = 24.dp, bottom = 8.dp, end = 48.dp)
@@ -170,6 +191,7 @@ fun UpSpaceScreen(
                                 // 初期禁止输入框获得焦点，避免它先拿焦点弹 IME
                                 canFocus = searchCanFocus
                             }
+                            .focusRequester(searchFocusRequester)
                             .onFocusChanged { searchFieldHasFocus = it.hasFocus }
                             .drawWithContent {
                                 // 先让 TextField 自己画完（背景/文本/内部装饰）
