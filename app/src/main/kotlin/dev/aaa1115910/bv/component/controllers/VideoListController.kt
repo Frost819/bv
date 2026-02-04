@@ -52,11 +52,18 @@ fun VideoListController(
 ) {
     val listState = rememberLazyListState()
 
+    var didInitialPosition by remember { mutableStateOf(false) }
     var pendingFocusCid by remember { mutableStateOf<Long?>(null) }
 
-    // 每次打开时标记一次“待聚焦 cid”
-    LaunchedEffect(show, currentCid) {
-        if (show) pendingFocusCid = currentCid
+    // 仅在“打开时”标记一次“待聚焦 cid”：
+    // 列表打开后不再因为 currentCid 的变化抢焦点
+    LaunchedEffect(show) {
+        if (show) {
+            pendingFocusCid = currentCid
+        } else {
+            pendingFocusCid = null
+            didInitialPosition = false
+        }
     }
 
     // 推导 pinnedParent：
@@ -68,9 +75,11 @@ fun VideoListController(
             ?: videoList.firstOrNull { it.ugcPages?.any { p -> p.cid == currentCid } == true }
     }
 
-    // 打开时：预取 pinnedParent 的子项数据（番剧集跳过）
-    LaunchedEffect(show, pinnedParent, videoList) {
+    // 打开时：预取 pinnedParent 的子项数据（番剧集跳过）+ 初次定位到当前播放项
+    LaunchedEffect(show, videoList.size) {
         if (!show) return@LaunchedEffect
+        if (didInitialPosition) return@LaunchedEffect
+        if (videoList.isEmpty()) return@LaunchedEffect
 
         // 兜底：UGC 多P常见场景 videoList 只有 1 个父项，但 ugcPages 尚未加载且 currentCid 是子项
         val probableParent = pinnedParent ?: videoList.singleOrNull()
@@ -83,9 +92,11 @@ fun VideoListController(
             v.aid == currentAid || v.cid == currentCid || (v.ugcPages?.any { p -> p.cid == currentCid } == true)
         }
         if (targetIndex != -1) {
-            // 大列表避免长动画：先瞬移，再可选短动画微调
+            // 大列表避免长动画：先瞬移
             listState.scrollToItem(targetIndex)
         }
+
+        didInitialPosition = true
     }
 
     val parentFocusRequester = remember { FocusRequester() }
