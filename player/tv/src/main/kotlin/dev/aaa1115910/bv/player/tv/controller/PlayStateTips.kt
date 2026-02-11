@@ -133,7 +133,7 @@ fun BufferingTip(
             Text(
                 modifier = Modifier,
                 text = "缓冲中...$speed",
-                fontSize = 24.sp
+                fontSize = 22.sp
             )
         }
     }

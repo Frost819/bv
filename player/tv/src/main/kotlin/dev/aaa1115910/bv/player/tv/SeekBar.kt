@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.tv.material3.MaterialTheme
@@ -36,6 +37,7 @@ fun VideoSeekBar(
     moveState: SeekMoveState = SeekMoveState.Idle,
     showPosition: Boolean = false,
     isFocused: Boolean = false,
+    strokeWidth: Dp = 0.dp
 ) {
     VideoSeekBar(
         modifier = modifier,
@@ -52,7 +54,8 @@ fun VideoSeekBar(
                 movingJsonUrl = movingIcon
             )
         },
-        isFocused = isFocused
+        isFocused = isFocused,
+        strokeWidth = strokeWidth
     )
 }
 
@@ -67,6 +70,7 @@ private fun VideoSeekBar(
     showPosition: Boolean = false,
     thumb: (@Composable (Modifier) -> Unit)? = null,
     isFocused: Boolean = false,
+    strokeWidth: Dp = 0.dp
 ) {
     BoxWithConstraints(
         modifier = modifier
@@ -95,8 +99,8 @@ private fun VideoSeekBar(
                 position = position,
                 bufferedPercentage = bufferedPercentage,
                 colors = colors,
-                height = 10.dp,
-                strokeWidth = if (isFocused != false) 10.dp else 4.dp
+                height = if (strokeWidth > 0.dp) strokeWidth else 10.dp,
+                strokeWidth = if (strokeWidth > 0.dp) strokeWidth else if (isFocused) 10.dp else 4.dp
             )
             thumb?.invoke(
                 Modifier

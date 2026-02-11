@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
 import java.lang.ref.WeakReference
+import java.util.LinkedList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import dev.aaa1115910.biliapi.entity.ApiType
@@ -27,7 +28,9 @@ import org.koin.androidx.viewmodel.ext.android.viewModel
 class VideoPlayerV3Activity : ComponentActivity() {
     companion object {
         private val logger = KotlinLogging.logger { }
-        private var currentInstance: WeakReference<VideoPlayerV3Activity>? = null
+        private const val MAX_VIDEO_PLAYER_SCREENS = 2
+        // 使用WeakReference防止内存泄漏，避免持有已销毁Activity的强引用
+        private val activityQueue = LinkedList<WeakReference<VideoPlayerV3Activity>>()
         
         /**
          * 启动直播播放
@@ -44,13 +47,6 @@ class VideoPlayerV3Activity : ComponentActivity() {
             val maxMemory = runtime.maxMemory()
             logger.info { "Current memory usage VideoPlayerV3Activity.actionStartLive: ${usedMemory / 1024 / 1024} MB / ${maxMemory / 1024 / 1024} MB" }
 
-            // 先关闭旧的播放页面
-            currentInstance?.get()?.let { instance ->
-                logger.info { "Closing previous video player instance" }
-                instance.finish()
-            }
-            currentInstance = null
-            
             context.startActivity(
                 Intent(
                     context,
@@ -96,13 +92,6 @@ class VideoPlayerV3Activity : ComponentActivity() {
             val maxMemory = runtime.maxMemory()
             logger.info { "Current memory usage VideoPlayerV3Activity.actionStart: ${usedMemory / 1024 / 1024} MB / ${maxMemory / 1024 / 1024} MB" }
 
-            // 先关闭旧的播放页面
-            currentInstance?.get()?.let { instance ->
-                logger.info { "Closing previous video player instance" }
-                instance.finish()
-            }
-            currentInstance = null
-            
             context.startActivity(
                 Intent(
                     context,
@@ -140,8 +129,30 @@ class VideoPlayerV3Activity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 设置当前实例为弱引用
-        currentInstance = WeakReference(this)
+        // 将当前活动加入队列
+        synchronized(activityQueue) {
+            // 清理队列中的无效引用
+            val iterator = activityQueue.iterator()
+            while (iterator.hasNext()) {
+                val activityRef = iterator.next()
+                val activity = activityRef.get()
+                if (activity == null || activity.isFinishing) {
+                    iterator.remove()
+                }
+            }
+
+            // 添加当前活动到队列
+            activityQueue.add(WeakReference(this))
+
+            // 如果队列超过了最大限制，关闭最早的活动
+            if (activityQueue.size > MAX_VIDEO_PLAYER_SCREENS) {
+                val oldestActivityRef = activityQueue.removeFirst()
+                val oldestActivity = oldestActivityRef.get()
+                oldestActivity?.runOnUiThread {
+                    oldestActivity.finish()
+                }
+            }
+        }
 
         initVideoPlayer()
         //initDanmakuPlayer()
@@ -160,9 +171,22 @@ class VideoPlayerV3Activity : ComponentActivity() {
         super.onDestroy()
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        // 清除当前实例引用
-        if (currentInstance?.get() == this) {
-            currentInstance = null
+        // 显式释放播放器资源，避免依赖 ViewModel.onCleared() 的延迟回调
+        playerViewModel.videoPlayer?.release()
+        if (isFinishing) {
+            playerViewModel.videoPlayer = null
+            playerViewModel.danmakuPlayer = null
+        }
+
+        // 当活动被销毁时，从队列中移除该Activity的引用
+        synchronized(activityQueue) {
+            val iterator = activityQueue.iterator()
+            while (iterator.hasNext()) {
+                val ref = iterator.next()
+                if (ref.get() == this || ref.get() == null) {
+                    iterator.remove()
+                }
+            }
         }
 
         // 获取当前内存信息并打印到控制台
@@ -195,8 +219,9 @@ class VideoPlayerV3Activity : ComponentActivity() {
                 ApiType.App -> null
             },
             enableFfmpegAudioRenderer = Prefs.enableFfmpegAudioRenderer,
-            enableAudioPlaybackParams = Prefs.enableAudioPlaybackParams,
-            enableAsyncQueueing = Prefs.enableAsyncQueueing
+            enableAsyncQueueing = Prefs.enableAsyncQueueing,
+            enableTunneling = Prefs.enableTunneling,
+            showDebugInfo = Prefs.playerShowDebugInfo
         )
         val videoPlayer = when (Prefs.playerType) {
             PlayerType.Media3 -> ExoPlayerFactory().create(this, options)

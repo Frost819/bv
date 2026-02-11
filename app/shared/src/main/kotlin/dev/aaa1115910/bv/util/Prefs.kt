@@ -154,6 +154,14 @@ object Prefs {
         }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefDefaultDanmakuAreaKey, value) }
 
+    var defaultDanmakuRollingDurationFactor: Float
+        get() = runBlocking {
+            dsm.getPreferenceFlow(PrefKeys.prefDefaultDanmakuRollingDurationFactorRequest).first()
+        }
+        set(value) = runBlocking {
+            dsm.editPreference(PrefKeys.prefDefaultDanmakuRollingDurationFactorKey, value)
+        }
+
     var defaultVideoCodec: dev.aaa1115910.bv.player.entity.VideoCodec
         get() = dev.aaa1115910.bv.player.entity.VideoCodec.Companion.fromCode(
             runBlocking { dsm.getPreferenceFlow(PrefKeys.prefDefaultVideoCodecRequest).first() }
@@ -423,9 +431,9 @@ object Prefs {
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefPgcNavItemsOrderRequest).first() }
         set(value) = runBlocking { dsm.editPreference(PrefKeys.prefPgcNavItemsOrderKey, value) }
     
-    var enableAudioPlaybackParams: Boolean
-        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefEnableAudioPlaybackParamsRequest).first() }
-        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefEnableAudioPlaybackParams, value) }
+    var enableTunneling: Boolean
+        get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefEnableTunnelingRequest).first() }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefEnableTunneling, value) }
 
     var enableAsyncQueueing: Boolean
         get() = runBlocking { dsm.getPreferenceFlow(PrefKeys.prefEnableAsyncQueueingRequest).first() }
@@ -455,6 +463,7 @@ object PrefKeys {
     val prefDefaultDanmakuEnabledKey = booleanPreferencesKey("dde")
     val prefDefaultDanmakuTypesKey = stringPreferencesKey("ddts")
     val prefDefaultDanmakuAreaKey = floatPreferencesKey("dda")
+    val prefDefaultDanmakuRollingDurationFactorKey = floatPreferencesKey("ddrdf")
     val prefDefaultVideoCodecKey = intPreferencesKey("dvc")
     val prefEnabledFirebaseCollectionKey = booleanPreferencesKey("efc")
     val prefIncognitoModeKey = booleanPreferencesKey("im")
@@ -497,7 +506,7 @@ object PrefKeys {
     val prefHomeNavItemsOrderKey = stringPreferencesKey("home_nav_items_order")
     val prefUgcNavItemsOrderKey = stringPreferencesKey("ugc_nav_items_order")
     val prefPgcNavItemsOrderKey = stringPreferencesKey("pgc_nav_items_order")
-    val prefEnableAudioPlaybackParams = booleanPreferencesKey("enable_audio_playback_params")
+    val prefEnableTunneling = booleanPreferencesKey("enable_tunneling")
     val prefEnableAsyncQueueing = booleanPreferencesKey("enable_async_queueing")
     val prefSkipPgcIntroOutroKey = booleanPreferencesKey("skip_pgc_intro_outro")
 
@@ -522,6 +531,8 @@ object PrefKeys {
     val prefDefaultDanmakuTypesRequest =
         PreferenceRequest(prefDefaultDanmakuTypesKey, "0,1,2,3")
     val prefDefaultDanmakuAreaRequest = PreferenceRequest(prefDefaultDanmakuAreaKey, 0.2f)
+    val prefDefaultDanmakuRollingDurationFactorRequest =
+        PreferenceRequest(prefDefaultDanmakuRollingDurationFactorKey, 1f)
     val prefDefaultVideoCodecRequest =
         PreferenceRequest(prefDefaultVideoCodecKey, VideoCodec.HEVC.ordinal)
     val prefEnabledFirebaseCollectionRequest =
@@ -577,7 +588,7 @@ object PrefKeys {
     val prefHomeNavItemsOrderRequest = PreferenceRequest(prefHomeNavItemsOrderKey, "")
     val prefUgcNavItemsOrderRequest = PreferenceRequest(prefUgcNavItemsOrderKey, "")
     val prefPgcNavItemsOrderRequest = PreferenceRequest(prefPgcNavItemsOrderKey, "")
-    val prefEnableAudioPlaybackParamsRequest = PreferenceRequest(prefEnableAudioPlaybackParams, false)
+    val prefEnableTunnelingRequest = PreferenceRequest(prefEnableTunneling, false)
     val prefEnableAsyncQueueingRequest = PreferenceRequest(prefEnableAsyncQueueing, false)
     val prefSkipPgcIntroOutroRequest = PreferenceRequest(prefSkipPgcIntroOutroKey, false)
 }

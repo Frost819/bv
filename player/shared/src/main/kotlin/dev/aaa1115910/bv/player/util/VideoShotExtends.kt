@@ -2,39 +2,43 @@ package dev.aaa1115910.bv.player.util
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.util.LruCache
-import androidx.compose.ui.graphics.ImageBitmap
+import android.os.Build
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.unit.IntRect
 import dev.aaa1115910.biliapi.entity.video.VideoShot
+import dev.aaa1115910.biliapi.repositories.VideoPlayRepository
 import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import java.util.concurrent.ConcurrentHashMap
 
-suspend fun VideoShot.getSpriteFrame(time: Int, cache: VideoShotImageCache): SpriteFrame {
+suspend fun VideoShot.getImage(time: Int): Bitmap {
     val index = findClosestValueIndex(times, time.toUShort())
     val singleImgCount = imageCountX * imageCountY
     val imagesIndex = index / singleImgCount
     val imageIndex = index % singleImgCount
+    val x = imageIndex % imageCountX
+    val y = imageIndex / imageCountX
 
-    // 使用传入的 cache 实例，而不是全局单例
-    val spriteSheet = cache.getOrDecodeImage(
-        imagesIndex,
-        images[imagesIndex]!!
-    ).asImageBitmap()
+    //println("get $time at $imagesIndex $x $y")
 
-    val cellWidth = spriteSheet.width / imageCountX
-    val cellHeight = spriteSheet.height / imageCountY
+    // 新的支持调用去重（保留第一次解码）的缓存机制
+    val bitmap = VideoShotImageCache.getOrDecodeImage(imagesIndex, images[imagesIndex]!!)
 
-    // 计算该帧在大图中的具体坐标
-    val left = (imageIndex % imageCountX) * cellWidth
-    val top = (imageIndex / imageCountX) * cellHeight
+    val realImageWidth = bitmap.width / imageCountX
+    val realImageHeight = bitmap.height / imageCountY
 
-    return SpriteFrame(
-        spriteSheet = spriteSheet,
-        srcRect = IntRect(left, top, left + cellWidth, top + cellHeight)
+    return Bitmap.createBitmap(
+        bitmap, x * realImageWidth, y * realImageHeight, realImageWidth, realImageHeight
     )
 }
 
@@ -52,52 +56,115 @@ private fun findClosestValueIndex(array: List<UShort>, target: UShort): Int {
     return left
 }
 
-class VideoShotImageCache {
-    private val memoryCache = LruCache<Int, Bitmap>(3) // 缓存3张大图
-    private val activeTasks = ConcurrentHashMap<Int, Deferred<Bitmap>>()
+private object VideoShotImageCache {
+    private data class CacheEntry(
+        val hash: Int,
+        val image: Bitmap
+    )
 
-    companion object {
-        val bitmapOptions = BitmapFactory.Options().apply {
-            inPreferredConfig = Bitmap.Config.RGB_565
-            inScaled = false
+    private const val MAX_CACHE_SIZE = 2
+
+    // 使用 LRU 缓存最多两张大图
+    private val cache = object : LinkedHashMap<Int, CacheEntry>(MAX_CACHE_SIZE, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, CacheEntry>?): Boolean {
+            return size > MAX_CACHE_SIZE
+        }
+    }
+
+    // 保存正在解码的任务，避免重复解码
+    private val decodingTasks = mutableMapOf<Int, Deferred<Bitmap>>()
+
+    // BitmapFactory 配置，使用 RGB_565 以减少内存占用
+    val bitmapOptions = BitmapFactory.Options().apply {
+        // 内存优化
+        inPreferredConfig = Bitmap.Config.RGB_565 // 比 ARGB_8888 节省一半内存
+        inMutable = false // 不可变，节省内存
+        
+        // 解码优化
+        inScaled = false // 禁用缩放，避免额外计算
+        
+        // 内存管理
+        inTempStorage = ByteArray(16 * 1024) // 16KB临时缓冲区，减少内存分配
+        inSampleSize = 1 // 采样率，1表示原始大小
+        
+        // 其他性能优化
+        inJustDecodeBounds = false // 实际解码像素数据
+        inPremultiplied = false // 不进行预乘处理，节省计算
+        
+        // 现代化优化参数
+        inBitmap = null // 不复用现有Bitmap，避免尺寸不匹配问题
+        inDensity = 0 // 忽略密度设置，使用原始尺寸
+        inTargetDensity = 0 // 忽略目标密度
+        inScreenDensity = 0 // 忽略屏幕密度
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            inPreferredColorSpace = null // API 26+ 可使用默认色彩空间，避免转换开销
         }
     }
 
     suspend fun getOrDecodeImage(imagesIndex: Int, imageData: ByteArray): Bitmap = coroutineScope {
-        memoryCache.get(imagesIndex)?.let { return@coroutineScope it }
+        val imageHash = imageData.hashCode()
 
-        val task = activeTasks.getOrPut(imagesIndex) {
-            async(Dispatchers.IO) {
-                val decoded = BitmapFactory.decodeByteArray(imageData, 0, imageData.size, bitmapOptions)
-                memoryCache.put(imagesIndex, decoded)
-                decoded
+        // 如果已经缓存了这张图片，直接返回
+        cache[imagesIndex]?.let { entry ->
+            if (entry.hash == imageHash) {
+                return@coroutineScope entry.image
             }
         }
+
+        // 如果正在解码这张图片，等待解码完成
+        decodingTasks[imagesIndex]?.let { existingTask ->
+            return@coroutineScope existingTask.await()
+        }
+
+        val decodingTask = async {
+            BitmapFactory.decodeByteArray(imageData, 0, imageData.size, bitmapOptions)
+        }
+
+        decodingTasks[imagesIndex] = decodingTask
+
         try {
-            return@coroutineScope task.await()
+            val result = decodingTask.await()
+            cache[imagesIndex] = CacheEntry(imageHash, result)
+            return@coroutineScope result
         } finally {
-            activeTasks.remove(imagesIndex)
+            // 解码完成后移除任务
+            decodingTasks.remove(imagesIndex)
         }
-    }
-
-    fun clear() {
-        // 取消所有正在进行的解码任务引用
-        activeTasks.clear()
-        
-        // 显式回收所有 Bitmap（对于 Android 8.0 以下很重要）
-        memoryCache.snapshot().values.forEach { bitmap ->
-            if (!bitmap.isRecycled) {
-                bitmap.recycle()
-            }
-        }
-        
-        // 清空缓存
-        memoryCache.evictAll()
     }
 }
 
-// 包装了大图（精灵图）和小图对应的矩形区域
-data class SpriteFrame(
-    val spriteSheet: ImageBitmap,
-    val srcRect: IntRect
-)
+@Composable
+fun VideoShotTest(
+    modifier: Modifier = Modifier,
+    videoPlayRepository: VideoPlayRepository// = org.koin.compose.getKoin().get()
+) {
+    val aid = 170001L
+    val cid = 279786L
+    var videoShot: VideoShot? by remember { mutableStateOf(null) }
+    LaunchedEffect(Unit) {
+        videoShot = videoPlayRepository.getVideoShot(aid, cid)
+    }
+
+    if (videoShot != null) {
+        LazyVerticalGrid(
+            modifier = modifier,
+            columns = GridCells.Fixed(10),
+        ) {
+            items(videoShot!!.times) { time ->
+                var bitmap by remember { mutableStateOf<Bitmap?>(null) }
+                
+                LaunchedEffect(time) {
+                    bitmap = videoShot!!.getImage(time.toInt())
+                }
+                
+                bitmap?.let {
+                    Image(
+                        bitmap = it.asImageBitmap(),
+                        contentDescription = null
+                    )
+                }
+            }
+        }
+    }
+}

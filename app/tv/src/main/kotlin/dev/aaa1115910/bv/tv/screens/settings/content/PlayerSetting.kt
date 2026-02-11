@@ -60,7 +60,7 @@ fun PlayerSetting(
     var portraitVideoFixMode by remember { mutableStateOf(Prefs.portraitVideoFixMode) }
     var showOnlineViewerCountDialog by remember { mutableStateOf(false) }
     val showOnlineViewerCount by Prefs.showOnlineViewerCountFlow.collectAsState(Prefs.showOnlineViewerCount)
-    var enableAudioPlaybackParams by remember { mutableStateOf(Prefs.enableAudioPlaybackParams) }
+    var enableTunneling by remember { mutableStateOf(Prefs.enableTunneling) }
     var enableAsyncQueueing by remember { mutableStateOf(Prefs.enableAsyncQueueing) }
     var skipPgcIntroOutro by remember { mutableStateOf(Prefs.skipPgcIntroOutro) }
 
@@ -133,23 +133,23 @@ fun PlayerSetting(
             }
             item {
                 SettingSwitchListItem(
-                    title = "启用音频播放参数调整",
-                    supportText = "优化音频播放速度和音效的调整，如果开启后音频播放出问题请关闭此选项",
-                    checked = enableAudioPlaybackParams,
-                    onCheckedChange = {
-                        enableAudioPlaybackParams = it
-                        Prefs.enableAudioPlaybackParams = it
-                    }
-                )
-            }
-            item {
-                SettingSwitchListItem(
                     title = "启用异步缓冲队列",
                     supportText = "减少丢帧和音频欠载，提升高帧率视频播放性能（Android 6.0-11 有效）",
                     checked = enableAsyncQueueing,
                     onCheckedChange = {
                         enableAsyncQueueing = it
                         Prefs.enableAsyncQueueing = it
+                    }
+                )
+            }
+            item {
+                SettingSwitchListItem(
+                    title = "启用隧道播放模式",
+                    supportText = "隧道播放模式能改善播放性能，部分设备可能出现播放异常",
+                    checked = enableTunneling,
+                    onCheckedChange = {
+                        enableTunneling = it
+                        Prefs.enableTunneling = it
                     }
                 )
             }
@@ -296,7 +296,7 @@ fun PlayerSetting(
             }
             item {
                 SettingSwitchListItem(
-                    title = "跳过 PGC 片头片尾(实验性)",
+                    title = "跳过 PGC 片头片尾",
                     supportText = "自动跳过 PGC 片头片尾",
                     checked = skipPgcIntroOutro,
                     onCheckedChange = {

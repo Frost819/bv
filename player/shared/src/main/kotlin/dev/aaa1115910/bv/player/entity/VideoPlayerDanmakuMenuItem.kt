@@ -5,6 +5,7 @@ import dev.aaa1115910.bv.player.shared.R
 
 enum class VideoPlayerDanmakuMenuItem(private val strRes: Int) {
     Switch(R.string.video_player_menu_danmaku_switch),
+    RollingDurationFactor(R.string.video_player_menu_danmaku_rolling_duration_factor),
     Size(R.string.video_player_menu_danmaku_size),
     Opacity(R.string.video_player_menu_danmaku_opacity),
     Area(R.string.video_player_menu_danmaku_area),

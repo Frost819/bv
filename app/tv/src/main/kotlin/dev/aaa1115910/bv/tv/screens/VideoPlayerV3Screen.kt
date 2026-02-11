@@ -258,6 +258,7 @@ fun VideoPlayerV3Screen(
             currentDanmakuOpacity = playerViewModel.currentDanmakuOpacity,
             currentDanmakuArea = playerViewModel.currentDanmakuArea,
             currentDanmakuMask = playerViewModel.currentDanmakuMask,
+            currentDanmakuRollingDurationFactor = playerViewModel.currentDanmakuRollingDurationFactor,
             currentSubtitleId = playerViewModel.currentSubtitleId,
             currentSubtitleData = playerViewModel.currentSubtitleData,
             currentSubtitleFontSize = playerViewModel.currentSubtitleFontSize,
@@ -370,7 +371,7 @@ fun VideoPlayerV3Screen(
                                 if (!immediate) {
                                     autoActionTipText = "播放结束，即将播放下一集"
                                     autoActionTipVisible = true
-                                    delay(1200)
+                                    delay(1300)
                                 }
                                 autoActionTipVisible = false
                                 if (autoActionCountdownJob != null) {
@@ -428,7 +429,7 @@ fun VideoPlayerV3Screen(
                             try {
                                 autoActionTipText = "播放结束，即将退出"
                                 autoActionTipVisible = true
-                                delay(1200)
+                                delay(1300)
                                 autoActionTipVisible = false
                                 if (autoActionCountdownJob != null) {
                                     autoActionCountdownJob = null
@@ -543,6 +544,10 @@ fun VideoPlayerV3Screen(
                 onDanmakuMaskChange = { mask ->
                     Prefs.defaultDanmakuMask = mask
                     playerViewModel.currentDanmakuMask = mask
+                },
+                onDanmakuRollingDurationFactorChange = { factor ->
+                    Prefs.defaultDanmakuRollingDurationFactor = factor
+                    playerViewModel.currentDanmakuRollingDurationFactor = factor
                 },
                 onSubtitleChange = { subtitle ->
                     playerViewModel.loadSubtitle(subtitle.id)
@@ -677,7 +682,7 @@ fun VideoPlayerV3Screen(
                                     scope.launch {
                                         val success = VideoUserActionManager.addToDefaultFavoriteFolder(playerViewModel.currentAid, Prefs.uid)
                                         if (!success) {
-                                            "收藏操作失败".toast(context)
+                                            "收藏失败！默认收藏夹不存在？".toast(context)
                                         }
                                     }
                                 },
@@ -685,7 +690,7 @@ fun VideoPlayerV3Screen(
                                     scope.launch {
                                         val success = VideoUserActionManager.updateVideoFavoriteFolders(playerViewModel.currentAid, it, Prefs.uid)
                                         if (!success) {
-                                            "收藏操作失败".toast(context)
+                                            "收藏失败！此收藏夹收藏数量已达上限（1000）".toast(context)
                                         }
                                     }
                                 },
@@ -775,7 +780,7 @@ fun VideoPlayerV3Screen(
 
             // 在线观看人数 Tip
             OnlineViewerCountTip(
-                show = showOnlineViewerCountTip && canShowOnlineViewerCountTip,
+                show = showOnlineViewerCountTip && canShowOnlineViewerCountTip && !playerViewModel.showRelatedVideos,
                 count = onlineViewerCount
             )
 

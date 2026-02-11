@@ -139,6 +139,7 @@ class VideoPlayerV3ViewModel(
     }
     var currentDanmakuArea by mutableFloatStateOf(Prefs.defaultDanmakuArea)
     var currentDanmakuMask by mutableStateOf(Prefs.defaultDanmakuMask)
+    var currentDanmakuRollingDurationFactor by mutableFloatStateOf(Prefs.defaultDanmakuRollingDurationFactor)
     var currentSubtitleId by mutableLongStateOf(-1L)
     var currentSubtitleData = mutableStateListOf<SubtitleItem>()
     var currentSubtitleType by mutableStateOf(SubtitleType.CC)

@@ -59,6 +59,7 @@ import dev.aaa1115910.bv.util.toast
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -107,6 +108,7 @@ fun VideoPlayerController(
     onDanmakuOpacityChange: (Float) -> Unit,
     onDanmakuAreaChange: (Float) -> Unit,
     onDanmakuMaskChange: (Boolean) -> Unit,
+    onDanmakuRollingDurationFactorChange: (Float) -> Unit,
     onSubtitleChange: (Subtitle) -> Unit,
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
@@ -530,6 +532,7 @@ fun VideoPlayerController(
             onDanmakuOpacityChange = onDanmakuOpacityChange,
             onDanmakuAreaChange = onDanmakuAreaChange,
             onDanmakuMaskChange = onDanmakuMaskChange,
+            onDanmakuRollingDurationFactorChange = onDanmakuRollingDurationFactorChange,
             onSubtitleChange = onSubtitleChange,
             onSubtitleSizeChange = onSubtitleSizeChange,
             onSubtitleBackgroundOpacityChange = onSubtitleBackgroundOpacityChange,
@@ -546,17 +549,15 @@ fun VideoPlayerController(
         // 底部常驻进度条组件
         if (shouldShowBottomProgressBar) {
             var throttledProgress by remember { mutableStateOf(0f) }
-            LaunchedEffect(Unit) {
-                while (true) {
-                    delay( 1000L)
-                    val currentPosition = videoPlayer.currentPosition
-                    val duration = videoPlayer.duration
-                    val currentProgress = if (duration > 0) {
-                        currentPosition.toFloat() / duration.toFloat()
+            LaunchedEffect(shouldShowBottomProgressBar) {
+                while (isActive) {
+                    val duration = videoPlayerSeekState.duration
+                    throttledProgress = if (duration > 0) {
+                        videoPlayerSeekState.position.toFloat() / duration.toFloat()
                     } else {
                         0f
                     }
-                    throttledProgress = currentProgress
+                    delay(1000)
                 }
             }
             
@@ -564,7 +565,7 @@ fun VideoPlayerController(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .height(2.5.dp),
+                    .height(2.3.dp),
                 progress = { throttledProgress },
                 color = SliderDefaults.colors().activeTrackColor,
                 trackColor = Color.Black.copy(alpha = 0.4f),

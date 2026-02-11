@@ -16,6 +16,7 @@ import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.OkHttpUtil
 import dev.aaa1115910.bv.player.VideoPlayerOptions
@@ -62,13 +63,16 @@ class ExoMediaPlayer(
             )
             // setMediaCodecSelector(MediaCodecSelector.PREFER_SOFTWARE)
             setEnableDecoderFallback(true)
-            if (options.enableAudioPlaybackParams) {
-                setEnableAudioOutputPlaybackParameters(true)
-            }
             // 为 API 23-30 启用异步缓冲队列（API 31+ 已默认启用）
             if (options.enableAsyncQueueing && Build.VERSION.SDK_INT >= 23 && Build.VERSION.SDK_INT < 31) {
                 @Suppress("UNCHECKED_CAST")
                 forceEnableMediaCodecAsynchronousQueueing()
+            }
+        }
+
+        val trackSelector = DefaultTrackSelector(context).apply {
+            if (options.enableTunneling) {
+                setParameters(buildUponParameters().setTunnelingEnabled(true).build())
             }
         }
 
@@ -92,6 +96,7 @@ class ExoMediaPlayer(
         mPlayer = ExoPlayer
             .Builder(context)
             .setRenderersFactory(renderersFactory)
+            .setTrackSelector(trackSelector)
             .setLoadControl(loadControl)
             .setSeekForwardIncrementMs(1000 * 10)
             .setSeekBackIncrementMs(1000 * 10)
@@ -214,10 +219,12 @@ class ExoMediaPlayer(
 
     override val debugInfo: String
         get() {
+            if (!options.showDebugInfo) return ""
             return """
                 player: ${androidx.media3.common.MediaLibraryInfo.VERSION_SLASHY}
                 time: ${currentPosition.formatHourMinSec()} / ${duration.formatHourMinSec()}
                 buffered: $bufferedPercentage%
+                tunneling: ${options.enableTunneling}
                 resolution: ${mPlayer?.videoSize?.width} x ${mPlayer?.videoSize?.height}
                 audio: ${mPlayer?.audioFormat?.bitrate ?: 0} kbps
                 video codec: ${mPlayer?.videoFormat?.sampleMimeType ?: "null"}

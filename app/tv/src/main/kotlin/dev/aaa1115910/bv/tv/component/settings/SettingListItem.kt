@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -36,7 +37,7 @@ fun SettingListItem(
         modifier = modifier.onFocusChanged { hasFocus = it.hasFocus },
         headlineContent = { Text(text = title) },
         supportingContent = { Text(text = supportText) },
-        trailingContent = { if (valueText?.isNotEmpty() == true) Text(text = valueText) },
+        trailingContent = { if (valueText?.isNotEmpty() == true) Text(modifier = Modifier.padding(start = 4.dp), text = valueText) },
         onClick = onClick,
         selected = false
     )

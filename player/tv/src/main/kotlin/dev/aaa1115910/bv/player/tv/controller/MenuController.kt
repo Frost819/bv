@@ -75,6 +75,7 @@ fun MenuController(
     onDanmakuOpacityChange: (Float) -> Unit,
     onDanmakuAreaChange: (Float) -> Unit,
     onDanmakuMaskChange: (Boolean) -> Unit = {},
+    onDanmakuRollingDurationFactorChange: (Float) -> Unit,
     onSubtitleChange: (Subtitle) -> Unit,
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
@@ -110,6 +111,7 @@ fun MenuController(
                 onDanmakuOpacityChange = onDanmakuOpacityChange,
                 onDanmakuAreaChange = onDanmakuAreaChange,
                 onDanmakuMaskChange = onDanmakuMaskChange,
+                onDanmakuRollingDurationFactorChange = onDanmakuRollingDurationFactorChange,
                 onSubtitleChange = onSubtitleChange,
                 onSubtitleSizeChange = onSubtitleSizeChange,
                 onSubtitleBackgroundOpacityChange = onSubtitleBackgroundOpacityChange,
@@ -135,6 +137,7 @@ fun MenuController(
     onDanmakuOpacityChange: (Float) -> Unit,
     onDanmakuAreaChange: (Float) -> Unit,
     onDanmakuMaskChange: (Boolean) -> Unit = {},
+    onDanmakuRollingDurationFactorChange: (Float) -> Unit,
     onSubtitleChange: (Subtitle) -> Unit,
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
@@ -173,6 +176,7 @@ fun MenuController(
                     onDanmakuOpacityChange = onDanmakuOpacityChange,
                     onDanmakuAreaChange = onDanmakuAreaChange,
                     onDanmakuMaskChange = onDanmakuMaskChange,
+                    onDanmakuRollingDurationFactorChange = onDanmakuRollingDurationFactorChange,
                     onFocusStateChange = { focusState = it },
                     onSubtitleChange = onSubtitleChange,
                     onSubtitleSizeChange = onSubtitleSizeChange,
@@ -217,6 +221,7 @@ private fun MenuList(
     onDanmakuOpacityChange: (Float) -> Unit,
     onDanmakuAreaChange: (Float) -> Unit,
     onDanmakuMaskChange: (Boolean) -> Unit = {},
+    onDanmakuRollingDurationFactorChange: (Float) -> Unit,
     onSubtitleChange: (Subtitle) -> Unit,
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
@@ -248,7 +253,8 @@ private fun MenuList(
                     onDanmakuOpacityChange = onDanmakuOpacityChange,
                     onDanmakuAreaChange = onDanmakuAreaChange,
                     onFocusStateChange = onFocusStateChange,
-                    onDanmakuMaskChange = onDanmakuMaskChange
+                    onDanmakuMaskChange = onDanmakuMaskChange,
+                    onDanmakuRollingDurationFactorChange = onDanmakuRollingDurationFactorChange
                 )
             }
 
@@ -290,6 +296,7 @@ fun MenuControllerPreview() {
     var currentDanmakuOpacity by remember { mutableFloatStateOf(1f) }
     var currentDanmakuArea by remember { mutableFloatStateOf(1f) }
     var currentDanmakuMask by remember { mutableStateOf(false) }
+    var currentDanmakuRollingDurationFactor by remember { mutableFloatStateOf(1f) }
 
     var currentSubtitleId by remember { mutableLongStateOf(-1L) }
     val currentSubtitleList = remember { mutableStateListOf<Subtitle>() }
@@ -369,6 +376,7 @@ fun MenuControllerPreview() {
                         currentDanmakuOpacity = currentDanmakuOpacity,
                         currentDanmakuArea = currentDanmakuArea,
                         currentDanmakuMask = currentDanmakuMask,
+                        currentDanmakuRollingDurationFactor = currentDanmakuRollingDurationFactor,
 
                         currentSubtitleId = currentSubtitleId,
                         availableSubtitleTracks = currentSubtitleList,
@@ -401,6 +409,7 @@ fun MenuControllerPreview() {
                         onDanmakuOpacityChange = { currentDanmakuOpacity = it },
                         onDanmakuAreaChange = { currentDanmakuArea = it },
                         onDanmakuMaskChange = { currentDanmakuMask = it },
+                        onDanmakuRollingDurationFactorChange = { currentDanmakuRollingDurationFactor = it },
                         onSubtitleChange = { currentSubtitleId = it.id },
                         onSubtitleSizeChange = { currentSubtitleFontSize = it },
                         onSubtitleBackgroundOpacityChange = {

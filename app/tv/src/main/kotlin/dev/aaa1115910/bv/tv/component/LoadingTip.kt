@@ -24,17 +24,16 @@ fun LoadingTip(
 ) {
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        verticalAlignment = Alignment.CenterVertically
     ) {
         CircularProgressIndicator(
             modifier = Modifier
-                .size(28.dp)
-                .padding(4.dp),
+                .size(36.dp)
+                .padding(8.dp),
             color = MaterialTheme.colorScheme.onSurface,
             strokeWidth = 2.dp
         )
-        Text(text = stringResource(id = R.string.loading), fontSize = 20.sp)
+        Text(text = stringResource(id = R.string.loading), fontSize = 22.sp)
     }
 }
 

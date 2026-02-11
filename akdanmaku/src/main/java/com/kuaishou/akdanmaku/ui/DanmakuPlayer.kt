@@ -47,6 +47,7 @@ import com.kuaishou.akdanmaku.utils.Fraction
 import com.kuaishou.akdanmaku.utils.ObjectPool
 import java.lang.ref.WeakReference
 import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
 import kotlin.math.max
 
 /**
@@ -69,8 +70,8 @@ class DanmakuPlayer(renderer: DanmakuRenderer, dataSource: DataSource? = null) {
     internal const val NOTIFY_DISPLAYER_SIZE_CHANGE = 2201
 
     private const val PLAYER_WIDTH = 682
-    const val MIN_DANMAKU_DURATION: Long = 4000
-    const val MAX_DANMAKU_DURATION_HIGH_DENSITY: Long = 9000
+    const val MIN_DANMAKU_DURATION: Long = 3000
+    const val MAX_DANMAKU_DURATION_HIGH_DENSITY: Long = 16000
     /**
      * 是否手动控制 Step 流程
      */
@@ -86,6 +87,7 @@ class DanmakuPlayer(renderer: DanmakuRenderer, dataSource: DataSource? = null) {
   private var currentDisplayerWidth = 0
   private var currentDisplayerHeight = 0
   private var currentDisplayerSizeFactor = 1f
+  private var currentRollingDurationFactor = 1f
   private var config: DanmakuConfig? = null
 
   private val drawSemaphore = Semaphore(0)
@@ -138,8 +140,12 @@ class DanmakuPlayer(renderer: DanmakuRenderer, dataSource: DataSource? = null) {
       postFrameCallback()
       // update entities before system update
       engine.preAct()
-      // Wait for acquiring a permit.
-      drawSemaphore.acquire()
+      // Wait for main thread to finish draw.
+      // 使用带超时的 tryAcquire: 如果主线程 32ms 内没有完成绘制（约2帧），
+      // 则放弃本轮计算，等下一个 VSync 再试，避免无限阻塞。
+      if (!drawSemaphore.tryAcquire(32, TimeUnit.MILLISECONDS)) {
+        return
+      }
     }
     if (!started || isReleased) {
       return
@@ -173,7 +179,6 @@ class DanmakuPlayer(renderer: DanmakuRenderer, dataSource: DataSource? = null) {
   }
 
   private fun releaseSemaphore() {
-    // Acquired or on the first draw(with init permit: 0).
     if (drawSemaphore.availablePermits() == 0) {
       drawSemaphore.release()
     }
@@ -335,9 +340,10 @@ class DanmakuPlayer(renderer: DanmakuRenderer, dataSource: DataSource? = null) {
     val config = this.config ?: return
     if (currentDisplayerWidth != width ||
       currentDisplayerHeight != height ||
-      currentDisplayerSizeFactor != viewportSizeFactor) {
+      currentDisplayerSizeFactor != viewportSizeFactor ||
+      currentRollingDurationFactor != config.rollingDurationFactor) {
       val duration = clamp(
-        (DanmakuConfig.DEFAULT_DURATION * (viewportSizeFactor * width / PLAYER_WIDTH)).toLong(),
+        (DanmakuConfig.DEFAULT_DURATION * (viewportSizeFactor * width / PLAYER_WIDTH) * (2 - config.rollingDurationFactor)).toLong(),
         MIN_DANMAKU_DURATION,
         MAX_DANMAKU_DURATION_HIGH_DENSITY
       )
@@ -351,6 +357,7 @@ class DanmakuPlayer(renderer: DanmakuRenderer, dataSource: DataSource? = null) {
       currentDisplayerWidth = width
       currentDisplayerHeight = height
       currentDisplayerSizeFactor = viewportSizeFactor
+      currentRollingDurationFactor = config.rollingDurationFactor
     }
   }
 

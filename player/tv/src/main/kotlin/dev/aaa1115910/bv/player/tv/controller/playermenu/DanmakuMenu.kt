@@ -37,6 +37,7 @@ import dev.aaa1115910.bv.player.tv.controller.playermenu.component.RadioMenuList
 import dev.aaa1115910.bv.player.tv.controller.playermenu.component.StepLessMenuItem
 import dev.aaa1115910.bv.util.ifElse
 import java.text.NumberFormat
+import kotlin.math.roundToInt
 
 @Composable
 fun DanmakuMenuList(
@@ -46,6 +47,7 @@ fun DanmakuMenuList(
     onDanmakuOpacityChange: (Float) -> Unit,
     onDanmakuAreaChange: (Float) -> Unit,
     onDanmakuMaskChange: (Boolean) -> Unit,
+    onDanmakuRollingDurationFactorChange: (Float) -> Unit,
     onFocusStateChange: (MenuFocusState) -> Unit
 ) {
     val context = LocalContext.current
@@ -64,6 +66,16 @@ fun DanmakuMenuList(
             .padding(horizontal = 8.dp)
         AnimatedVisibility(visible = focusState.focusState != MenuFocusState.MenuNav) {
             when (selectedDanmakuMenuItem) {
+                VideoPlayerDanmakuMenuItem.RollingDurationFactor -> StepLessMenuItem(
+                    modifier = menuItemsModifier,
+                    value = videoPlayerConfigData.currentDanmakuRollingDurationFactor,
+                    step = 0.1f,
+                    range = 0.5f..1.5f,
+                    text = "${(videoPlayerConfigData.currentDanmakuRollingDurationFactor * 100).roundToInt() / 100f}x",
+                    onValueChange = onDanmakuRollingDurationFactorChange,
+                    onFocusBackToParent = { onFocusStateChange(MenuFocusState.Menu) }
+                )
+
                 VideoPlayerDanmakuMenuItem.Switch -> CheckBoxMenuList(
                     modifier = menuItemsModifier,
                     items = DanmakuType.entries.map { it.getDisplayName(context) },

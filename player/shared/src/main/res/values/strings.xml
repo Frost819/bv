@@ -45,6 +45,7 @@
     <string name="video_codec_dvh1" tools:ignore="Typos">Dolby Vision (DVH1)</string>
     <string name="video_codec_hevc">H.265</string>
     <string name="video_codec_hvc1" tools:ignore="Typos">Dolby Vision (HVC1)</string>
+    <string name="video_player_menu_danmaku_rolling_duration_factor">弹幕速度</string>
     <string name="video_player_menu_danmaku_area">显示区域</string>
     <string name="video_player_menu_danmaku_mask">防遮挡</string>
     <string name="video_player_menu_danmaku_opacity">不透明度</string>

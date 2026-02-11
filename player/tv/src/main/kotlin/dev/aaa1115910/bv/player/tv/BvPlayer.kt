@@ -104,6 +104,7 @@ fun BvPlayer(
     onDanmakuOpacityChange: (Float) -> Unit,
     onDanmakuAreaChange: (Float) -> Unit,
     onDanmakuMaskChange: (Boolean) -> Unit,
+    onDanmakuRollingDurationFactorChange: (Float) -> Unit,
     onSubtitleChange: (Subtitle) -> Unit,
     onSubtitleSizeChange: (TextUnit) -> Unit,
     onSubtitleBackgroundOpacityChange: (Float) -> Unit,
@@ -168,7 +169,6 @@ fun BvPlayer(
 
     val clockState = remember { VideoPlayerClockState() }
 
-    var hideLogsTimer: CountDownTimer? by remember { mutableStateOf(null) }
     var clockRefreshTimer: CountDownTimer? by remember { mutableStateOf(null) }
     var hideBackToHistoryTimer: CountDownTimer? by remember { mutableStateOf(null) }
 
@@ -281,7 +281,8 @@ fun BvPlayer(
             retainerPolicy = RETAINER_BILIBILI,
             textSizeScale = videoPlayerConfigData.currentDanmakuScale,
             dataFilter = listOf(typeFilter),
-            visibility = videoPlayerConfigData.showDanmaku
+            visibility = videoPlayerConfigData.showDanmaku,
+            rollingDurationFactor = videoPlayerConfigData.currentDanmakuRollingDurationFactor
         )
         danmakuConfig.updateFilter()
         logger.info { "Init danmaku config: $danmakuConfig" }
@@ -314,6 +315,7 @@ fun BvPlayer(
         danmakuConfig = danmakuConfig.copy(
             retainerPolicy = RETAINER_BILIBILI,
             textSizeScale = videoPlayerConfigData.currentDanmakuScale,
+            rollingDurationFactor = videoPlayerConfigData.currentDanmakuRollingDurationFactor,
         )
         logger.info { "Update danmaku config: $danmakuConfig" }
         mDanmakuPlayer?.updateConfig(danmakuConfig)
@@ -518,7 +520,7 @@ fun BvPlayer(
             if (seekState.position != pos) seekState.position = pos
             if (seekState.duration != dur) seekState.duration = dur
             if (seekState.bufferedPercentage != buf) seekState.bufferedPercentage = buf
-            delay(200)
+            delay(250)
         }
     }
 
@@ -606,9 +608,9 @@ fun BvPlayer(
     }
 
     LaunchedEffect(videoPlayerLogsData.logs) {
-        hideLogsTimer?.cancel()
-        showLogs = true
-        hideLogsTimer = countDownTimer(3000, 1000, "hideLogsTimer") {
+        showLogs = videoPlayerLogsData.logs.isNotEmpty()
+        if (showLogs) {
+            delay(3000)
             showLogs = false
         }
     }
@@ -619,22 +621,25 @@ fun BvPlayer(
         }
     }
 
-    DisposableEffect(Unit) {
-        clockRefreshTimer = countDownTimer(
-            millisInFuture = Long.MAX_VALUE,
-            countDownInterval = 1000,
-            tag = "clockRefreshTimer",
-            showLogs = false,
-            onTick = {
-                val calendar = Calendar.getInstance()
-                val hour = calendar.get(Calendar.HOUR_OF_DAY)
-                val minute = calendar.get(Calendar.MINUTE)
-                val second = calendar.get(Calendar.SECOND)
-                if (clockState.hour != hour) clockState.hour = hour
-                if (clockState.minute != minute) clockState.minute = minute
-                if (clockState.second != second) clockState.second = second
-            }
-        )
+    DisposableEffect(showInfoProvider()) {
+        clockRefreshTimer?.cancel()
+        if (showInfoProvider()) {
+            clockRefreshTimer = countDownTimer(
+                millisInFuture = Long.MAX_VALUE,
+                countDownInterval = 1000,
+                tag = "clockRefreshTimer",
+                showLogs = false,
+                onTick = {
+                    val calendar = Calendar.getInstance()
+                    val hour = calendar.get(Calendar.HOUR_OF_DAY)
+                    val minute = calendar.get(Calendar.MINUTE)
+                    val second = calendar.get(Calendar.SECOND)
+                    if (clockState.hour != hour) clockState.hour = hour
+                    if (clockState.minute != minute) clockState.minute = minute
+                    if (clockState.second != second) clockState.second = second
+                }
+            )
+        }
         onDispose { clockRefreshTimer?.cancel() }
     }
 
@@ -805,6 +810,11 @@ fun BvPlayer(
             onDanmakuMaskChange = { mask ->
                 logger.info { "On danmaku mask change: $mask" }
                 onDanmakuMaskChange(mask)
+            },
+            onDanmakuRollingDurationFactorChange = { factor ->
+                logger.info { "On danmaku rolling duration factor change: $factor" }
+                onDanmakuRollingDurationFactorChange(factor)
+                updateDanmakuConfig()
             },
             onSubtitleChange = { subtitle ->
                 onSubtitleChange(subtitle)

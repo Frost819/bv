@@ -304,11 +304,14 @@ internal class RenderSystem(context: DanmakuContext) : DanmakuEntitySystem(conte
         true
       } ?: false
     } else {
-      // 缓存未命中时降级绘制,避免弹幕消失
-      canvas.withTranslation(obj.position.x, obj.position.y) {
-        danmakuContext.renderer.updatePaint(obj.item, displayer, config)
-        danmakuContext.renderer.draw(obj.item, canvas, displayer, config)
-      }
+      // 缓存未命中：跳过不画。
+      // 缓存在弹幕离屏前不会被淘汰，未命中只发生在弹幕刚进入屏幕、
+      // 缓存线程尚未构建完的极短时间内，下一帧即可命中，
+      // 在主线程做降级绘制（updatePaint + draw）代价过高（~2-5ms/条），不值得。
+      // canvas.withTranslation(obj.position.x, obj.position.y) {
+      //   danmakuContext.renderer.updatePaint(obj.item, displayer, config)
+      //   danmakuContext.renderer.draw(obj.item, canvas, displayer, config)
+      // }
       false
     }
   }

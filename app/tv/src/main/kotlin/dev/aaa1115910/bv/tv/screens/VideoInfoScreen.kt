@@ -333,7 +333,7 @@ fun VideoInfoScreen(
             val success =
                 VideoUserActionManager.updateVideoFavoriteFolders(aid, folderIds, Prefs.uid)
             if (!success) {
-                "收藏操作失败".toast(context)
+                "收藏操作失败！此收藏夹收藏数量已达上限（1000）".toast(context)
             }
         }
     }
@@ -342,7 +342,7 @@ fun VideoInfoScreen(
         scope.launch {
             val success = VideoUserActionManager.addToDefaultFavoriteFolder(aid, Prefs.uid)
             if (!success) {
-                "添加收藏失败".toast(context)
+                "添加收藏失败！默认收藏夹不存在？".toast(context)
             }
         }
     }
@@ -622,7 +622,7 @@ fun VideoInfoScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface),
+                .ifElse(!showUGCVideoInfo, Modifier.background(Color.Black)),
             contentAlignment = Alignment.Center
         ) {
             if (tip == "Loading") {

@@ -122,6 +122,7 @@ data class VideoPlayerConfigData(
     val currentDanmakuOpacity: Float = 1f,
     val currentDanmakuArea: Float = 1f,
     val currentDanmakuMask: Boolean = false,
+    val currentDanmakuRollingDurationFactor: Float = 1f,
     val currentSubtitleId: Long = 0,
     val currentSubtitleData: List<SubtitleItem> = emptyList(),
     val currentSubtitleFontSize: TextUnit = 24.sp,

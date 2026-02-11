@@ -78,9 +78,9 @@ data class DanmakuConfig(
   var textSizeScale: Float = 1f,
 
   /**
-   * 播放速率
+   * 滚动弹幕持续时间因子（改变滚动速度）
    */
-  var timeFactor: Float = 1f,
+  var rollingDurationFactor: Float = 1f,
 
   /**
    * 滚动弹幕屏幕的显示区域

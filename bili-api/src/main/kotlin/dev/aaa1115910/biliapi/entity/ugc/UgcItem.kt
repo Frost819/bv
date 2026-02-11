@@ -83,8 +83,13 @@ data class UgcItem(
                 pubTime = videoInfo.pubdate.smartDate
             )
 
-        fun fromSmallCoverV5(card: bilibili.app.card.v1.SmallCoverV5) =
-            UgcItem(
+        fun fromSmallCoverV5(card: bilibili.app.card.v1.SmallCoverV5): UgcItem {
+            // 格式："n.n万观看 · n天前"
+            val playAndPubTime = card.rightDesc2.split(" · ")
+            val play = playAndPubTime.getOrNull(0)?.let { convertPlayStringToLong(it) } ?: -1
+            val pubTime = playAndPubTime.getOrNull(1)
+
+            return UgcItem(
                 aid = card.base.param.toLong(),
                 title = card.base.title,
                 duration = convertStringTimeToSeconds(card.coverRightText1),
@@ -92,10 +97,12 @@ data class UgcItem(
 //                authorId = card.base.upId,
 //                authorFace = card.base.upFace,
                 cover = card.base.cover,
-                play = -1,
+                play = play,
+                pubTime = pubTime,
                 danmaku = -1,
                 idx = card.base.idx.toInt()
             )
+        }
 
         fun fromRegionDynamicListItem(item: dev.aaa1115910.biliapi.http.entity.region.RegionDynamicList.Item) =
             UgcItem(
@@ -126,6 +133,31 @@ data class UgcItem(
     }
 }
 
+private fun convertPlayStringToLong(text: String): Long {
+    if (text.isBlank()) return -1
+
+    val value = text.replace("观看", "").trim()
+
+    return try {
+        when {
+            value.endsWith("万") -> {
+                val num = value.removeSuffix("万").toDouble()
+                (num * 10_000).toLong()
+            }
+
+            value.endsWith("亿") -> {
+                val num = value.removeSuffix("亿").toDouble()
+                (num * 100_000_000).toLong()
+            }
+
+            else -> {
+                value.toLong()
+            }
+        }
+    } catch (e: Exception) {
+        -1
+    }
+}
 private fun convertStringTimeToSeconds(time: String): Int {
     val parts = time.split(":")
     val hours = if (parts.size == 3) parts[0].toInt() else 0
