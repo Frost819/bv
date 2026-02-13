@@ -102,6 +102,8 @@ fun VideoPlayerController(
     var seekCountdown: Job? by remember { mutableStateOf(null) }
     var hideInfoSeekControllerCountdown: Job? by remember { mutableStateOf(null) }
 
+    var showTimeJumpDialog by remember { mutableStateOf(false) }
+
     fun calCoefficient(): Int {
         return if (System.currentTimeMillis() - lastSeekChangeTime < 200) {
             seekChangeCount++
@@ -380,7 +382,23 @@ fun VideoPlayerController(
             },
             onToggleLoop = onToggleLoop,
             onGoToUpPage = onGoToUpPage
-        )
+        onShowTimeJump = {
+                        // 立刻暂停 + 打开对话框
+                        onPause()
+                        showInfoSeekController = false
+                        showTimeJumpDialog = true
+                    },
+                )
+
+                TimeJumpDialog(
+                    show = showTimeJumpDialog,
+                    durationMs = seekerState.value.totalDuration,
+                    onDismiss = { showTimeJumpDialog = false },
+                    onGoTime = { targetMs ->
+                        onGoTime(targetMs)
+                        if (!videoPlayer.isPlaying) onPlay()
+                    }
+                )
 
         VideoListController(
             show = showListController,
