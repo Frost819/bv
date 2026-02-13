@@ -83,7 +83,9 @@ fun ControllerVideoInfo(
     onShowRelatedVideos: () -> Unit,
     onGoToVideoInfo: () -> Unit,
     onToggleLoop: () -> Unit,
-    onGoToUpPage: () -> Unit
+    onGoToUpPage: () -> Unit,
+    focusButtonsOnShow: Boolean = false,
+    onConsumeFocusButtonsOnShow: () -> Unit = {}
 ) {
     Box(
         modifier = modifier.fillMaxSize()
@@ -129,7 +131,9 @@ fun ControllerVideoInfo(
                 onShowRelatedVideos = onShowRelatedVideos,
                 onGoToVideoInfo = onGoToVideoInfo,
                 onToggleLoop = onToggleLoop,
-                onGoToUpPage = onGoToUpPage
+                onGoToUpPage = onGoToUpPage,
+                focusButtonsOnShow = focusButtonsOnShow,
+                onConsumeFocusButtonsOnShow = onConsumeFocusButtonsOnShow
             )
         }
     }
@@ -209,10 +213,13 @@ fun ControllerVideoInfoBottom(
     onShowRelatedVideos: () -> Unit,
     onGoToVideoInfo: () -> Unit,
     onToggleLoop: () -> Unit,
-    onGoToUpPage: () -> Unit
+    onGoToUpPage: () -> Unit,
+    focusButtonsOnShow: Boolean = false,
+    onConsumeFocusButtonsOnShow: () -> Unit = {}
 ) {
     val seekFocusRequester = remember { FocusRequester() }
     val buttonsFocusRequester = remember { FocusRequester() }
+    val firstIconFocusRequester = remember { FocusRequester() }
 
     var isSeekFocused by remember { mutableStateOf(false) }
 
@@ -220,7 +227,12 @@ fun ControllerVideoInfoBottom(
         if (show) {
             delay(50)
             try {
-                seekFocusRequester.requestFocus()
+                if (focusButtonsOnShow) {
+                    firstIconFocusRequester.requestFocus()
+                    onConsumeFocusButtonsOnShow()
+                } else {
+                    seekFocusRequester.requestFocus()
+                }
             } catch (e: IllegalStateException) {
                 Log.d("ControllerVideoInfo", "requestFocus failed")
             }
@@ -293,7 +305,7 @@ fun ControllerVideoInfoBottom(
 
                         Key.DirectionDown -> {
                             if (it.type == KeyEventType.KeyUp) return@onKeyEvent true
-                            buttonsFocusRequester.requestFocus()
+                            firstIconFocusRequester.requestFocus()
                             return@onKeyEvent true
                         }
                     }
@@ -339,8 +351,9 @@ fun ControllerVideoInfoBottom(
                 .padding(horizontal = 24.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start)
         ) {
-            icons.forEach { (icon, function) ->
+            icons.forEachIndexed { index, (icon, function) ->
                 Surface(
+                    modifier = if (index == 0) Modifier.focusRequester(firstIconFocusRequester) else Modifier,
                     onClick = function,
                     shape = ClickableSurfaceDefaults.shape(
                         shape = MaterialTheme.shapes.small,

@@ -102,6 +102,8 @@ fun VideoPlayerController(
     var seekCountdown: Job? by remember { mutableStateOf(null) }
     var hideInfoSeekControllerCountdown: Job? by remember { mutableStateOf(null) }
 
+    var focusInfoButtonsOnShow by remember { mutableStateOf(false) }
+
     fun calCoefficient(): Int {
         return if (System.currentTimeMillis() - lastSeekChangeTime < 200) {
             seekChangeCount++
@@ -256,12 +258,14 @@ fun VideoPlayerController(
 
                 Key.MediaRewind, Key.DirectionLeft -> {
                     if (uiState.showSkipToNextEp) onCancelSkipToNextEp()
+                    focusInfoButtonsOnShow = false
                     showInfoSeekController = true
                     onDirectionLeft()
                     return true
                 }
 
                 Key.MediaFastForward, Key.DirectionRight -> {
+                    focusInfoButtonsOnShow = false
                     showInfoSeekController = true
                     onDirectionRight()
                     return true
@@ -340,7 +344,8 @@ fun VideoPlayerController(
         ControllerVideoInfo(
             modifier = Modifier.focusable(),
             show = showInfoSeekController,
-            isSeeking = isSeeking,
+            focusButtonsOnShow = focusInfoButtonsOnShow,
+                    onConsumeFocusButtonsOnShow = { focusInfoButtonsOnShow = false },isSeeking = isSeeking,
             goTime = goTime,
             seekerState = seekerState.value,
             title = uiState.title,
