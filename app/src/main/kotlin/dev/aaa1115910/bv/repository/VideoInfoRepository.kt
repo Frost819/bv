@@ -128,11 +128,51 @@ class VideoInfoRepository(private val videoDetailRepository: VideoDetailReposito
             )
 
             _videoDetailState.update { videoDetailState }
+
+            // 仅当前 aid：复用详情页 pages 写回到 videoList 对应项 ugcPages
+            // 约定三态与 ensureUgcPagesLoaded 一致：
+            // - ugcPages == null      -> 未加载/上次失败
+            // - ugcPages == emptyList -> 已加载但单P（无需展示子项）
+            // - ugcPages.isNotEmpty() -> 多P
+            val pages = videoDetailState.pages
+            if (pages.isNotEmpty()) {
+                var wroteUgcPages = false
+                _videoList.update { oldList ->
+                    oldList.map { item ->
+                        if (item.aid != aid) return@map item
+                        wroteUgcPages = true
+                        if (pages.size > 1) item.copy(ugcPages = pages) else item.copy(ugcPages = emptyList())
+                    }
+                }
+
+                // 只有当当前 videoList 里确实存在该 aid 且写回成功时，才标记“已加载”，避免跨列表污染
+                if (wroteUgcPages) {
+                    loadedUgcPagesAid.add(aid)
+                }
+            }
         }
 
-        fun updateVideoList(videoListItem: List<VideoListItem>) {
-            _videoList.update { videoListItem }
-        }
+         fun updateVideoList(videoListItem: List<VideoListItem>) {
+             _videoList.update { videoListItem }
+             // - ugcPages == null      -> 未加载/上次失败，必须允许后续 ensureUgcPagesLoaded 重新触发
+             // - ugcPages != null      -> 已加载（emptyList 表示单P）
+             //
+             // 同时丢弃不在当前列表里的 aid，避免缓存无限增长/跨列表污染。
+             val currentAids = videoListItem.asSequence().map { it.aid }.toSet()
+             loadedUgcPagesAid.retainAll(currentAids)
+             inFlightUgcPagesAid.retainAll(currentAids)
+
+             videoListItem.forEach { item ->
+                 val aid = item.aid
+                 if (item.ugcPages == null) {
+                     // 如果列表里显示为“未加载”，loaded 集合里就不能认为它“已加载”
+                     loadedUgcPagesAid.remove(aid)
+                 } else {
+                     // 列表里已经有 ugcPages（三态中的 emptyList / notEmpty），视为“已加载”
+                     loadedUgcPagesAid.add(aid)
+                 }
+             }
+         }
 
         fun updateHistory(progress: Int, lastPlayedCid: Long) {
             _videoDetailState.update {
@@ -146,6 +186,12 @@ class VideoInfoRepository(private val videoDetailRepository: VideoDetailReposito
         fun reset() {
             _videoList.update { emptyList() }
             _videoDetailState.update { null }
+
+            // reset 会清空 _videoList，但如果不清去重缓存，可能出现：
+            // loadedUgcPagesAid 仍认为“已加载”，导致 ensureUgcPagesLoaded 直接 return，
+            // 而新列表项 ugcPages 仍为 null -> UI 永远“加载中……”
+            loadedUgcPagesAid.clear()
+            inFlightUgcPagesAid.clear()
         }
 
         private fun mapToVideoCardData(relatedVideos: List<RelatedVideo>): List<VideoCardData> {
