@@ -74,6 +74,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.koin.android.annotation.KoinViewModel
 import java.net.URI
 import java.util.Calendar
@@ -204,9 +212,45 @@ class VideoPlayerV3ViewModel(
                 if (newDetail == null) return@onEach
 
                 _uiState.update { currentState ->
-                    currentState.copy(relatedVideos = newDetail.relatedVideos)
+                    currentState.copy(
+                        relatedVideos = newDetail.relatedVideos,
+                        ugcSeason = newDetail.ugcSeason
+                    )
                 }
                 logger.fInfo { "Sync related videos from repo" }
+            }
+            .launchIn(viewModelScope)
+
+        uiState
+            .map { it.aid to it.cid }
+            .distinctUntilChanged()
+            .mapLatest { (aid, cid) ->
+                // cid/aid 不完整时直接清空
+                if (aid == 0L || cid == 0L) return@mapLatest emptyList()
+
+                // 先清空，避免旧章节残留
+                _uiState.update { it.copy(availableChapters = emptyList()) }
+
+                val viewPoints = withContext(Dispatchers.IO) {
+                    videoPlayRepository.getViewPoints(aid = aid, cid = cid)
+                }
+
+                viewPoints.mapNotNull { element ->
+                    val obj = element as? JsonObject ?: return@mapNotNull null
+                    val content = obj["content"]?.jsonPrimitive?.content.orEmpty()
+                    val from = obj["from"]?.jsonPrimitive?.content?.toIntOrNull() ?: return@mapNotNull null
+                    val to = obj["to"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
+                    if (content.isBlank()) return@mapNotNull null
+
+                    dev.aaa1115910.bv.ui.state.PlayerChapter(
+                        content = content,
+                        fromSec = from,
+                        toSec = to
+                    )
+                }
+            }
+            .onEach { chapters ->
+                _uiState.update { it.copy(availableChapters = chapters) }
             }
             .launchIn(viewModelScope)
     }

@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonArray
 import org.koin.core.annotation.Single
 import bilibili.pgc.gateway.player.v2.PlayURLGrpcKt as PgcPlayURLGrpcKt
 
@@ -232,6 +233,23 @@ class VideoPlayRepository(
                     ?.map { Subtitle.fromSubtitleItem(it) }
                     ?: emptyList()
             }
+        }
+    }
+
+    suspend fun getViewPoints(
+        aid: Long,
+        cid: Long
+    ): JsonArray {
+        return runCatching {
+            val response = BiliHttpApi.getVideoMoreInfo(
+                avid = aid,
+                cid = cid,
+                sessData = authRepository.sessionData ?: "",
+                buvid3 = authRepository.buvid3 ?: ""
+            ).getResponseData()
+            response.viewPoints
+        }.getOrElse {
+            JsonArray(emptyList())
         }
     }
 

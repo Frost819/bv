@@ -182,47 +182,6 @@ fun VideoInfoScreen(
                 )
             )
         )
-         */
-        val newVideoList = mutableListOf<VideoListItem>()
-        // 根据视频类型构建列表
-        if (videoDetail.ugcSeason != null) {
-            // --- 情况 A: UGC 合集 (UGC Season) ---
-            // 逻辑：将当前分区的所有的“集”作为父项加入列表
-
-            // 尝试找到包含当前 cid 的 section，如果找不到则默认使用当前 videoDetail 所在的 section 或第一个 section
-            val currentSection = videoDetail.ugcSeason!!.sections.find { section ->
-                section.episodes.any { it.cid == cid ?: videoDetail.cid || it.aid == videoDetail.aid }
-            } ?: videoDetail.ugcSeason!!.sections.firstOrNull()
-
-            if (currentSection != null) {
-                currentSection.episodes.forEach { episode ->
-                    newVideoList.add(
-                        VideoListItem(
-                            aid = episode.aid,
-                            cid = episode.cid,
-                            //epid = episode.id,
-                            seasonId = videoDetail.ugcSeason!!.id,
-                            title = episode.title
-                            // ugcPages 将由播放器内部的 Repository 自动获取
-                        )
-                    )
-                }
-            }
-        } else {
-            // --- 情况 B: 普通视频 (单P 或 多P) ---
-            // 逻辑：只添加一个代表当前视频的 Item。
-            // 播放器内的 Repository 会检测到它，并自动加载它的所有分P填充到 ugcPages 中。
-            newVideoList.add(
-                VideoListItem(
-                    aid = videoDetail.aid,
-                    cid = videoDetail.cid, // 使用视频的主 CID
-                    title = videoDetail.title
-                )
-            )
-        }
-
-        //  将构建好的列表推送到 ViewModel
-        videoDetailViewModel.addToVideoList(newVideoList)
 
         launchPlayerActivity(
             context = context,
@@ -385,7 +344,7 @@ fun VideoInfoScreen(
                                 lastPlayedCid = videoDetailState.lastPlayedCid,
                                 lastPlayedTime = videoDetailState.lastPlayedTime,
                                 enablePartListDialog =
-                                (videoDetailState.pages.size > 5),
+                                    (videoDetailState.pages.size > 5),
                                 onClick = { cid ->
                                     logger.fInfo { "Click video part: [av:${videoDetailState.aid}, bv:${videoDetailState.bvid}, cid:$cid]" }
                                     // 播放当前视频的对应分P

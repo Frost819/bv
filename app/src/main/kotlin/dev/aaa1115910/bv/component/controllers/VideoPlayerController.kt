@@ -88,11 +88,12 @@ fun VideoPlayerController(
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger {}
 
-    var showListController by remember { mutableStateOf(false) }
+    //var showListController by remember { mutableStateOf(false) }
+    var showUpPanelController by remember { mutableStateOf(false) }
     var showMenuController by remember { mutableStateOf(false) }
     var showInfoSeekController by remember { mutableStateOf(false) }
     var showRelatedVideosController by remember { mutableStateOf(false) }
-    val showClickableControllers by remember { derivedStateOf { showListController || showMenuController || showInfoSeekController || showRelatedVideosController } }
+    val showClickableControllers by remember { derivedStateOf { showUpPanelController || showMenuController || showInfoSeekController || showRelatedVideosController } }
 
     var lastPressBack by remember { mutableLongStateOf(0L) }
     var goTime by remember { mutableLongStateOf(0L) }
@@ -184,7 +185,7 @@ fun VideoPlayerController(
             Key.Back -> {
                 if (showClickableControllers) {
                     showMenuController = false
-                    showListController = false
+                    showUpPanelController = false
                     showInfoSeekController = false
                     showRelatedVideosController = false
                 } else {
@@ -247,7 +248,7 @@ fun VideoPlayerController(
                 }
 
                 Key.DirectionUp -> {
-                    showListController = true
+                    showUpPanelController = true
                     return true
                 }
 
@@ -384,12 +385,26 @@ fun VideoPlayerController(
             onGoToUpPage = onGoToUpPage
         )
 
-        VideoListController(
+        /*VideoListController(
             show = showListController,
             currentAid = uiState.aid,currentCid = uiState.cid,
             videoList = uiState.availableVideoList,
             onEnsureUgcPagesLoaded = onEnsureUgcPagesLoaded,onPlayNewVideo = onPlayNewVideo
-        )
+        )*/
+                UpPanelController(
+                    show = showUpPanelController,
+                    uiState = uiState,
+                    currentTimeMs = seekerState.value.currentTime,
+                    isPlaying = videoPlayer.isPlaying,
+                    onDismiss = { showUpPanelController = false },
+                    onGoTime = { targetMs ->
+                        onGoTime(targetMs)
+                        if (!videoPlayer.isPlaying) onPlay()
+                    },
+                    onPlay = onPlay,
+                    onPlayNewVideo = onPlayNewVideo,
+                    onEnsureUgcPagesLoaded = onEnsureUgcPagesLoaded
+                )
 
         MenuController(
             show = showMenuController,

@@ -17,6 +17,7 @@ import dev.aaa1115910.bv.entity.VideoListItem
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
 import dev.aaa1115910.bv.util.VideoShotImageCache
+import dev.aaa1115910.biliapi.entity.video.season.UgcSeason
 
 // 1. 核心 UI 状态 (低频更新)
 data class PlayerUiState(
@@ -55,6 +56,10 @@ data class PlayerUiState(
     val availableAudio: List<Audio> = emptyList(),
     val availableSubtitles: List<Subtitle> = emptyList(),
     val availableVideoList: List<VideoListItem> = emptyList(),
+    // 章节（随 cid 变化加载，用于“选择章节”）
+    val availableChapters: List<PlayerChapter> = emptyList(),
+    // UGC 合集（用于“选择合集”）
+    val ugcSeason: UgcSeason? = null,
 
     // 相关视频
     val relatedVideos: List<VideoCardData> = emptyList(),
@@ -105,6 +110,12 @@ data class MediaProfileState(
     val qualityId: Int = 0,
     val videoCodec: VideoCodec = VideoCodec.AVC,
     val audio: Audio = Audio.A192K
+)
+
+data class PlayerChapter(
+    val content: String,
+    val fromSec: Int,
+    val toSec: Int
 )
 
 sealed class PlayerState {

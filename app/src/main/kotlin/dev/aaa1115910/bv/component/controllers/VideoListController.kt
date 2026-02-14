@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,6 +49,7 @@ import kotlinx.coroutines.launch
 fun VideoListController(
     modifier: Modifier = Modifier,
     show: Boolean,
+    active: Boolean = show,
     currentAid: Long,
     currentCid: Long,
     videoList: List<VideoListItem>,
@@ -58,15 +60,19 @@ fun VideoListController(
 
     var didInitialPosition by remember { mutableStateOf(false) }
     var pendingFocusCid by remember { mutableStateOf<Long?>(null) }
+    var pendingPrefetchAid by remember { mutableStateOf<Long?>(null) }
 
     // 仅在“打开时”标记一次“待聚焦 cid”：
     // 列表打开后不再因为 currentCid 的变化抢焦点
-    LaunchedEffect(show) {
-        if (show) {
+    LaunchedEffect(show, active) {
+        if (show && active) {
             pendingFocusCid = currentCid
         } else {
             pendingFocusCid = null
-            didInitialPosition = false
+            if (!show) {
+                pendingPrefetchAid = null
+                didInitialPosition = false
+            }
         }
     }
 
@@ -88,6 +94,7 @@ fun VideoListController(
      * 因为你这里父项可能三行、且展开/收起会改变高度；只滚一次很容易“滚到旧布局位置”。
      */
     LaunchedEffect(show, videoList.size) {
+        if (!active) return@LaunchedEffect
         if (!show) return@LaunchedEffect
         if (didInitialPosition) return@LaunchedEffect
         if (videoList.isEmpty()) return@LaunchedEffect
@@ -123,6 +130,7 @@ fun VideoListController(
      * 焦点移动时的“延迟预取”：避免焦点快速上下移动导致请求风暴
      */
     LaunchedEffect(show, pendingPrefetchAid) {
+        if (!active) return@LaunchedEffect
         if (!show) return@LaunchedEffect
         val aid = pendingPrefetchAid ?: return@LaunchedEffect
 
@@ -169,14 +177,26 @@ fun VideoListController(
                         val pagesLoaded = pages != null
                         val hasSubPages = pages?.isNotEmpty() == true
 
+                        val isCurrentParent = video.aid == currentAid
                         val isChildSelected = enableChildrenUi && (pages?.any { it.cid == currentCid } == true)
                         val isPinned = pinnedParent?.aid == video.aid || isChildSelected || isParentSelected
 
                         var expanded by remember(video.cid) { mutableStateOf(false) }
+                        var didAutoExpand by remember(video.cid) { mutableStateOf(false) }
 
-                        // pinnedParent：永远展开（命中父项或子项都成立）
-                        LaunchedEffect(isPinned) {
-                            if (isPinned) expanded = true
+                        // pinnedParent：只自动展开一次（用于初次定位/初次进入当前组），之后可以手动收起
+                        LaunchedEffect(show, isPinned) {
+                            if (!active) return@LaunchedEffect
+                            if (!show) return@LaunchedEffect
+                            if (isPinned && !didAutoExpand) {
+                                expanded = true
+                                didAutoExpand = true
+                            }
+                        }
+
+                        LaunchedEffect(pagesLoaded, hasSubPages) {
+                            // 确认单P：不需要展开
+                            if (pagesLoaded && !hasSubPages) expanded = false
                         }
 
                         // 组焦点跟踪（保留你原来的折叠策略）
@@ -212,6 +232,7 @@ fun VideoListController(
                              * 3) 再 bringIntoView
                              */
                             LaunchedEffect(show, pendingFocusCid) {
+                                if (!active) return@LaunchedEffect
                                 if (!show) return@LaunchedEffect
 
                                 val wantCid = pendingFocusCid ?: return@LaunchedEffect
@@ -253,7 +274,7 @@ fun VideoListController(
                                 // 但注意：如果 ugcPages 还没加载出来（pagesLoaded=false），此时子项节点不存在，无法 requestFocus
                                 // 这里策略：触发加载 + 先聚焦父项（保证焦点可见），等加载完成后你 currentCid 仍会对应子项，再由下面子项逻辑消费
                                 if (!pagesLoaded) {
-                                    if (enableChildrenUi) onEnsureUgcPagesLoaded(video.aid)
+                                    onEnsureUgcPagesLoaded(video.aid)
 
                                     // 先给父项焦点，至少不要“焦点在屏幕外”
                                     parentFocusRequester.requestFocus()
@@ -277,9 +298,10 @@ fun VideoListController(
                                     .onFocusChanged { state ->
                                         if (state.hasFocus) {
                                             groupHasFocus = true
-                                            if (enableChildrenUi) onEnsureUgcPagesLoaded(video.aid) // 预取但不展开
+                                            pendingPrefetchAid = if (enableChildrenUi) video.aid else null
                                         } else {
                                             groupHasFocus = false
+                                            if (pendingPrefetchAid == video.aid) pendingPrefetchAid = null
                                             scheduleCollapseIfNeeded()
                                         }
                                     },
@@ -328,6 +350,25 @@ fun VideoListController(
                                 }
                             )
 
+                            // 子项未加载：仅在“当前父项 + expanded=true”时展示“加载中...”占位（不可聚焦/不可点击）
+                            if (expanded && enableChildrenUi && !pagesLoaded && isCurrentParent) {
+                                Column(
+                                    modifier = Modifier
+                                        .padding(start = 16.dp, top = 4.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    MenuListItem(
+                                        modifier = Modifier
+                                            .padding(horizontal = 16.dp)
+                                            .focusProperties { canFocus = false },
+                                        text = "加载中……",
+                                        selected = false,
+                                        textAlign = TextAlign.Start,
+                                        onClick = {}
+                                    )
+                                }
+                            }
+
                             // 分P子项（仅展开时显示）
                             if (expanded && hasSubPages) {
                                 Column(
@@ -347,6 +388,7 @@ fun VideoListController(
                                              * 这样 bringIntoView 只发生一次，不会在上下移动焦点时干扰滚动。
                                              */
                                             LaunchedEffect(show, pendingFocusCid, expanded, pagesLoaded) {
+                                                if (!active) return@LaunchedEffect
                                                 if (!show) return@LaunchedEffect
                                                 if (!expanded) return@LaunchedEffect
                                                 if (!pagesLoaded) return@LaunchedEffect

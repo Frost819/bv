@@ -112,11 +112,16 @@ class VideoDetailViewModel(
                     title = episode.title
                 )
             }
+
         videoInfoRepository.updateVideoList(partVideoList ?: emptyList())
     }
 
     fun updateVideoList(videoListItem: List<VideoListItem>) {
         videoInfoRepository.updateVideoList(videoListItem)
+    }
+
+    fun clearVideoList() {
+        videoInfoRepository.clearVideoList()
     }
 
     fun setFollow(follow: Boolean) {
