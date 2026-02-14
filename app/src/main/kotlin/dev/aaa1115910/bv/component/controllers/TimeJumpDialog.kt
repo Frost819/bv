@@ -209,7 +209,7 @@ fun TimeJumpDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TimeJumpField(
-                        placeholder = "时",
+                        placeholder = if (hDirty || mDirty || sDirty) "00" else "时",
                         value = hValue,
                         dirty = hDirty,
                         selected = selectedField == 0,
@@ -219,7 +219,7 @@ fun TimeJumpDialog(
                     )
                     Text(text = ":", fontWeight = FontWeight.Bold)
                     TimeJumpField(
-                        placeholder = "分",
+                        placeholder = if (hDirty || mDirty || sDirty) "00" else "分",
                         value = mValue,
                         dirty = mDirty,
                         selected = selectedField == 1,
@@ -229,7 +229,7 @@ fun TimeJumpDialog(
                     )
                     Text(text = ":", fontWeight = FontWeight.Bold)
                     TimeJumpField(
-                        placeholder = "秒",
+                        placeholder = if (hDirty || mDirty || sDirty) "00" else "秒",
                         value = sValue,
                         dirty = sDirty,
                         selected = selectedField == 2,
