@@ -26,6 +26,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +47,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -106,6 +108,10 @@ fun CollectionListController(
     var pendingFocusKey by remember { mutableStateOf<Long?>(null) }
     var pendingPrefetchKey by remember { mutableStateOf<Long?>(null) }
 
+    val scope = rememberCoroutineScope()
+    var ensureParentVisibleJob by remember { mutableStateOf<Job?>(null) }
+    var focusedParentKey by remember { mutableStateOf<Long?>(null) }
+
     // 只在“进入内容区(active=true)”时设置 pendingFocus（避免导航聚焦时被内容抢焦点）
     LaunchedEffect(show, active) {
         if (!show) {
@@ -131,7 +137,6 @@ fun CollectionListController(
     // 初次定位：只在 active=true 时执行
     LaunchedEffect(show, active, parents.size) {
         if (!show) return@LaunchedEffect
-        if (!active) return@LaunchedEffect
         if (didInitialPosition) return@LaunchedEffect
         if (parents.isEmpty()) return@LaunchedEffect
 
@@ -155,6 +160,35 @@ fun CollectionListController(
         delay(200)
         if (pendingPrefetchKey == key) {
             parents.firstOrNull { it.key == key }?.let { onEnsureChildrenLoaded(it) }
+        }
+    }
+
+    LaunchedEffect(show, active, focusedParentKey, parents.size) {
+        if (!show) return@LaunchedEffect
+        val key = focusedParentKey ?: return@LaunchedEffect
+
+        val index = parents.indexOfFirst { it.key == key }
+        if (index < 0) return@LaunchedEffect
+
+        kotlinx.coroutines.android.awaitFrame()
+        if (focusedParentKey != key) return@LaunchedEffect
+
+        val layout = listState.layoutInfo
+        val viewportStart = layout.viewportStartOffset
+        val viewportEnd = layout.viewportEndOffset
+
+        val info = layout.visibleItemsInfo.firstOrNull { it.index == index }
+        val itemStart = info?.offset
+        val itemEnd = info?.let { it.offset + it.size }
+
+        val actuallyVisible =
+            (itemStart != null && itemEnd != null && itemEnd > viewportStart && itemStart < viewportEnd)
+
+        if (!actuallyVisible) {
+            listState.scrollToItem(index)
+            kotlinx.coroutines.android.awaitFrame()
+            if (focusedParentKey != key) return@LaunchedEffect
+            listState.scrollToItem(index, scrollOffset = -80)
         }
     }
 
@@ -269,10 +303,45 @@ fun CollectionListController(
                                         if (state.hasFocus) {
                                             groupHasFocus = true
                                             pendingPrefetchKey = parent.key
+
+                                            // 仅当父项已经在屏幕外时，才瞬移滚动把它带回可视区。
+                                            focusedParentKey = parent.key
+                                            ensureParentVisibleJob?.cancel()
+                                            ensureParentVisibleJob = scope.launch {
+                                                if (!show) return@launch
+
+                                                kotlinx.coroutines.android.awaitFrame()
+                                                if (focusedParentKey != parent.key) return@launch
+
+                                                val index = parents.indexOfFirst { it.key == parent.key }
+                                                if (index < 0) return@launch
+
+                                                val layout = listState.layoutInfo
+                                                val viewportStart = layout.viewportStartOffset
+                                                val viewportEnd = layout.viewportEndOffset
+
+                                                val info = layout.visibleItemsInfo.firstOrNull { it.index == index }
+                                                val itemStart = info?.offset
+                                                val itemEnd = info?.let { it.offset + it.size }
+
+                                                val actuallyVisible =
+                                                    (itemStart != null && itemEnd != null && itemEnd > viewportStart && itemStart < viewportEnd)
+
+                                                if (!actuallyVisible) {
+                                                    listState.scrollToItem(index, scrollOffset = -80)
+                                                    kotlinx.coroutines.android.awaitFrame()
+
+                                                    if (focusedParentKey == parent.key) {
+                                                        parentBringIntoViewRequester.bringIntoView()
+                                                    }
+                                                }
+                                            }
                                         } else {
                                             groupHasFocus = false
                                             if (pendingPrefetchKey == parent.key) pendingPrefetchKey = null
                                             scheduleCollapseIfNeeded()
+
+                                            if (focusedParentKey == parent.key) focusedParentKey = null
                                         }
                                     },
                                 selected = isParentSelected && (selectedChildKey == null),

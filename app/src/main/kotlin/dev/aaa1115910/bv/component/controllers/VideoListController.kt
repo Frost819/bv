@@ -25,6 +25,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import dev.aaa1115910.bv.entity.VideoListItem
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -57,6 +59,10 @@ fun VideoListController(
     onEnsureUgcPagesLoaded: (aid: Long) -> Unit,
 ) {
     val listState = rememberLazyListState()
+
+    val scope = rememberCoroutineScope()
+    var ensureParentVisibleJob by remember { mutableStateOf<Job?>(null) }
+    var focusedParentCid by remember { mutableStateOf<Long?>(null) }
 
     var didInitialPosition by remember { mutableStateOf(false) }
     var pendingFocusCid by remember { mutableStateOf<Long?>(null) }
@@ -93,8 +99,7 @@ fun VideoListController(
      * 关键修复：两段式定位 + offset
      * 因为你这里父项可能三行、且展开/收起会改变高度；只滚一次很容易“滚到旧布局位置”。
      */
-    LaunchedEffect(show, videoList.size) {
-        if (!active) return@LaunchedEffect
+    LaunchedEffect(show, active, videoList.size) {
         if (!show) return@LaunchedEffect
         if (didInitialPosition) return@LaunchedEffect
         if (videoList.isEmpty()) return@LaunchedEffect
@@ -124,6 +129,39 @@ fun VideoListController(
         }
 
         didInitialPosition = true
+    }
+
+    LaunchedEffect(show, active, focusedParentCid, videoList.size) {
+        if (!show) return@LaunchedEffect
+        val cid = focusedParentCid ?: return@LaunchedEffect
+
+        val index = videoList.indexOfFirst { it.cid == cid }
+        if (index < 0) return@LaunchedEffect
+
+        // 等一帧拿稳定的 layoutInfo
+        kotlinx.coroutines.android.awaitFrame()
+        // 焦点已经变了就别滚旧的
+        if (focusedParentCid != cid) return@LaunchedEffect
+
+        val layout = listState.layoutInfo
+        val viewportStart = layout.viewportStartOffset
+        val viewportEnd = layout.viewportEndOffset
+
+        val info = layout.visibleItemsInfo.firstOrNull { it.index == index }
+        val itemStart = info?.offset
+        val itemEnd = info?.let { it.offset + it.size }
+
+        // visibleItemsInfo 里“有”不代表在屏幕内，必须用 offset/size 与 viewport 相交判断
+        val actuallyVisible =
+            (itemStart != null && itemEnd != null && itemEnd > viewportStart && itemStart < viewportEnd)
+
+        if (!actuallyVisible) {
+            // 两段式瞬移：先拉进来，再做 offset 微调（尾部更稳）
+            listState.scrollToItem(index)
+            kotlinx.coroutines.android.awaitFrame()
+            if (focusedParentCid != cid) return@LaunchedEffect
+            listState.scrollToItem(index, scrollOffset = -80)
+        }
     }
 
     /**
@@ -299,10 +337,48 @@ fun VideoListController(
                                         if (state.hasFocus) {
                                             groupHasFocus = true
                                             pendingPrefetchAid = if (enableChildrenUi) video.aid else null
+
+                                            // 仅当父项已经在屏幕外时，才瞬移滚动把它带回可视区。
+                                            focusedParentCid = video.cid
+                                            ensureParentVisibleJob?.cancel()
+                                            ensureParentVisibleJob = scope.launch {
+                                                if (!show) return@launch
+
+                                                // 等一帧，确保 listState.layoutInfo 是稳定的
+                                                kotlinx.coroutines.android.awaitFrame()
+                                                if (focusedParentCid != video.cid) return@launch
+
+                                                val index = videoList.indexOfFirst { it.cid == video.cid }
+                                                if (index < 0) return@launch
+
+                                                val layout = listState.layoutInfo
+                                                val viewportStart = layout.viewportStartOffset
+                                                val viewportEnd = layout.viewportEndOffset
+
+                                                val info = layout.visibleItemsInfo.firstOrNull { it.index == index }
+                                                val itemStart = info?.offset
+                                                val itemEnd = info?.let { it.offset + it.size }
+
+                                                // visibleItemsInfo 里“有”不代表在屏幕内，必须用 offset/size 与 viewport 相交判断
+                                                val actuallyVisible =
+                                                    (itemStart != null && itemEnd != null && itemEnd > viewportStart && itemStart < viewportEnd)
+
+                                                if (!actuallyVisible) {
+                                                    listState.scrollToItem(index, scrollOffset = -80)
+                                                    kotlinx.coroutines.android.awaitFrame()
+
+                                                    // 只在 off-screen 时才 bringIntoView，避免日常移动焦点时干扰滚动
+                                                    if (focusedParentCid == video.cid) {
+                                                        parentBringIntoViewRequester.bringIntoView()
+                                                    }
+                                                }
+                                            }
                                         } else {
                                             groupHasFocus = false
                                             if (pendingPrefetchAid == video.aid) pendingPrefetchAid = null
                                             scheduleCollapseIfNeeded()
+
+                                            if (focusedParentCid == video.cid) focusedParentCid = null
                                         }
                                     },
                                 selected = isParentSelected && !isChildSelected,

@@ -3,6 +3,7 @@ package dev.aaa1115910.bv.component.controllers
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,6 +35,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Toc
 import androidx.compose.material.icons.rounded.VideoLibrary
@@ -114,18 +116,21 @@ fun UpPanelController(
                     horizontalArrangement = Arrangement.Start
                 ) {
                     // 左侧导航
+                    // 左侧导航
                     UpPanelNavList(
-                        modifier = Modifier.onPreviewKeyEvent {
-                            if (it.type == KeyEventType.KeyDown && it.key == Key.DirectionRight) {
-                                // 切状态但不消费，让系统焦点自然向右移动
-                                focusState = UpPanelFocusState.Content
+                        modifier = Modifier
+                            .focusGroup()
+                            .onFocusChanged { fs ->
+                                if (fs.hasFocus) focusState = UpPanelFocusState.Nav
                             }
-                            if (it.type == KeyEventType.KeyUp) {
-                                if (listOf(Key.Enter, Key.DirectionCenter).contains(it.key)) return@onPreviewKeyEvent false
-                                return@onPreviewKeyEvent true
-                            }
-                            false
-                        },
+                            .onPreviewKeyEvent {
+                                // 不再在按键时手动切状态，由 onFocusChanged 跟随真实焦点
+                                if (it.type == KeyEventType.KeyUp) {
+                                    if (listOf(Key.Enter, Key.DirectionCenter).contains(it.key)) return@onPreviewKeyEvent false
+                                    return@onPreviewKeyEvent true
+                                }
+                                false
+                            },
                         selectedTab = selectedTab,
                         isExpanded = focusState == UpPanelFocusState.Nav,
                         chaptersEnabled = chaptersEnabled,
@@ -137,11 +142,9 @@ fun UpPanelController(
                     // 右侧内容区：按 Left 回到导航
                     Box(
                         modifier = Modifier
-                            .onPreviewKeyEvent {
-                                if (it.type == KeyEventType.KeyDown && it.key == Key.DirectionLeft) {
-                                    focusState = UpPanelFocusState.Nav
-                                }
-                                false
+                            .focusGroup()
+                            .onFocusChanged { fs ->
+                                if (fs.hasFocus) focusState = UpPanelFocusState.Content
                             },
                         contentAlignment = Alignment.Center
                     ) {
