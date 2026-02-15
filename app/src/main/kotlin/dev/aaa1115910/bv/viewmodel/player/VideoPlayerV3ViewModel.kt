@@ -218,6 +218,12 @@ class VideoPlayerV3ViewModel(
                     )
                 }
                 logger.fInfo { "Sync related videos from repo" }
+
+                // 当拿到 ugcSeason 后，把“当前 aid 所在 section”的 episodes 写回 availableVideoList
+                syncVideoListFromUgcSeasonIfNeeded(
+                    detailAid = newDetail.aid,
+                    ugcSeason = newDetail.ugcSeason
+                )
             }
             .launchIn(viewModelScope)
 
@@ -637,6 +643,67 @@ class VideoPlayerV3ViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             videoInfoRepository.ensureUgcPagesLoaded(aid = aid, preferApiType = Prefs.apiType)
         }
+    }
+
+    /**
+     * 播放器内通过“选择合集”切视频时，detail 会更新 ugcSeason，
+     * 但 videoList（即 availableVideoList）不会自动切到“当前 aid 所属 section”的 episodes。
+     *
+     * 这里在拿到新 ugcSeason 时，把对应 section 的 episodes 映射为 VideoListItem，
+     * 并写回 videoInfoRepository.updateVideoList(...)，从而驱动“选择视频”列表内容同步刷新。
+     */
+    private fun syncVideoListFromUgcSeasonIfNeeded(
+        detailAid: Long,
+        ugcSeason: dev.aaa1115910.biliapi.entity.video.season.UgcSeason?,
+    ) {
+        if (ugcSeason == null) return
+
+        val playingAid = _uiState.value.aid
+        if (playingAid == 0L) return
+
+        // 防止快速切换视频：旧的 detail 回来时覆盖当前正在播放的视频列表
+        if (detailAid != playingAid) return
+
+        val sections = ugcSeason.sections.orEmpty()
+        if (sections.isEmpty()) return
+
+        // 找到当前播放 aid 所在的 section
+        val targetSection = sections.firstOrNull { section ->
+            section.episodes.any { ep -> ep.aid == playingAid }
+        } ?: return
+
+        // 复用旧列表里同 aid 的 ugcPages（如果有的话），避免不必要的重复加载
+        val oldByAid = _uiState.value.availableVideoList.associateBy { it.aid }
+        val seasonIdOrNull = _uiState.value.seasonId.takeIf { it != 0 }
+
+        val newList = targetSection.episodes.map { ep ->
+            val old = oldByAid[ep.aid]
+            if (old != null) {
+                old.copy(
+                    aid = ep.aid,
+                    cid = ep.cid,
+                    epid = ep.epid,
+                    seasonId = seasonIdOrNull,
+                    title = ep.title,
+                )
+            } else {
+                VideoListItem(
+                    aid = ep.aid,
+                    cid = ep.cid,
+                    epid = ep.epid,
+                    seasonId = seasonIdOrNull,
+                    title = ep.title,
+                )
+            }
+        }
+
+        // 如果列表本来就已经是这一份（按 aid 顺序判断），就不重复 update
+        val current = _uiState.value.availableVideoList
+        val sameAidsInOrder =
+            current.size == newList.size && current.map { it.aid } == newList.map { it.aid }
+        if (sameAidsInOrder) return
+
+        videoInfoRepository.updateVideoList(newList)
     }
 
     private fun computeAidsHash(list: List<VideoListItem>): Int {

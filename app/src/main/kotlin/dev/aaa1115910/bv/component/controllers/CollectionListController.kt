@@ -74,6 +74,10 @@ fun CollectionListController(
     selectedParentKey: Long?,
     selectedChildKey: Long?,
     pinnedParentKey: Long?,
+    // 进入内容区时默认聚焦的 key；为 null 则沿用旧行为（优先子项）
+    enterFocusKey: Long? = null,
+    // 是否允许 pinned/选中父项自动展开；默认 true 保持旧行为
+    autoExpandPinnedParent: Boolean = true,
     onEnsureChildrenLoaded: (CollectionParentItem) -> Unit,
     onParentClick: (CollectionParentItem) -> Unit,
     onChildClick: (CollectionParentItem, CollectionChildItem) -> Unit,
@@ -121,7 +125,8 @@ fun CollectionListController(
             return@LaunchedEffect
         }
         if (active) {
-            pendingFocusKey = selectedChildKey ?: selectedParentKey
+            // “选择合集”会传 enterFocusKey=selectedParentKey，从而默认聚焦父项而不是子项
+            pendingFocusKey = enterFocusKey ?: (selectedChildKey ?: selectedParentKey)
         } else {
             pendingFocusKey = null
         }
@@ -224,9 +229,10 @@ fun CollectionListController(
                         var expanded by remember(parent.key) { mutableStateOf(false) }
                         var didAutoExpand by remember(parent.key) { mutableStateOf(false) }
 
-                        LaunchedEffect(show, active, isPinned) {
+                        LaunchedEffect(show, active, isPinned, autoExpandPinnedParent) {
                             if (!show) return@LaunchedEffect
                             if (!active) return@LaunchedEffect
+                            if (!autoExpandPinnedParent) return@LaunchedEffect
                             if (isPinned && !didAutoExpand && hasChildren) {
                                 expanded = true
                                 didAutoExpand = true
@@ -265,7 +271,7 @@ fun CollectionListController(
                                 if (!shouldHandleThisGroup) return@LaunchedEffect
 
                                 val wantChild = children?.any { it.key == wantKey } == true
-                                if (wantChild) expanded = true
+                                if (wantChild && autoExpandPinnedParent) expanded = true
 
                                 val parentIndex = parents.indexOfFirst { it.key == parent.key }
                                 if (parentIndex != -1) {
@@ -344,7 +350,7 @@ fun CollectionListController(
                                             if (focusedParentKey == parent.key) focusedParentKey = null
                                         }
                                     },
-                                selected = isParentSelected && (selectedChildKey == null),
+                                selected = isPinned,
                                 onClick = {
                                     if (hasChildren) {
                                         expanded = !expanded

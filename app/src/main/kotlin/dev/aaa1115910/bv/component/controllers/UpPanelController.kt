@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -188,6 +187,8 @@ fun UpPanelController(
                                     selectedParentKey = built.selectedParentKey,
                                     selectedChildKey = null,
                                     pinnedParentKey = built.selectedParentKey,
+                                    enterFocusKey = built.selectedParentKey,
+                                    autoExpandPinnedParent = false,
                                     onEnsureChildrenLoaded = {},
                                     onParentClick = { parent ->
                                         val chapter = parent.extra as? PlayerChapter ?: return@CollectionListController
