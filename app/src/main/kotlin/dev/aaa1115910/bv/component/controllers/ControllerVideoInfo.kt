@@ -49,6 +49,8 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Button
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Comment
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -83,7 +85,8 @@ fun ControllerVideoInfo(
     onShowRelatedVideos: () -> Unit,
     onGoToVideoInfo: () -> Unit,
     onToggleLoop: () -> Unit,
-    onGoToUpPage: () -> Unit
+    onGoToUpPage: () -> Unit,
+    onShowComments: () -> Unit,
 ) {
     Box(
         modifier = modifier.fillMaxSize()
@@ -129,7 +132,8 @@ fun ControllerVideoInfo(
                 onShowRelatedVideos = onShowRelatedVideos,
                 onGoToVideoInfo = onGoToVideoInfo,
                 onToggleLoop = onToggleLoop,
-                onGoToUpPage = onGoToUpPage
+                onGoToUpPage = onGoToUpPage,
+                onShowComments = onShowComments,
             )
         }
     }
@@ -209,7 +213,8 @@ fun ControllerVideoInfoBottom(
     onShowRelatedVideos: () -> Unit,
     onGoToVideoInfo: () -> Unit,
     onToggleLoop: () -> Unit,
-    onGoToUpPage: () -> Unit
+    onGoToUpPage: () -> Unit,
+    onShowComments: () -> Unit,
 ) {
     val seekFocusRequester = remember { FocusRequester() }
     val buttonsFocusRequester = remember { FocusRequester() }
@@ -319,6 +324,7 @@ fun ControllerVideoInfoBottom(
             ((if (danmakuEnabled) (R.drawable.danmaku_on_24px) else (R.drawable.danmaku_off_24px)) to "弹幕开关") to onDanmakuSwitchChange,
             (R.drawable.settings_24px to "打开设置") to onShowSettings,
             if (!fromSeason) (R.drawable.info_24px to "视频信息") to onGoToVideoInfo else null,
+            ((-2 to "评论") to onShowComments),
             if (!fromSeason) (R.drawable.contact_page_24px to "up主页") to onGoToUpPage else null,
             if (!fromSeason)(R.drawable.related_videos_24px to "相关视频") to onShowRelatedVideos else null,
             ((if (isLooping) (R.drawable.repeat_one_on_24px) else (R.drawable.repeat_one_24px)) to "循环播放") to onToggleLoop,
@@ -346,11 +352,19 @@ fun ControllerVideoInfoBottom(
                         shape = MaterialTheme.shapes.small,
                     ),
                 ) {
-                    Icon(
-                        painter = painterResource(id = icon.first),
-                        contentDescription = icon.second,
-                        modifier = Modifier.padding(5.dp)
-                    )
+                    if (icon.first == -2) {
+                        Icon(
+                            imageVector = Icons.Rounded.Comment,
+                            contentDescription = icon.second,
+                            modifier = Modifier.padding(5.dp)
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(id = icon.first),
+                            contentDescription = icon.second,
+                            modifier = Modifier.padding(5.dp)
+                        )
+                    }
                 }
             }
         }
@@ -431,6 +445,7 @@ private fun ControllerVideoInfoPreview() {
             onGoToVideoInfo = {},
             onToggleLoop = {},
             onGoToUpPage = {},
+            onShowComments = {},
         )
     }
 }

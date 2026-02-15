@@ -44,6 +44,7 @@ import dev.aaa1115910.bv.util.toast
 import dev.aaa1115910.bv.viewmodel.player.DanmakuSettingAction
 import dev.aaa1115910.bv.viewmodel.player.MediaProfileSettingAction
 import dev.aaa1115910.bv.viewmodel.player.SubtitleSettingAction
+import dev.aaa1115910.bv.component.comments.VideoCommentsDialog
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -101,6 +102,7 @@ fun VideoPlayerController(
 
     var seekCountdown: Job? by remember { mutableStateOf(null) }
     var hideInfoSeekControllerCountdown: Job? by remember { mutableStateOf(null) }
+    var showCommentsDialog by remember { mutableStateOf(false) }
 
     fun calCoefficient(): Int {
         return if (System.currentTimeMillis() - lastSeekChangeTime < 200) {
@@ -379,7 +381,13 @@ fun VideoPlayerController(
                 )
             },
             onToggleLoop = onToggleLoop,
-            onGoToUpPage = onGoToUpPage
+            onGoToUpPage = onGoToUpPage,
+            onShowComments = {
+                // 立刻暂停 + 打开评论
+                onPause()
+                showInfoSeekController = false
+                showCommentsDialog = true
+            },
         )
 
         VideoListController(
@@ -436,6 +444,16 @@ fun VideoPlayerController(
             },
             onSubtitleBottomPadding = { padding ->
                 onSubtitleSettingChange(SubtitleSettingAction.SetBottomPadding(padding))
+            }
+        )
+
+        VideoCommentsDialog(
+            show = showCommentsDialog,
+            aid = aid,
+            onDismissRequest = {
+                showCommentsDialog = false
+                // 退出评论组件立刻播放
+                onPlay()
             }
         )
     }

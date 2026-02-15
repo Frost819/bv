@@ -102,6 +102,8 @@ import dev.aaa1115910.bv.component.UpIcon
 import dev.aaa1115910.bv.component.buttons.CoinButton
 import dev.aaa1115910.bv.component.buttons.FavoriteButton
 import dev.aaa1115910.bv.component.buttons.LikeButton
+import dev.aaa1115910.bv.component.buttons.CommentButton
+import dev.aaa1115910.bv.component.comments.VideoCommentsDialog
 import dev.aaa1115910.bv.component.ifElse
 import dev.aaa1115910.bv.component.videocard.VideosRow
 import dev.aaa1115910.bv.entity.VideoListItem
@@ -344,7 +346,7 @@ fun VideoInfoScreen(
                                 lastPlayedCid = videoDetailState.lastPlayedCid,
                                 lastPlayedTime = videoDetailState.lastPlayedTime,
                                 enablePartListDialog =
-                                (videoDetailState.pages.size > 5),
+                                    (videoDetailState.pages.size > 5),
                                 onClick = { cid ->
                                     logger.fInfo { "Click video part: [av:${videoDetailState.aid}, bv:${videoDetailState.bvid}, cid:$cid]" }
                                     // 播放当前视频的对应分P
@@ -500,6 +502,8 @@ fun VideoInfoData(
     val localDensity = LocalDensity.current
     var heightIs by remember { mutableStateOf(0.dp) }
 
+    var showCommentsDialog by remember { mutableStateOf(false) }
+
     Row(
         modifier = modifier
             .padding(horizontal = 50.dp, vertical = 16.dp),
@@ -604,6 +608,10 @@ fun VideoInfoData(
                     onAddToDefaultFavoriteFolder = onAddToDefaultFavoriteFolder,
                     onUpdateFavoriteFolders = onUpdateFavoriteFolders
                 )
+                Spacer(modifier = Modifier.width(5.dp))
+                CommentButton(
+                    onClick = { showCommentsDialog = true }
+                )
                 LazyRow(
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(horizontal = 5.dp),
@@ -618,9 +626,15 @@ fun VideoInfoData(
                     }
                 }
             }
+            VideoCommentsDialog(
+                show = showCommentsDialog,
+                aid = videoDetail.aid,
+                onDismissRequest = { showCommentsDialog = false }
+            )
         }
     }
 }
+
 
 @Composable
 private fun UpButton(
