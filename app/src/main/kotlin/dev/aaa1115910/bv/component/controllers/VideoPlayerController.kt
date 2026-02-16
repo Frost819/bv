@@ -381,7 +381,7 @@ fun VideoPlayerController(
                 )
             },
             onToggleLoop = onToggleLoop,
-            onGoToUpPage = onGoToUpPage
+            onGoToUpPage = onGoToUpPage,
         onShowTimeJump = {
                         // 立刻暂停 + 打开对话框
                         onPause()
@@ -393,11 +393,8 @@ fun VideoPlayerController(
                 TimeJumpDialog(
                     show = showTimeJumpDialog,
                     durationMs = seekerState.value.totalDuration,
-                    onDismiss = { showTimeJumpDialog = false },
-                    onGoTime = { targetMs ->
-                        onGoTime(targetMs)
-                        if (!videoPlayer.isPlaying) onPlay()
-                    }
+                    onDismiss = { showTimeJumpDialog = false; onPlay() },
+                    onGoTime = { targetMs -> onGoTime(targetMs) }
                 )
 
         VideoListController(
