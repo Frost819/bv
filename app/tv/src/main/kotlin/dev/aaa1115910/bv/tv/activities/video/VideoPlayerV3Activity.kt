@@ -28,9 +28,16 @@ import org.koin.androidx.viewmodel.ext.android.viewModel
 class VideoPlayerV3Activity : ComponentActivity() {
     companion object {
         private val logger = KotlinLogging.logger { }
-        private const val MAX_VIDEO_PLAYER_SCREENS = 2
         // 使用WeakReference防止内存泄漏，避免持有已销毁Activity的强引用
         private val activityQueue = LinkedList<WeakReference<VideoPlayerV3Activity>>()
+
+        private fun formatPopularity(count: Int): String {
+            return when {
+                count >= 100_000_000 -> String.format("%.1f亿人气", count / 100_000_000.0)
+                count >= 10_000 -> String.format("%.1f万人气", count / 10_000.0)
+                else -> "${count}人气"
+            }
+        }
         
         /**
          * 启动直播播放
@@ -38,9 +45,11 @@ class VideoPlayerV3Activity : ComponentActivity() {
         fun actionStartLive(
             context: Context,
             roomId: Int,
-            streamUrl: String,
             title: String,
-            upName: String = ""
+            upName: String = "",
+            watchedNum: Int = 0,
+            upId: Long = 0L,
+            upFace: String = ""
         ) {
             val runtime = Runtime.getRuntime()
             val usedMemory = runtime.totalMemory() - runtime.freeMemory()
@@ -54,9 +63,11 @@ class VideoPlayerV3Activity : ComponentActivity() {
                 ).apply {
                     putExtra("isLive", true)
                     putExtra("liveRoomId", roomId)
-                    putExtra("liveStreamUrl", streamUrl)
                     putExtra("title", title)
                     putExtra("upName", upName)
+                    putExtra("liveWatchedNum", watchedNum)
+                    putExtra("upId", upId)
+                    putExtra("upFace", upFace)
                 }
             )
         }
@@ -131,6 +142,12 @@ class VideoPlayerV3Activity : ComponentActivity() {
 
         // 将当前活动加入队列
         synchronized(activityQueue) {
+            val maxVideoPlayerScreens = if (Prefs.showUGCVideoInfo) {
+                1
+            } else {
+                Prefs.ugcVideoPlayerHistoryCount.coerceAtLeast(1)
+            }
+
             // 清理队列中的无效引用
             val iterator = activityQueue.iterator()
             while (iterator.hasNext()) {
@@ -145,7 +162,7 @@ class VideoPlayerV3Activity : ComponentActivity() {
             activityQueue.add(WeakReference(this))
 
             // 如果队列超过了最大限制，关闭最早的活动
-            if (activityQueue.size > MAX_VIDEO_PLAYER_SCREENS) {
+            if (activityQueue.size > maxVideoPlayerScreens) {
                 val oldestActivityRef = activityQueue.removeFirst()
                 val oldestActivity = oldestActivityRef.get()
                 oldestActivity?.runOnUiThread {
@@ -238,27 +255,25 @@ class VideoPlayerV3Activity : ComponentActivity() {
         // 检查是否为直播模式
         if (intent.getBooleanExtra("isLive", false)) {
             val roomId = intent.getIntExtra("liveRoomId", 0)
-            val streamUrl = intent.getStringExtra("liveStreamUrl") ?: ""
             val title = intent.getStringExtra("title") ?: "Unknown Title"
             val upName = intent.getStringExtra("upName") ?: ""
-            
-            logger.fInfo { "Launch live parameter: [roomId=$roomId, streamUrl=$streamUrl]" }
+            val watchedNum = intent.getIntExtra("liveWatchedNum", 0)
+            val upId = intent.getLongExtra("upId", 0L)
+            val upFace = intent.getStringExtra("upFace") ?: ""
+
+            logger.fInfo { "Launch live parameter: [roomId=$roomId, watchedNum=$watchedNum]" }
             
             playerViewModel.apply {
                 this.title = title
                 this.upName = upName
+                this.upId = upId
+                this.upFace = upFace
                 this.isLive = true
                 this.liveRoomId = roomId
-                this.liveStreamUrl = streamUrl
+                this.livePopularityText = if (watchedNum > 0) formatPopularity(watchedNum) else ""
                 
-                // 加载直播流（内部会初始化弹幕播放器）
-                loadLiveStream(streamUrl)
-                
-                // 延迟启动直播弹幕，等待播放器初始化完成
-                lifecycleScope.launch {
-                    kotlinx.coroutines.delay(1000)
-                    startLiveDanmaku(roomId)
-                }
+                // 通过 ViewModel 加载直播流（带画质选择，加载成功后自动启动弹幕）
+                loadLiveStreamWithQuality(roomId)
             }
             return
         }

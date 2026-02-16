@@ -17,16 +17,21 @@ fun ByteArray.zlibCompress(): ByteArray {
 
 fun ByteArray.zlibDecompress(): ByteArray {
     val inflater = Inflater()
-    val outputStream = ByteArrayOutputStream()
-    return outputStream.use {
-        val buffer = ByteArray(1024)
+    try {
         inflater.setInput(this)
-        var count = -1
-        while (count != 0) {
-            count = inflater.inflate(buffer)
-            outputStream.write(buffer, 0, count)
+        // 预估解压后大小（通常是压缩的3-5倍），减少扩容次数
+        val estimatedSize = this.size * 4
+        val outputStream = ByteArrayOutputStream(estimatedSize.coerceAtLeast(1024))
+        return outputStream.use {
+            // 增大缓冲区，减少循环次数
+            val buffer = ByteArray(8192)
+            var count: Int
+            while (inflater.inflate(buffer).also { count = it } > 0) {
+                outputStream.write(buffer, 0, count)
+            }
+            outputStream.toByteArray()
         }
+    } finally {
         inflater.end()
-        outputStream.toByteArray()
     }
 }

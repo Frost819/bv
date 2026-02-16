@@ -79,10 +79,12 @@ import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.video.Subtitle
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerClockState
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
+import dev.aaa1115910.bv.player.entity.parseControllerButtonsOrder
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekState
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerSeekThumbData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerStateData
 import dev.aaa1115910.bv.player.entity.LocalVideoPlayerVideoInfoData
+import dev.aaa1115910.bv.player.entity.Resolution
 import dev.aaa1115910.bv.player.entity.VideoPlayerClockState
 import dev.aaa1115910.bv.player.entity.VideoPlayerSeekState
 import dev.aaa1115910.bv.player.entity.VideoPlayerSeekThumbData
@@ -135,7 +137,11 @@ fun ControllerVideoInfo(
     onSubtitleChange: (Subtitle) -> Unit,
     onLoadNextVideo: (Boolean) -> Unit,
     onShowComment: () -> Unit = {},
+    onResolutionChange: (Resolution) -> Unit = {},
+    onLiveQualityChange: (Int) -> Unit = {},
+    viewerCountText: String = "",
 ) {
+    val context = LocalContext.current
     val videoPlayerClockState = LocalVideoPlayerClockState.current
     val videoPlayerSeekState = LocalVideoPlayerSeekState.current
     val videoPlayerSeekThumbData = LocalVideoPlayerSeekThumbData.current
@@ -221,7 +227,7 @@ fun ControllerVideoInfo(
                 onLoopPlayModeChange = onLoopPlayModeChange,
                 onRotationChange = onRotationChange,
                 fromSeason = videoPlayerVideoInfoData.fromSeason,
-                isLive = videoPlayerVideoInfoData.isLive,
+                isLive = videoPlayerConfigData.isLive,
                 userActionContent = userActionContent,
                 onSeekBack = onSeekBack,
                 onSeekForward = onSeekForward,
@@ -234,7 +240,16 @@ fun ControllerVideoInfo(
                 isFollowingUp = videoPlayerVideoInfoData.isFollowingUp,
                 showNextVideoBtn = videoPlayerConfigData.showNextVideoBtn,
                 onLoadNextVideo = onLoadNextVideo,
-                onShowComment = onShowComment
+                onShowComment = onShowComment,
+                availableResolutions = videoPlayerConfigData.availableResolutions,
+                currentResolution = videoPlayerConfigData.currentResolution,
+                onResolutionChange = onResolutionChange,
+                availableLiveQualities = videoPlayerConfigData.availableLiveQualities,
+                currentLiveQn = videoPlayerConfigData.currentLiveQn,
+                currentLiveQualityDescription = videoPlayerConfigData.currentLiveQualityDescription,
+                onLiveQualityChange = onLiveQualityChange,
+                controllerButtonsOrder = videoPlayerConfigData.controllerButtonsOrder,
+                viewerCountText = viewerCountText
             )
         }
     }
@@ -319,25 +334,47 @@ fun ControllerVideoInfoBottom(
     showNextVideoBtn: Boolean = false,
     onLoadNextVideo: (Boolean) -> Unit,
     onShowComment: () -> Unit = {},
+    availableResolutions: List<Resolution> = emptyList(),
+    currentResolution: Resolution = Resolution.R240P,
+    onResolutionChange: (Resolution) -> Unit = {},
+    availableLiveQualities: List<Pair<Int, String>> = emptyList(),
+    currentLiveQn: Int = 0,
+    currentLiveQualityDescription: String = "",
+    onLiveQualityChange: (Int) -> Unit = {},
+    controllerButtonsOrder: String = "",
+    viewerCountText: String = ""
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var hideVideoInfoJob by remember { mutableStateOf<Job?>(null) }
     var pauseAutoHide by remember { mutableStateOf(false) }
     var showSpeedDialog by remember { mutableStateOf(false) }
     var showRotationDialog by remember { mutableStateOf(false) }
     var showSubtitleDialog by remember { mutableStateOf(false) }
+    var showQualityDialog by remember { mutableStateOf(false) }
     var speed by remember { mutableFloatStateOf(playSpeed) }
     val danmakuIconId = if (showDanmaku) R.drawable.ic_danmaku_on else R.drawable.ic_danmaku_hide
     val subtitleIconId = if (currentSubtitleId > -1) R.drawable.ic_subtitle_on else R.drawable.ic_subtitle_off
     val upSpaceIconId = if (isFollowingUp) R.drawable.person_following else R.drawable.person
-    val buttons = remember(isLive, fromSeason, showDanmaku, isPlaying, isLoop, speed, rotation, currentSubtitleId, isFollowingUp, showNextVideoBtn) {
-        listOf(
+    val buttonConfigs = remember(controllerButtonsOrder) {
+        parseControllerButtonsOrder(controllerButtonsOrder)
+    }
+
+    val currentQualityText = if (isLive) currentLiveQualityDescription.ifEmpty { "画质" } else currentResolution.getShortDisplayName(context).ifEmpty { "画质" }
+
+    val buttons = remember(isLive, fromSeason, showDanmaku, isLoop, speed, rotation, currentSubtitleId, isFollowingUp, showNextVideoBtn, currentLiveQualityDescription, currentResolution, availableResolutions, buttonConfigs) {
+        val rawButtons = listOf(
             ControlButton(
                 id = "nextVideo",
                 painterId = R.drawable.next_play_fill,
                 scale = 0.7f,
                 onClick = { onLoadNextVideo(true) },
                 visible = showNextVideoBtn && !isLive
+            ),
+            ControlButton(
+                id = "refresh",
+                icon = Icons.Rounded.Refresh,
+                onClick = onRefreshVideo
             ),
             ControlButton(
                 id = "speed",
@@ -347,24 +384,24 @@ fun ControllerVideoInfoBottom(
                 visible = !isLive
             ),
             ControlButton(
+                id = "resolution",
+                text = currentQualityText,
+                onClick = { showQualityDialog = true },
+                width = 46,
+                visible = (isLive && availableLiveQualities.isNotEmpty()) || (!isLive && availableResolutions.isNotEmpty())
+            ),
+            ControlButton(
                 id = "upSpace",
                 painterId = upSpaceIconId,
                 scale = 0.72f,
                 onClick = onOpenUpSpace,
-                visible = !fromSeason && !isLive
+                visible = !fromSeason
             ),
             ControlButton(
                 id = "rotation",
                 icon = Icons.TwoTone.ScreenRotation,
                 onClick = { showRotationDialog = true },
-                scale = 0.75f,
-                visible = !isLive
-            ),
-            ControlButton(
-                id = "refresh",
-                icon = Icons.Rounded.Refresh,
-                onClick = onRefreshVideo,
-                visible = !isLive
+                scale = 0.75f
             ),
             ControlButton(
                 id = "subtitle",
@@ -409,14 +446,36 @@ fun ControllerVideoInfoBottom(
                 id = "settings",
                 icon = Icons.Outlined.Settings,
                 onClick = onOpenSetting,
-                scale = 0.9f,
-                visible = !isLive
+                scale = 0.9f
             )
-        ).filter { it.visible }
+        )
+
+        if (buttonConfigs.isEmpty()) {
+            rawButtons.filter { it.visible }
+        } else {
+            val buttonMap = rawButtons.associateBy { it.id }
+            val configIds = buttonConfigs.map { it.id }
+            val configMap = buttonConfigs.associateBy { it.id }
+            val ordered = configIds.mapNotNull { id ->
+                buttonMap[id]?.let { button ->
+                    if (configMap[id]?.hidden == true) button.copy(visible = false)
+                    else button
+                }
+            }
+            val remaining = rawButtons.filter { it.id !in configIds }
+            (ordered + remaining).filter { it.visible }
+        }
     }
 
-    // 进度条向下移动时，聚焦到第一个可见的按钮
-    val firstVisibleButtonId = remember(buttons) { buttons.firstOrNull()?.id }
+    // 默认焦点按钮：用户设置的默认焦点，如果不可见则使用第一个可见按钮
+    val defaultFocusButtonId = remember(buttons, buttonConfigs) {
+        val configDefault = buttonConfigs.firstOrNull { it.isDefaultFocus }?.id
+        if (configDefault != null && buttons.any { it.id == configDefault }) {
+            configDefault
+        } else {
+            buttons.firstOrNull()?.id
+        }
+    }
 
     val focusRequesters = remember(buttons) {
         buttons.associate { button ->
@@ -438,30 +497,34 @@ fun ControllerVideoInfoBottom(
     val seekbarFocusRequester = remember { FocusRequester() }
     var seekbarHasFocus by remember { mutableStateOf(false) }
 
-    val statString by remember {
+    fun formatStat(value: Long): String = if (value >= 10000) String.format("%.1f", value / 10000.0) + " 万" else "$value "
+
+    val statString by remember(viewerCountText) {
         mutableStateOf(
-            if(isLive && upName.isNotEmpty()) {
-                upName
-            } else if (upName.isNotEmpty()) {
-                "$upName  ·  ${
-                    if (play >= 10000) String.format("%.1f", play / 10000.0) + " 万" else "$play "
-                }播放  ·  ${
-                    if (danmaku >= 10000) String.format("%.1f", danmaku / 10000.0) + "万" else "$danmaku "
-                }弹幕  ·  ${
-                    if (like >= 10000) String.format("%.1f", like / 10000.0) + "万" else "$like "
-                }点赞  ·  ${
-                    if (favorite >= 10000) String.format("%.1f", favorite / 10000.0) + "万" else "$favorite "
-                }收藏  ·  ${
-                    if (coin >= 10000) String.format("%.1f", coin / 10000.0) + "万" else "$coin "
-                }投币  ·  发布于 $pubTime"
-            } else ""
+            when {
+                upName.isNotEmpty() -> {
+                    val base = if (isLive) upName else {
+                        "$upName  ·  ${formatStat(play)}播放  ·  ${formatStat(danmaku.toLong())}弹幕  ·  ${formatStat(like.toLong())}点赞  ·  ${formatStat(favorite.toLong())}收藏  ·  ${formatStat(coin.toLong())}投币  ·  发布于 $pubTime"
+                    }
+                    if (viewerCountText.isNotEmpty()) "$base  ·  $viewerCountText" else base
+                }
+                viewerCountText.isNotEmpty() -> viewerCountText
+                else -> ""
+            }
         )
     }
 
-    LaunchedEffect(show) {
+    LaunchedEffect(show, isLive) {
         if (show) {
-            // 初始聚焦 进度条
-            seekbarFocusRequester.requestFocus()
+            if (isLive) {
+                // 直播默认聚焦第一个按钮，因为直播进度条没用
+                defaultFocusButtonId
+                    ?.let { focusRequesters[it] }
+                    ?.requestFocus()
+            } else {
+                // 初始聚焦 进度条
+                seekbarFocusRequester.requestFocus()
+            }
         }
     }
 
@@ -472,7 +535,7 @@ fun ControllerVideoInfoBottom(
 
     fun scheduleHideJob() {
         cancelHideJob()
-        if (show && !showSpeedDialog && !showRotationDialog && !showSubtitleDialog && !pauseAutoHide) {
+        if (show && !showSpeedDialog && !showRotationDialog && !showSubtitleDialog && !showQualityDialog && !pauseAutoHide) {
             hideVideoInfoJob = scope.launch {
                 delay(5000)
                 withContext(Dispatchers.Main) { onHideInfo() }
@@ -480,7 +543,7 @@ fun ControllerVideoInfoBottom(
         }
     }
 
-    LaunchedEffect(show, showSpeedDialog, showRotationDialog, showSubtitleDialog, pauseAutoHide) {
+    LaunchedEffect(show, showSpeedDialog, showRotationDialog, showSubtitleDialog, showQualityDialog, pauseAutoHide) {
         scheduleHideJob()
     }
 
@@ -516,7 +579,7 @@ fun ControllerVideoInfoBottom(
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.headlineSmall,
         )
-        if (upName.isNotEmpty()) {
+        if (statString.isNotEmpty()) {
             Text(
                 modifier = Modifier
                     .padding(start = 32.dp, end = 32.dp, top = 8.dp, bottom = 0.dp)
@@ -545,18 +608,6 @@ fun ControllerVideoInfoBottom(
                 }
             )
         }
-//        Row(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .height(48.dp)
-//                .padding(start = 32.dp, end = 32.dp, top = 14.dp, bottom = 6.dp),
-//            verticalAlignment = Alignment.CenterVertically
-//        ) {
-//            Icon(
-//                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-//                contentDescription = null,
-//                tint = Color.White.copy(alpha = 0.5f)
-//            )
         VideoSeekBar(
             modifier = Modifier
                 .fillMaxWidth()
@@ -568,9 +619,9 @@ fun ControllerVideoInfoBottom(
                 }
                 .focusProperties {
                     up = userActionFocusRequesters.value["like"] ?: FocusRequester()
-                    down = firstVisibleButtonId?.let { focusRequesters[it] } ?: FocusRequester()
+                    down = defaultFocusButtonId?.let { focusRequesters[it] } ?: FocusRequester()
                 }
-                .focusable()
+                .ifElse(!isLive, Modifier.focusable())
                 .onPreviewKeyEvent {
                     if (seekbarHasFocus && it.type == KeyEventType.KeyDown) {
                         when (it.key) {
@@ -594,12 +645,15 @@ fun ControllerVideoInfoBottom(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 32.dp, end = 32.dp, top = 0.dp, bottom = 10.dp)
-                .focusProperties {
-                    up = seekbarFocusRequester
-                }
+                .ifElse(
+                    !isLive,
+                    Modifier.focusProperties {
+                        up = seekbarFocusRequester
+                    }
+                )
                 .onPreviewKeyEvent { event ->
                     if (event.type == KeyEventType.KeyDown) {
-                        if (!fromSeason && event.key == Key.DirectionDown) {
+                        if (!fromSeason && !isLive && event.key == Key.DirectionDown) {
                             onOpenRelatedVideo()
                         }
                     }
@@ -615,7 +669,7 @@ fun ControllerVideoInfoBottom(
                         .focusRequester(focusRequesters[button.id] ?: FocusRequester()),
                     onClick = button.onClick,
                     shape = ButtonDefaults.shape(shape = RoundedCornerShape(8.dp)),
-                    contentPadding = PaddingValues(2.dp),
+                    contentPadding = PaddingValues(vertical = 2.dp, horizontal = (if(button.text != null) 1 else 2).dp),
                     colors = ButtonDefaults.colors(
                         containerColor = Color.Transparent,
                         focusedContainerColor = Color.White.copy(alpha = 0.3f)
@@ -642,10 +696,12 @@ fun ControllerVideoInfoBottom(
                             style = MaterialTheme.typography.bodyLarge,
                             color = button.tint,
                             fontWeight = button.fontWeight,
-                            modifier = Modifier.ifElse(
-                                button.scale != 1f,
-                                Modifier.scale(button.scale)
-                            )
+                            modifier = Modifier
+                                .padding(top = 2.dp)
+                                .ifElse(
+                                    button.scale != 1f,
+                                    Modifier.scale(button.scale)
+                                )
                         )
                     } else if (button.painterId != null) {
                         Icon(
@@ -712,6 +768,24 @@ fun ControllerVideoInfoBottom(
                 onSubtitleChange = { subtitle ->
                     onSubtitleChange(subtitle.id)
                 }
+            )
+        }
+    }
+
+    if (showQualityDialog) {
+        if (isLive && availableLiveQualities.isNotEmpty()) {
+            LiveQualityDialog(
+                onHideDialog = { showQualityDialog = false },
+                availableLiveQualities = availableLiveQualities,
+                currentLiveQn = currentLiveQn,
+                onLiveQualityChange = onLiveQualityChange
+            )
+        } else if (!isLive && availableResolutions.isNotEmpty()) {
+            ResolutionDialog(
+                onHideDialog = { showQualityDialog = false },
+                availableResolutions = availableResolutions.sortedByDescending { it.code },
+                currentResolution = currentResolution,
+                onResolutionChange = onResolutionChange
             )
         }
     }
@@ -939,6 +1013,153 @@ private fun SubtitleDialog(
                             Text(
                                 modifier = Modifier.fillMaxWidth(),
                                 text = option.langDoc,
+                                textAlign = TextAlign.Center,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LiveQualityDialog(
+    modifier: Modifier = Modifier,
+    availableLiveQualities: List<Pair<Int, String>>,
+    currentLiveQn: Int,
+    onHideDialog: () -> Unit,
+    onLiveQualityChange: (Int) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    val focusRequesters = remember { availableLiveQualities.associate { it.first to FocusRequester() } }
+    var lastInteractionTime by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    fun touch() { lastInteractionTime = System.currentTimeMillis() }
+
+    LaunchedEffect(currentLiveQn) {
+        focusRequesters[currentLiveQn]?.requestFocus(scope)
+    }
+
+    LaunchedEffect(lastInteractionTime) {
+        val base = lastInteractionTime
+        delay(15000)
+        if (base == lastInteractionTime) onHideDialog()
+    }
+
+    Dialog(onDismissRequest = { onHideDialog() }) {
+        Surface(
+            modifier = modifier
+                .width(240.dp),
+            color = Color.Black.copy(alpha = 0.5f),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text(
+                    text = "直播画质",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 18.sp
+                )
+
+                Column {
+                    availableLiveQualities.forEach { (qn, description) ->
+                        val selected = qn == currentLiveQn
+                        Button(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp, start = 8.dp, end = 8.dp)
+                                .focusRequester(focusRequesters[qn]!!),
+                            shape = ButtonDefaults.shape(MaterialTheme.shapes.medium),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
+                            colors = ButtonDefaults.colors(
+                                containerColor = if (selected) MaterialTheme.colorScheme.inverseSurface.copy(
+                                    alpha = 0.4f
+                                ) else Color.Transparent,
+                                contentColor = Color.White,
+                                focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
+                                focusedContentColor = Color.Black
+                            ),
+                            onClick = { touch(); onLiveQualityChange(qn) }
+                        ) {
+                            Text(
+                                modifier = Modifier.fillMaxWidth(),
+                                text = description,
+                                textAlign = TextAlign.Center,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResolutionDialog(
+    modifier: Modifier = Modifier,
+    availableResolutions: List<Resolution>,
+    currentResolution: Resolution,
+    onHideDialog: () -> Unit,
+    onResolutionChange: (Resolution) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val focusRequesters = remember { availableResolutions.associateWith { FocusRequester() } }
+    var lastInteractionTime by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    fun touch() { lastInteractionTime = System.currentTimeMillis() }
+
+    LaunchedEffect(currentResolution) {
+        focusRequesters[currentResolution]?.requestFocus(scope)
+    }
+
+    LaunchedEffect(lastInteractionTime) {
+        val base = lastInteractionTime
+        delay(15000)
+        if (base == lastInteractionTime) onHideDialog()
+    }
+
+    Dialog(onDismissRequest = { onHideDialog() }) {
+        Surface(
+            modifier = modifier
+                .width(240.dp),
+            color = Color.Black.copy(alpha = 0.5f),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text(
+                    text = "画质",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 18.sp
+                )
+
+                Column {
+                    availableResolutions.forEach { resolution ->
+                        val selected = resolution == currentResolution
+                        Button(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp, start = 8.dp, end = 8.dp)
+                                .focusRequester(focusRequesters[resolution]!!),
+                            shape = ButtonDefaults.shape(MaterialTheme.shapes.medium),
+                            scale = ButtonDefaults.scale(focusedScale = 1f),
+                            colors = ButtonDefaults.colors(
+                                containerColor = if (selected) MaterialTheme.colorScheme.inverseSurface.copy(
+                                    alpha = 0.4f
+                                ) else Color.Transparent,
+                                contentColor = Color.White,
+                                focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
+                                focusedContentColor = Color.Black
+                            ),
+                            onClick = { touch(); onResolutionChange(resolution) }
+                        ) {
+                            Text(
+                                modifier = Modifier.fillMaxWidth(),
+                                text = resolution.getShortDisplayName(context),
                                 textAlign = TextAlign.Center,
                                 fontSize = 16.sp
                             )

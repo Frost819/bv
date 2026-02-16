@@ -99,7 +99,8 @@ fun SearchScreen(
         videoSearchResult = searchResultViewModel.videoSearchResult.videos,
         mediaBangumiSearchResult = searchResultViewModel.mediaBangumiSearchResult.mediaBangumis,
         mediaFtSearchResult = searchResultViewModel.mediaFtSearchResult.mediaFts,
-        biliUserSearchResult = searchResultViewModel.biliUserSearchResult.biliUsers
+        biliUserSearchResult = searchResultViewModel.biliUserSearchResult.biliUsers,
+        liveRoomSearchResult = searchResultViewModel.liveRoomSearchResult.liveRooms
     )
 }
 
@@ -117,7 +118,8 @@ fun SearchContent(
     videoSearchResult: List<SearchTypeResult.Video>,
     mediaBangumiSearchResult: List<SearchTypeResult.Pgc>,
     mediaFtSearchResult: List<SearchTypeResult.Pgc>,
-    biliUserSearchResult: List<SearchTypeResult.User>
+    biliUserSearchResult: List<SearchTypeResult.User>,
+    liveRoomSearchResult: List<SearchTypeResult.LiveRoom>
 ) {
     val scope = rememberCoroutineScope()
     val searchBarState = rememberSearchBarState()
@@ -192,6 +194,7 @@ fun SearchContent(
                     mediaBangumiSearchResult = mediaBangumiSearchResult,
                     mediaFtSearchResult = mediaFtSearchResult,
                     biliUserSearchResult = biliUserSearchResult,
+                    liveRoomSearchResult = liveRoomSearchResult,
                     onSearch = onSearchKeyword,
                     onOpenUgc = onOpenUgc
                 )
@@ -325,6 +328,7 @@ private fun SearchScreenMobilePreview() {
             mediaBangumiSearchResult = emptyList(),
             mediaFtSearchResult = emptyList(),
             biliUserSearchResult = emptyList(),
+            liveRoomSearchResult = emptyList(),
             historyKeywords = emptyList(),
             matchedHistory = emptyList()
         )
@@ -341,6 +345,7 @@ private fun SearchScreenTablePreview() {
             mediaBangumiSearchResult = emptyList(),
             mediaFtSearchResult = emptyList(),
             biliUserSearchResult = emptyList(),
+            liveRoomSearchResult = emptyList(),
             historyKeywords = emptyList(),
             matchedHistory = emptyList()
         )

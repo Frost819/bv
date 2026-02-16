@@ -47,7 +47,7 @@ fun SeasonInfoButtons(
     Row(
         modifier = modifier
             .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (isPublished) {

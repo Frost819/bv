@@ -12,6 +12,7 @@ dependencies {
     implementation(libs.koin.core)
     implementation(libs.koin.annotations)
     implementation(libs.jsoup)
+    implementation(libs.brotli)
     implementation(libs.kotlinx.coroutines)
     implementation(libs.kotlinx.serialization)
     implementation(libs.ktor.client.content.negotiation)

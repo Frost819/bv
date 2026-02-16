@@ -58,6 +58,7 @@ import dev.aaa1115910.bv.tv.component.PgcTopNavItem
 import dev.aaa1115910.bv.tv.component.TvAlertDialog
 import dev.aaa1115910.bv.tv.component.UgcTopNavItem
 import dev.aaa1115910.bv.tv.component.settings.SettingListItem
+import dev.aaa1115910.bv.tv.component.settings.SettingNumberListItem
 import dev.aaa1115910.bv.tv.component.settings.SettingSwitchListItem
 import dev.aaa1115910.bv.tv.component.HomeTopNavItem
 import dev.aaa1115910.bv.tv.screens.settings.SettingsMenuNavItem
@@ -84,6 +85,10 @@ fun UISetting(
     val density by Prefs.densityFlow.collectAsState(context.resources.displayMetrics.widthPixels / 960f)
     val themeType by Prefs.themeTypeFlow.collectAsState(Prefs.themeType)
     var defaultHomeTab by remember { mutableStateOf(HomeTopNavItem.entries.getOrElse(Prefs.defaultHomeTab) { HomeTopNavItem.Recommend }) }
+    var showUGCVideoInfo by remember { mutableStateOf(Prefs.showUGCVideoInfo) }
+    var videoInfoHistoryIncludeFromPlayer by remember { mutableStateOf(Prefs.videoInfoHistoryIncludeFromPlayer) }
+    var ugcVideoInfoHistoryCount by remember { mutableIntStateOf(Prefs.ugcVideoInfoHistoryCount) }
+    var ugcVideoPlayerHistoryCount by remember { mutableIntStateOf(Prefs.ugcVideoPlayerHistoryCount) }
 
     Box(modifier = modifier) {
         Column(
@@ -116,6 +121,62 @@ fun UISetting(
                         valueText = themeType.getDisplayName(context),
                         onClick = { showThemeTypeDialog = true }
                     )
+                }
+                item {
+                    SettingSwitchListItem(
+                        title = stringResource(R.string.settings_show_ugc_video_info_title),
+                        supportText = stringResource(R.string.settings_show_ugc_video_info_text),
+                        checked = showUGCVideoInfo,
+                        onCheckedChange = {
+                            showUGCVideoInfo = it
+                            Prefs.showUGCVideoInfo = it
+                        }
+                    )
+                }
+                item {
+                    SettingNumberListItem(
+                        title = stringResource(R.string.settings_ui_ugc_video_info_history_count_title),
+                        supportText = stringResource(R.string.settings_ui_ugc_video_info_history_count_text),
+                        value = ugcVideoInfoHistoryCount.toDouble(),
+                        minValue = 1.0,
+                        maxValue = 10.0,
+                        isInteger = true,
+                        step = 1.0,
+                        onValueChange = {
+                            ugcVideoInfoHistoryCount = it.toInt()
+                            Prefs.ugcVideoInfoHistoryCount = it.toInt()
+                        }
+                    )
+                }
+                if (showUGCVideoInfo) {
+                    item {
+                        SettingSwitchListItem(
+                            title = stringResource(R.string.settings_ui_video_info_history_include_from_player_title),
+                            supportText = stringResource(R.string.settings_ui_video_info_history_include_from_player_text),
+                            checked = videoInfoHistoryIncludeFromPlayer,
+                            onCheckedChange = {
+                                videoInfoHistoryIncludeFromPlayer = it
+                                Prefs.videoInfoHistoryIncludeFromPlayer = it
+                            }
+                        )
+                    }
+                }
+                if (!showUGCVideoInfo) {
+                    item {
+                        SettingNumberListItem(
+                            title = stringResource(R.string.settings_ui_ugc_video_player_history_count_title),
+                            supportText = stringResource(R.string.settings_ui_ugc_video_player_history_count_text),
+                            value = ugcVideoPlayerHistoryCount.toDouble(),
+                            minValue = 1.0,
+                            maxValue = 10.0,
+                            isInteger = true,
+                            step = 1.0,
+                            onValueChange = {
+                                ugcVideoPlayerHistoryCount = it.toInt()
+                                Prefs.ugcVideoPlayerHistoryCount = it.toInt()
+                            }
+                        )
+                    }
                 }
                 item {
                     SettingListItem(

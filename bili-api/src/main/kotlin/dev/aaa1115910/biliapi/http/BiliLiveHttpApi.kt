@@ -15,6 +15,7 @@ import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.http.URLProtocol
 import io.ktor.serialization.kotlinx.json.json
@@ -55,12 +56,14 @@ object BiliLiveHttpApi {
     /**
      * 获取直播间[roomId]的弹幕连接地址等信息，例如 token
      * 需要 WBI 签名
+     * @param sessData 用户登录凭证，传入后可获取已登录用户权限的弹幕 token
      */
-    suspend fun getLiveDanmuInfo(roomId: Int): BiliResponse<DanmuInfoData> =
+    suspend fun getLiveDanmuInfo(roomId: Int, sessData: String = ""): BiliResponse<DanmuInfoData> =
         client.get("/xlive/web-room/v1/index/getDanmuInfo") {
             parameter("id", roomId)
             parameter("type", 0)
             encWbi()
+            if (sessData.isNotEmpty()) header("Cookie", "SESSDATA=$sessData")
         }.body()
 
     /**

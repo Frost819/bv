@@ -128,6 +128,7 @@ fun FollowScreen(
                     )
                     OutlinedTextField(
                         state = searchState,
+                        enabled = !followViewModel.updating,
                         modifier = Modifier
                             .offset(y = (-2).dp)
                             .width(258.dp)

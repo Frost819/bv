@@ -464,6 +464,7 @@ fun VideoInfoScreen(
                     // 从播放器推荐视频打开时 fromPlayer=true 并显示loading。300m后 fromPlayer改成false，此后从播放器返回详情页，正常显示详情内容
                     //如果是从剧集跳转过来的或设置不显示视频详情，就直接播放 P1
                     if (fromSeason || !showUGCVideoInfo || fromPlayer) {
+                        val shouldFinishAfterAutoLaunch = fromPlayer && !Prefs.videoInfoHistoryIncludeFromPlayer
                         val playPart = videoDetailViewModel.videoDetail!!.pages.first()
                         cid = cid.takeIf { it > 0L } ?: playPart.cid
 
@@ -500,7 +501,9 @@ fun VideoInfoScreen(
                                 pubTime = videoDetailViewModel.videoDetail!!.publishDate.formatPubTimeString()
                             )
                         }
-                        if (fromPlayer) {
+                        if (shouldFinishAfterAutoLaunch) {
+                            context.finish()
+                        } else if (fromPlayer) {
                             // 清除标记, 以便从播放器返回过来的可以进入详情页
                             scope.launch {
                                 delay(1200)
@@ -1535,12 +1538,12 @@ private fun VideoPartButton(
     onClick: () -> Unit
 ) {
     val borderColor = when {
-        isLastPlayed -> Color(0xFFE39B17)
+        isLastPlayed -> null
         isCurrentIntent -> MaterialTheme.colorScheme.primary
         else -> null
     }
     val focusedBorderColor = when {
-        isLastPlayed -> Color(0xFFE39B17)
+        isLastPlayed -> null
         isCurrentIntent -> Color(0xFF00BFFF)
         else -> null
     }
@@ -1614,20 +1617,36 @@ private enum class VideoPartType {
 @Composable
 private fun VideoPartRowButton(
     modifier: Modifier = Modifier,
+    hasFocus: Boolean = true,
     onClick: () -> Unit
 ) {
+    val scale by animateFloatAsState(
+        targetValue = if (hasFocus) 1f else 0.4f,
+        label = "button scale",
+        animationSpec = tween(
+            durationMillis = 120
+        )
+    )
+
     Surface(
-        modifier = modifier.size(width = 40.dp, height = 45.dp),
+        modifier = modifier,
         colors = ClickableSurfaceDefaults.colors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
             pressedContainerColor = MaterialTheme.colorScheme.inverseSurface
         ),
-        shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.medium),
+        shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.small),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(2.dp, Color(0xFFE39B17)),
+                shape = MaterialTheme.shapes.small
+            )
+        ),
         onClick = onClick
     ) {
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .size(width = (40 * scale).dp, height = (42 * scale).dp),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -1694,6 +1713,7 @@ fun VideoPartRow(
             )
             if (enablePartListDialog) {
                 VideoPartRowButton(
+                    hasFocus = hasFocus,
                     onClick = { showPartListDialog = true }
                 )
             }
@@ -1794,6 +1814,7 @@ fun VideoUgcSeasonRow(
             )
             if (enableUgcListDialog) {
                 VideoPartRowButton(
+                    hasFocus = hasFocus,
                     onClick = { showUgcListDialog = true }
                 )
             }

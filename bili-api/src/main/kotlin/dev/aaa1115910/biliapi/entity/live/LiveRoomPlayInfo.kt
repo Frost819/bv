@@ -26,8 +26,15 @@ data class LivePlayUrlInfo(
 )
 
 @Serializable
+data class LiveQnDesc(
+    val qn: Int,
+    val desc: String
+)
+
+@Serializable
 data class LivePlayUrl(
-    val stream: List<LiveStream> = emptyList()
+    val stream: List<LiveStream> = emptyList(),
+    @SerialName("g_qn_desc") val gQnDesc: List<LiveQnDesc> = emptyList()
 )
 
 @Serializable
@@ -46,6 +53,7 @@ data class LiveFormat(
 data class LiveCodec(
     @SerialName("codec_name") val codecName: String,
     @SerialName("current_qn") val currentQn: Int,
+    @SerialName("accept_qn") val acceptQn: List<Int> = emptyList(),
     @SerialName("base_url") val baseUrl: String,
     @SerialName("url_info") val urlInfo: List<LiveUrlInfo> = emptyList()
 )

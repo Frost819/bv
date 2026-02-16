@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.toIntSize
 import com.caverock.androidsvg.SVG
 import dev.aaa1115910.biliapi.entity.danmaku.DanmakuMaskFrame
@@ -25,14 +27,43 @@ import dev.aaa1115910.biliapi.entity.danmaku.DanmakuWebMaskFrame
  * saveLayer + DstIn 混合模式实现蒙版裁切。
  */
 fun Modifier.bitmapMask(
-    imageBitmap: ImageBitmap
+    imageBitmap: ImageBitmap,
+    videoAspectRatio: Float,
+    areaRatio: Float
 ): Modifier = drawWithContent {
     drawIntoCanvas { canvas ->
         canvas.saveLayer(Rect(Offset.Zero, size), Paint())
         drawContent()
+
+
+        val safeArea = if (areaRatio <= 0f) 1f else areaRatio
+        val screenWidth = size.width
+        val screenHeight = size.height / safeArea
+        val screenAspectRatio = screenWidth / screenHeight
+
+        val dstWidth: Float
+        val dstHeight: Float
+        val offsetX: Float
+        val offsetY: Float
+
+        if (videoAspectRatio > screenAspectRatio) {
+            dstWidth = screenWidth
+            dstHeight = dstWidth / videoAspectRatio
+
+            offsetX = 0f
+            offsetY = (screenHeight - dstHeight) / 2f
+        } else {
+            dstHeight = screenHeight
+            dstWidth = dstHeight * videoAspectRatio
+
+            offsetY = 0f
+            offsetX = (screenWidth - dstWidth) / 2f
+        }
+
         drawImage(
             image = imageBitmap,
-            dstSize = size.toIntSize(),
+            dstOffset = IntOffset(offsetX.toInt(), offsetY.toInt()),
+            dstSize = IntSize(dstWidth.toInt(), dstHeight.toInt()),
             blendMode = BlendMode.DstIn
         )
         canvas.restore()
@@ -44,7 +75,9 @@ fun Modifier.bitmapMask(
  * 使用 remember(frame) 缓存结果，同一帧数据不会重复解析。
  */
 fun Modifier.danmakuWebMask(
-    frame: DanmakuWebMaskFrame
+    frame: DanmakuWebMaskFrame,
+    videoAspectRatio: Float,
+    areaRatio: Float
 ): Modifier = composed {
     val cachedImage = remember(frame) {
         runCatching {
@@ -58,7 +91,7 @@ fun Modifier.danmakuWebMask(
         }.getOrNull()
     } ?: return@composed this
 
-    bitmapMask(cachedImage)
+    bitmapMask(cachedImage, videoAspectRatio, areaRatio)
 }
 
 /**
@@ -66,7 +99,9 @@ fun Modifier.danmakuWebMask(
  * 优化：使用 IntArray + setPixels 批量写入替代逐像素 setPixel，性能提升约 10 倍。
  */
 fun Modifier.danmakuMobMask(
-    frame: DanmakuMobMaskFrame
+    frame: DanmakuMobMaskFrame,
+    videoAspectRatio: Float,
+    areaRatio: Float
 ): Modifier = composed {
     val cachedImage = remember(frame) {
         val width = 40
@@ -82,7 +117,7 @@ fun Modifier.danmakuMobMask(
         bitmap.asImageBitmap()
     }
 
-    bitmapMask(cachedImage)
+    bitmapMask(cachedImage, videoAspectRatio, areaRatio)
 }
 
 /**
@@ -90,12 +125,14 @@ fun Modifier.danmakuMobMask(
  * 使用 remember(frame) 确保同一帧不重复计算 Modifier 链。
  */
 fun Modifier.danmakuMask(
-    frame: DanmakuMaskFrame?
+    frame: DanmakuMaskFrame?,
+    videoAspectRatio: Float, // 视频的宽高比 (例如 1920/1080 ≈ 1.77, 21/9 ≈ 2.33)
+    areaRatio: Float         // 弹幕区域占屏幕高度的比例 (0.0 - 1.0)
 ): Modifier = composed {
     if (frame == null) return@composed this
 
     when (frame) {
-        is DanmakuWebMaskFrame -> danmakuWebMask(frame)
-        is DanmakuMobMaskFrame -> danmakuMobMask(frame)
+        is DanmakuWebMaskFrame -> danmakuWebMask(frame, videoAspectRatio, areaRatio)
+        is DanmakuMobMaskFrame -> danmakuMobMask(frame, videoAspectRatio, areaRatio)
     }
 }

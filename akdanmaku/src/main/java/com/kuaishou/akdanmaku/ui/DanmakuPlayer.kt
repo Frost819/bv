@@ -70,8 +70,8 @@ class DanmakuPlayer(renderer: DanmakuRenderer, dataSource: DataSource? = null) {
     internal const val NOTIFY_DISPLAYER_SIZE_CHANGE = 2201
 
     private const val PLAYER_WIDTH = 682
-    const val MIN_DANMAKU_DURATION: Long = 3000
-    const val MAX_DANMAKU_DURATION_HIGH_DENSITY: Long = 16000
+    const val MIN_DANMAKU_DURATION: Long = 4000
+    const val MAX_DANMAKU_DURATION_HIGH_DENSITY: Long = 9000
     /**
      * 是否手动控制 Step 流程
      */
@@ -342,18 +342,19 @@ class DanmakuPlayer(renderer: DanmakuRenderer, dataSource: DataSource? = null) {
       currentDisplayerHeight != height ||
       currentDisplayerSizeFactor != viewportSizeFactor ||
       currentRollingDurationFactor != config.rollingDurationFactor) {
-      val duration = clamp(
-        (DanmakuConfig.DEFAULT_DURATION * (viewportSizeFactor * width / PLAYER_WIDTH) * (2 - config.rollingDurationFactor)).toLong(),
+      var duration = clamp(
+        (DanmakuConfig.DEFAULT_DURATION * (viewportSizeFactor * width / PLAYER_WIDTH)).toLong(),
         MIN_DANMAKU_DURATION,
         MAX_DANMAKU_DURATION_HIGH_DENSITY
       )
+      duration = (duration * (2 - config.rollingDurationFactor)).toLong()
       if (config.rollingDurationMs != duration) {
         config.rollingDurationMs = duration
         config.updateRetainer()
         config.updateLayout()
         config.updateVisibility()
       }
-      Log.d("XanaDanmaku", "[Factor] update rolling duration to $duration")
+      Log.d("XanaDanmaku", "[Factor] update rolling duration to $duration, rollingDurationFactor ${config.rollingDurationFactor}")
       currentDisplayerWidth = width
       currentDisplayerHeight = height
       currentDisplayerSizeFactor = viewportSizeFactor

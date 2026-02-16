@@ -1,5 +1,6 @@
 [versions]
 accompanist = "0.36.0"
+brotli = "0.1.2"
 #akdanmaku = "1.0.0"
 androidsvg = "1.4"
 coil = "2.7.0"
@@ -37,6 +38,9 @@ accompanist-systemuicontroller = { module = "com.google.accompanist:accompanist-
 
 # https://github.com/BigBadaboom/androidsvg
 androidSvg = { module = "com.caverock:androidsvg-aar", version.ref = "androidsvg" }
+
+# https://github.com/google/brotli
+brotli = { module = "org.brotli:dec", version.ref = "brotli" }
 
 # https://coil-kt.github.io/coil
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }

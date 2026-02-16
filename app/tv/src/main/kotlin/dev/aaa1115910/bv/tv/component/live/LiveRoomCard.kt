@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -30,6 +31,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
@@ -90,6 +92,7 @@ fun LiveRoomCard(
                 AsyncImage(
                     model = data.cover.resizedImageUrl(ImageSize.LargeCover),
                     contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
 
@@ -106,22 +109,24 @@ fun LiveRoomCard(
                         )
                 )
 
-                // 直播中标识
-                Box(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .background(
-                            color = Color(0xFFFF6699),
-                            shape = RoundedCornerShape(4.dp)
+                // 直播中标识（仅开播时显示）
+                if (data.liveStatus == 1) {
+                    Box(
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .background(
+                                color = Color(0xFFFF6699).copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .align(Alignment.TopStart)
+                    ) {
+                        Text(
+                            text = "直播中",
+                            color = Color.White,
+                            fontSize = 12.sp
                         )
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                        .align(Alignment.TopStart)
-                ) {
-                    Text(
-                        text = "直播中",
-                        color = Color.White,
-                        fontSize = 12.sp
-                    )
+                    }
                 }
 
                 // 在线人数
@@ -139,7 +144,9 @@ fun LiveRoomCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = formatViewCount(data.online),
+                        text = formatViewCount(
+                            data.watchedShow?.num ?: (data.online / 10)
+                        ),
                         color = Color.White,
                         fontSize = 13.sp
                     )
@@ -152,6 +159,7 @@ fun LiveRoomCard(
             Text(
                 text = data.title,
                 maxLines = 2,
+                minLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(horizontal = 4.dp)
@@ -193,7 +201,8 @@ fun LiveRoomCard(
  */
 private fun formatViewCount(count: Int): String {
     return when {
-        count >= 10000 -> String.format("%.1f万", count / 10000.0)
+        count >= 100_000_000 -> String.format(Locale.US, "%.1f亿", count / 100_000_000.0)
+        count >= 10_000 -> String.format(Locale.US, "%.1f万", count / 10_000.0)
         else -> count.toString()
     }
 }

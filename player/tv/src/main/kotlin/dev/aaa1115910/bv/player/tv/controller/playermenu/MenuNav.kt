@@ -12,6 +12,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import dev.aaa1115910.bv.player.entity.LocalVideoPlayerConfigData
 import dev.aaa1115910.bv.player.entity.VideoPlayerMenuNavItem
 import dev.aaa1115910.bv.player.tv.controller.playermenu.component.MenuListItem
 import dev.aaa1115910.bv.util.ifElse
@@ -24,7 +25,13 @@ fun MenuNavList(
     isFocusing: Boolean
 ) {
     val context = LocalContext.current
+    val videoPlayerConfigData = LocalVideoPlayerConfigData.current
     val focusRequester = remember { FocusRequester() }
+    val navItems = remember(videoPlayerConfigData.isLive) {
+        VideoPlayerMenuNavItem.entries.toMutableList().apply {
+            if (videoPlayerConfigData.isLive) remove(VideoPlayerMenuNavItem.ClosedCaption)
+        }
+    }
 
     LazyColumn(
         modifier = modifier
@@ -32,7 +39,7 @@ fun MenuNavList(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(16.dp)
     ) {
-        itemsIndexed(VideoPlayerMenuNavItem.entries) { index, item ->
+        itemsIndexed(navItems) { index, item ->
             MenuListItem(
                 modifier = Modifier
                     .ifElse(index == 0, Modifier.focusRequester(focusRequester)),

@@ -70,6 +70,7 @@ fun MenuController(
     onRotationChange: (VideoRotation) -> Unit,
     onPlaySpeedChange: (Float) -> Unit = {},
     onAudioChange: (Audio) -> Unit,
+    onLiveQualityChange: (Int) -> Unit = {},
     onDanmakuSwitchChange: (List<DanmakuType>) -> Unit,
     onDanmakuSizeChange: (Float) -> Unit,
     onDanmakuOpacityChange: (Float) -> Unit,
@@ -106,6 +107,7 @@ fun MenuController(
                 onRotationChange = onRotationChange,
                 onPlaySpeedChange = onPlaySpeedChange,
                 onAudioChange = onAudioChange,
+                onLiveQualityChange = onLiveQualityChange,
                 onDanmakuSwitchChange = onDanmakuSwitchChange,
                 onDanmakuSizeChange = onDanmakuSizeChange,
                 onDanmakuOpacityChange = onDanmakuOpacityChange,
@@ -132,6 +134,7 @@ fun MenuController(
     onRotationChange: (VideoRotation) -> Unit,
     onPlaySpeedChange: (Float) -> Unit,
     onAudioChange: (Audio) -> Unit,
+    onLiveQualityChange: (Int) -> Unit = {},
     onDanmakuSwitchChange: (List<DanmakuType>) -> Unit,
     onDanmakuSizeChange: (Float) -> Unit,
     onDanmakuOpacityChange: (Float) -> Unit,
@@ -171,6 +174,7 @@ fun MenuController(
                     onAspectRatioChange = onAspectRatioChange,
                     onRotationChange = onRotationChange,
                     onAudioChange = onAudioChange,
+                    onLiveQualityChange = onLiveQualityChange,
                     onDanmakuSwitchChange = onDanmakuSwitchChange,
                     onDanmakuSizeChange = onDanmakuSizeChange,
                     onDanmakuOpacityChange = onDanmakuOpacityChange,
@@ -216,6 +220,7 @@ private fun MenuList(
     onRotationChange: (VideoRotation) -> Unit,
     onPlaySpeedChange: (Float) -> Unit,
     onAudioChange: (Audio) -> Unit,
+    onLiveQualityChange: (Int) -> Unit = {},
     onDanmakuSwitchChange: (List<DanmakuType>) -> Unit,
     onDanmakuSizeChange: (Float) -> Unit,
     onDanmakuOpacityChange: (Float) -> Unit,
@@ -242,6 +247,7 @@ private fun MenuList(
                     onRotationChange = onRotationChange,
                     onPlaySpeedChange = onPlaySpeedChange,
                     onAudioChange = onAudioChange,
+                    onLiveQualityChange = onLiveQualityChange,
                     onFocusStateChange = onFocusStateChange
                 )
             }

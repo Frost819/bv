@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -22,26 +23,35 @@ import kotlin.math.abs
  * @param padding 容器上下左右预留的内边距。单位是dp
  *     注意：延迟列表默认只组合可见项，必须留边距露出一点点下一行用来确保将要获得焦点的项已被组合，否则下移的时候焦点会选中下一行的第一个，上移的时候焦点会选中上一行的最后一个（焦点乱跳的问题）
  *     另外，本应用列表用的视频卡片组件有发光效果，不留边距会没显示不全。
+ * @param topPadding 容器上边距。默认与 [padding] 相同
+ * @param bottomPadding 容器下边距。默认与 [padding] 相同
  * @param content 包含在 LazyList 中的内容
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ProvideListBringIntoViewSpec(
     padding: Dp = 24.dp,
+    topPadding: Dp = padding,
+    bottomPadding: Dp = padding,
     content: @Composable () -> Unit,
 ) {
-    val paddingPx = LocalDensity.current.run { padding.toPx() }
-    val bringIntoViewSpec = object : BringIntoViewSpec {
-        override fun calculateScrollDistance(
-            offset: Float,
-            size: Float,
-            containerSize: Float
-        ): Float = calculateScrollDistanceMod(
-            offset = offset,
-            size = size,
-            containerSize = containerSize,
-            padding = paddingPx
-        )
+    val density = LocalDensity.current
+    val topPaddingPx = remember(topPadding, density) { with(density) { topPadding.toPx() } }
+    val bottomPaddingPx = remember(bottomPadding, density) { with(density) { bottomPadding.toPx() } }
+    val bringIntoViewSpec = remember(topPaddingPx, bottomPaddingPx) {
+        object : BringIntoViewSpec {
+            override fun calculateScrollDistance(
+                offset: Float,
+                size: Float,
+                containerSize: Float
+            ): Float = calculateScrollDistanceWithPadding(
+                offset = offset,
+                size = size,
+                containerSize = containerSize,
+                topPadding = topPaddingPx,
+                bottomPadding = bottomPaddingPx,
+            )
+        }
     }
     CompositionLocalProvider(
         LocalBringIntoViewSpec provides bringIntoViewSpec,
@@ -49,14 +59,15 @@ fun ProvideListBringIntoViewSpec(
     )
 }
 
-private fun calculateScrollDistanceMod(
+private fun calculateScrollDistanceWithPadding(
     offset: Float,
     size: Float,
     containerSize: Float,
-    padding: Float = 90f // 容器上下左右预留的内边距。
+    topPadding: Float, // 容器上边距
+    bottomPadding: Float, // 容器下边距
 ): Float {
-    val trailingEdge = offset + size + padding
-    @Suppress("UnnecessaryVariable") val leadingEdge = offset - padding
+    val trailingEdge = offset + size + bottomPadding
+    val leadingEdge = offset - topPadding
     return when {
 
         // 如果组件已经完整显示，不滚动

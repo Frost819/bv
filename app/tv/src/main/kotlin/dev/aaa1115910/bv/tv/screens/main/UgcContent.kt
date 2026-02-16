@@ -242,7 +242,11 @@ fun UgcContent(
                 label = "ugc animated content",
                 transitionSpec = {
                     val coefficient = 10
-                    if (targetState.ordinal < initialState.ordinal) {
+                    val initialIndex = effectiveNavItems.indexOf(initialState)
+                        .takeIf { it >= 0 } ?: initialState.ordinal
+                    val targetIndex = effectiveNavItems.indexOf(targetState)
+                        .takeIf { it >= 0 } ?: targetState.ordinal
+                    if (targetIndex < initialIndex) {
                         fadeIn() + slideInHorizontally { -it / coefficient } togetherWith
                                 fadeOut() + slideOutHorizontally { it / coefficient }
                     } else {

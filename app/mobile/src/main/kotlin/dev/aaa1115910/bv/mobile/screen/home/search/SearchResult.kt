@@ -75,6 +75,7 @@ fun SearchResultContent(
     mediaBangumiSearchResult: List<SearchTypeResult.Pgc>,
     mediaFtSearchResult: List<SearchTypeResult.Pgc>,
     biliUserSearchResult: List<SearchTypeResult.User>,
+    liveRoomSearchResult: List<SearchTypeResult.LiveRoom>,
     onSearch: (String) -> Unit,
     onOpenUgc: (Long) -> Unit
 ) {
@@ -203,6 +204,10 @@ fun SearchResultContent(
                 SearchType.BiliUser -> BiliUserSearchResult(
                     biliUserList = biliUserSearchResult
                 )
+
+                SearchType.LiveRoom -> LiveRoomSearchResult(
+                    biliUserList = liveRoomSearchResult
+                )
             }
         }
     }
@@ -288,6 +293,14 @@ private fun MediaFtSearchResult(
 private fun BiliUserSearchResult(
     modifier: Modifier = Modifier,
     biliUserList: List<SearchTypeResult.User>,
+) {
+
+}
+
+@Composable
+private fun LiveRoomSearchResult(
+    modifier: Modifier = Modifier,
+    biliUserList: List<SearchTypeResult.LiveRoom>,
 ) {
 
 }

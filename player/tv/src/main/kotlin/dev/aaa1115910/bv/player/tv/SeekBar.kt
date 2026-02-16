@@ -91,7 +91,7 @@ private fun VideoSeekBar(
                     }
                     .border(
                         width = 1.dp,
-                        color = if (isFocused) Color.White.copy(alpha = 0.35f) else Color.Transparent,
+                        color = if (isFocused) Color.White.copy(alpha = 0.3f) else Color.Transparent,
                         shape = RoundedCornerShape(6.dp)
                     )
                     .padding(horizontal = 6.dp, vertical = 1.dp),

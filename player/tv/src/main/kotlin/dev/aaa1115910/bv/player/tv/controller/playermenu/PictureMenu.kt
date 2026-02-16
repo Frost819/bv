@@ -50,6 +50,7 @@ fun PictureMenuList(
     onRotationChange: (VideoRotation) -> Unit,
     onPlaySpeedChange: (Float) -> Unit,
     onAudioChange: (Audio) -> Unit,
+    onLiveQualityChange: (Int) -> Unit = {},
     onFocusStateChange: (MenuFocusState) -> Unit
 ) {
     val context = LocalContext.current
@@ -74,18 +75,33 @@ fun PictureMenuList(
             .padding(horizontal = 8.dp)
         AnimatedVisibility(visible = focusState.focusState != MenuFocusState.MenuNav) {
             when (selectedPictureMenuItem) {
-                VideoPlayerPictureMenuItem.Resolution -> RadioMenuList(
-                    modifier = menuItemsModifier,
-                    items = resolutionList.map { resolution ->
-                        resolution.getShortDisplayName(context)
-                    },
-                    selected = resolutionList.indexOf(videoPlayerConfigData.currentResolution),
-                    onSelectedChanged = { onResolutionChange(resolutionList[it]) },
-                    onFocusBackToParent = {
-                        onFocusStateChange(MenuFocusState.Menu)
-                        parentMenuFocusRequester.requestFocus()
-                    }
-                )
+                VideoPlayerPictureMenuItem.Resolution -> if (videoPlayerConfigData.isLive && videoPlayerConfigData.availableLiveQualities.isNotEmpty()) {
+                    val liveQualities = videoPlayerConfigData.availableLiveQualities
+                    val selectedIndex = liveQualities.indexOfFirst { it.first == videoPlayerConfigData.currentLiveQn }.coerceAtLeast(0)
+                    RadioMenuList(
+                        modifier = menuItemsModifier,
+                        items = liveQualities.map { it.second },
+                        selected = selectedIndex,
+                        onSelectedChanged = { onLiveQualityChange(liveQualities[it].first) },
+                        onFocusBackToParent = {
+                            onFocusStateChange(MenuFocusState.Menu)
+                            parentMenuFocusRequester.requestFocus()
+                        }
+                    )
+                } else {
+                    RadioMenuList(
+                        modifier = menuItemsModifier,
+                        items = resolutionList.map { resolution ->
+                            resolution.getShortDisplayName(context)
+                        },
+                        selected = resolutionList.indexOf(videoPlayerConfigData.currentResolution),
+                        onSelectedChanged = { onResolutionChange(resolutionList[it]) },
+                        onFocusBackToParent = {
+                            onFocusStateChange(MenuFocusState.Menu)
+                            parentMenuFocusRequester.requestFocus()
+                        }
+                    )
+                }
 
                 VideoPlayerPictureMenuItem.Codec -> RadioMenuList(
                     modifier = menuItemsModifier,
@@ -169,7 +185,13 @@ fun PictureMenuList(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(8.dp)
         ) {
-            itemsIndexed(VideoPlayerPictureMenuItem.entries.toMutableList()) { index, item ->
+            itemsIndexed(VideoPlayerPictureMenuItem.entries.toMutableList().apply {
+                if (videoPlayerConfigData.isLive) {
+                    remove(VideoPlayerPictureMenuItem.PlaySpeed)
+                    remove(VideoPlayerPictureMenuItem.Codec)
+                    remove(VideoPlayerPictureMenuItem.Audio)
+                }
+            }) { index, item ->
                 MenuListItem(
                     modifier = Modifier
                         .ifElse(

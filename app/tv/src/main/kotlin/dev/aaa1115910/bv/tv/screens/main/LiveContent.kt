@@ -7,12 +7,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -34,14 +37,25 @@ import dev.aaa1115910.bv.tv.component.LoadingTip
 import dev.aaa1115910.bv.tv.component.TopNav
 import dev.aaa1115910.bv.tv.component.TopNavItem
 import dev.aaa1115910.bv.tv.component.live.LiveRoomCard
-import dev.aaa1115910.bv.util.LiveStreamUrlFetcher
 import dev.aaa1115910.bv.util.requestFocus
+import dev.aaa1115910.bv.util.toast
+import dev.aaa1115910.bv.viewmodel.live.LiveMode
 import dev.aaa1115910.bv.viewmodel.live.LiveViewModel
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import dev.aaa1115910.biliapi.entity.live.LiveAreaGroup
+import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
+
+// 固定 TopNavItem：推荐
+private object RecommendNavItem : TopNavItem {
+    override fun getDisplayName(context: Context): String = "推荐"
+}
+
+// 固定 TopNavItem：关注
+private object FollowingNavItem : TopNavItem {
+    override fun getDisplayName(context: Context): String = "关注"
+}
 
 // 主分区 TopNavItem
 private data class ParentAreaNavItem(val group: LiveAreaGroup) : TopNavItem {
@@ -77,22 +91,13 @@ fun LiveContent(
         }
     }
 
-    // 监听滚动位置，触发分页加载
-    LaunchedEffect(gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index) {
-        val lastVisibleIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-        val totalItems = liveViewModel.roomList.size
-        // 滚动到倒数第5个item时加载更多
-        if (lastVisibleIndex >= totalItems - 5 && liveViewModel.hasMore && !liveViewModel.loading) {
-            logger.info { "Trigger load more, lastVisibleIndex: $lastVisibleIndex, totalItems: $totalItems" }
+    // 监听焦点位置，触发分页加载
+    val focusedIndex = liveViewModel.lastFocusedRoomIndex
+    val totalItems = liveViewModel.roomList.size
+    LaunchedEffect(focusedIndex, totalItems, liveViewModel.loading) {
+        if ((totalItems < 20 || focusedIndex >= totalItems - 12) && liveViewModel.hasMore && !liveViewModel.loading) {
+            logger.info { "Trigger load more, focusedIndex: $focusedIndex, totalItems: $totalItems" }
             liveViewModel.loadMore()
-        }
-    }
-
-    // 恢复焦点到上次点击的直播间
-    LaunchedEffect(liveViewModel.roomList.size) {
-        if (liveViewModel.lastFocusedRoomIndex > 0 && 
-            liveViewModel.lastFocusedRoomIndex < liveViewModel.roomList.size) {
-            gridState.scrollToItem(liveViewModel.lastFocusedRoomIndex)
         }
     }
 
@@ -113,18 +118,41 @@ fun LiveContent(
             drawerItemFocusRequesters[DrawerItem.Live]?.requestFocus()
             return@BackHandler
         }
-        subNavFocusRequester.requestFocus(scope)
+        // 推荐/关注模式没有子分区栏，直接返回主分区栏
+        if (liveViewModel.currentMode == LiveMode.AREA) {
+            subNavFocusRequester.requestFocus(scope)
+        } else {
+            parentNavFocusRequester.requestFocus(scope)
+        }
     }
 
     Scaffold(
         modifier = modifier,
         topBar = {
             androidx.compose.foundation.layout.Column {
-                // 第一行：主分区
-                if (liveViewModel.parentAreaGroups.isNotEmpty()) {
-                    val parentNavItems = remember(liveViewModel.parentAreaGroups) {
-                        liveViewModel.parentAreaGroups.map { ParentAreaNavItem(it) }
+                // 第一行：推荐 + 关注 + 主分区
+                val parentNavItems = remember(
+                    liveViewModel.parentAreaGroups.size,
+                    liveViewModel.isLoggedIn
+                ) {
+                    buildList<TopNavItem> {
+                        add(RecommendNavItem)
+                        if (liveViewModel.isLoggedIn) add(FollowingNavItem)
+                        addAll(liveViewModel.parentAreaGroups.map { ParentAreaNavItem(it) })
                     }
+                }
+
+                val initialSelectedParent = remember(liveViewModel.currentMode, liveViewModel.currentParentGroup) {
+                    when (liveViewModel.currentMode) {
+                        LiveMode.RECOMMEND -> RecommendNavItem
+                        LiveMode.FOLLOWING -> FollowingNavItem
+                        LiveMode.AREA -> parentNavItems.firstOrNull {
+                            it is ParentAreaNavItem && it.group.id == liveViewModel.currentParentGroup?.id
+                        }
+                    }
+                }
+
+                if (parentNavItems.isNotEmpty()) {
                     TopNav(
                         modifier = Modifier
                             .focusRequester(parentNavFocusRequester)
@@ -132,15 +160,27 @@ fun LiveContent(
                             .onFocusChanged { parentNavHasFocus = it.hasFocus },
                         items = parentNavItems,
                         isLargePadding = false,
-                        initialSelectedItem = parentNavItems.firstOrNull { it.group.id == liveViewModel.currentParentGroup?.id },
+                        initialSelectedItem = initialSelectedParent,
                         onSelectedChanged = { nav ->
-                            (nav as? ParentAreaNavItem)?.let { liveViewModel.switchParentArea(it.group) }
+                            liveViewModel.lastFocusedRoomIndex = 0
+                            scope.launch { gridState.scrollToItem(0) }
+                            when (nav) {
+                                is RecommendNavItem -> liveViewModel.switchToRecommend()
+                                is FollowingNavItem -> liveViewModel.switchToFollowing()
+                                is ParentAreaNavItem -> liveViewModel.switchParentArea(nav.group)
+                            }
                         },
                         onClick = { nav ->
-                            (nav as? ParentAreaNavItem)?.let { item ->
-                                if (item.group.id == liveViewModel.currentParentGroup?.id) {
-                                    liveViewModel.refresh()
-                                }
+                            val isSameSelection = when (nav) {
+                                is RecommendNavItem -> liveViewModel.currentMode == LiveMode.RECOMMEND
+                                is FollowingNavItem -> liveViewModel.currentMode == LiveMode.FOLLOWING
+                                is ParentAreaNavItem -> liveViewModel.currentMode == LiveMode.AREA && nav.group.id == liveViewModel.currentParentGroup?.id
+                                else -> false
+                            }
+                            if (isSameSelection) {
+                                liveViewModel.lastFocusedRoomIndex = 0
+                                liveViewModel.refresh()
+                                scope.launch { gridState.scrollToItem(0) }
                             }
                         },
                         onLeftKeyEvent = {
@@ -149,8 +189,8 @@ fun LiveContent(
                     )
                 }
                 
-                // 第二行：子分区
-                if (liveViewModel.subAreaList.isNotEmpty()) {
+                // 第二行：子分区（仅在分区模式下显示）
+                if (liveViewModel.currentMode == LiveMode.AREA && liveViewModel.subAreaList.isNotEmpty()) {
                     // 监听 currentParentGroup 变化以触发子分区列表更新
                     val subNavItems = remember(liveViewModel.currentParentGroup, liveViewModel.subAreaList.size) {
                         liveViewModel.subAreaList.map { SubAreaNavItem(it) }
@@ -165,12 +205,18 @@ fun LiveContent(
                         isLargePadding = !focusOnContent && currentListOnTop,
                         initialSelectedItem = subNavItems.firstOrNull { it.area.id == liveViewModel.currentSubArea?.id },
                         onSelectedChanged = { nav ->
-                            (nav as? SubAreaNavItem)?.let { liveViewModel.switchSubArea(it.area) }
+                            (nav as? SubAreaNavItem)?.let {
+                                liveViewModel.lastFocusedRoomIndex = 0
+                                liveViewModel.switchSubArea(it.area)
+                                scope.launch { gridState.scrollToItem(0) }
+                            }
                         },
                         onClick = { nav ->
                             (nav as? SubAreaNavItem)?.let { item ->
                                 if (item.area.id == liveViewModel.currentSubArea?.id) {
+                                    liveViewModel.lastFocusedRoomIndex = 0
                                     liveViewModel.refresh()
+                                    scope.launch { gridState.scrollToItem(0) }
                                 }
                             }
                         },
@@ -195,56 +241,75 @@ fun LiveContent(
                     LoadingTip()
                 }
             } else {
-                LazyVerticalGrid(
-                    modifier = Modifier.fillMaxSize(),
-                    state = gridState,
-                    columns = GridCells.Fixed(4),
-                    contentPadding = PaddingValues(20.dp, 0.dp, 20.dp, 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(20.dp)
-                ) {
-                    itemsIndexed(
-                        items = liveViewModel.roomList,
-                        key = { _, room -> room.roomId }
-                    ) { index, room ->
-                    val entryCardModifier = if (index == 0 && liveViewModel.parentAreaGroups.isEmpty()) {
-                        Modifier.focusRequester(navFocusRequester)
-                    } else {
-                        Modifier
-                    }
+                ProvideListBringIntoViewSpec(topPadding = 12.dp, bottomPadding = 28.dp) {
+                    LazyVerticalGrid(
+                        modifier = Modifier.fillMaxSize(),
+                        state = gridState,
+                        columns = GridCells.Fixed(4),
+                        contentPadding = PaddingValues(20.dp, 0.dp, 20.dp, 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(20.dp)
+                    ) {
+                        itemsIndexed(
+                            items = liveViewModel.roomList,
+                            key = { _, room -> room.roomId }
+                        ) { index, room ->
+                            val entryCardModifier =
+                                if (index == 0 && liveViewModel.parentAreaGroups.isEmpty()) {
+                                    Modifier.focusRequester(navFocusRequester)
+                                } else {
+                                    Modifier
+                                }
 
-                    LiveRoomCard(
-                        modifier = entryCardModifier,
-                        data = room,
-                        onClick = {
-                            // 保存焦点位置
-                            liveViewModel.lastFocusedRoomIndex = index
-                            // 启动播放器
-                            scope.launch(Dispatchers.IO) {
-                                val playInfo = LiveStreamUrlFetcher.fetchLiveStreamUrl(room.roomId)
-                                if (playInfo != null) {
+                            LiveRoomCard(
+                                modifier = entryCardModifier,
+                                data = room,
+                                onClick = {
+                                    // 保存焦点位置
+                                    liveViewModel.lastFocusedRoomIndex = index
+                                    if (room.liveStatus != 1) {
+                                        "${room.uname} 未开播".toast(context)
+                                        return@LiveRoomCard
+                                    }
+                                    // 启动播放器
                                     VideoPlayerV3Activity.actionStartLive(
                                         context = context,
-                                        roomId = playInfo.roomId,
-                                        streamUrl = playInfo.streamUrl,
+                                        roomId = room.roomId,
                                         title = room.title,
-                                        upName = room.uname
+                                        upId = room.uid,
+                                        upName = room.uname,
+                                        upFace = room.face,
+                                        watchedNum = room.watchedShow?.num ?: (room.online / 10)
                                     )
+                                },
+                                onFocus = {
+                                    liveViewModel.lastFocusedRoomIndex = index
+                                    logger.debug { "Focus on room ${room.roomId}" }
+                                }
+                            )
+                        }
+
+                        // 加载中提示
+                        if (liveViewModel.loading) {
+                            item {
+                                LoadingTip()
+                            }
+                        }
+
+                        // 没有更多了
+                        if (!liveViewModel.hasMore) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(20.dp),
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text(text = "没有更多内容了")
                                 }
                             }
-                        },
-                        onFocus = {
-                            logger.debug { "Focus on room ${room.roomId}" }
                         }
-                    )
-                }
-
-                // 加载中提示
-                if (liveViewModel.loading) {
-                    item {
-                        LoadingTip()
                     }
-                }
                 }
             }
         }

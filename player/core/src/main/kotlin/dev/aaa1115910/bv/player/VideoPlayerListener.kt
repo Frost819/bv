@@ -30,4 +30,10 @@ interface VideoPlayerListener {
     /** 前进 */
     fun onSeekForward(seekForwardIncrementMs: Long)
 
+    /** 视频尺寸变化 */
+    fun onVideoSizeChanged(width: Int, height: Int) {}
+
+    /** 视频内容首帧已渲染（画面可见） */
+    fun onRenderedFirstFrame() {}
+
 }

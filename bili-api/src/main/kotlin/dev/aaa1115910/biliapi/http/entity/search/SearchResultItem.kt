@@ -437,6 +437,52 @@ data class SearchVideoResult(
     val episodeCountText: String,
     @SerialName("release_status")
     val releaseStatus: Int,
-    @SerialName("is_intervene")
-    val isIntervene: Int
-) : SearchResultItem()
+        @SerialName("is_intervene")
+        val isIntervene: Int
+    ) : SearchResultItem()
+    
+    /**
+     * 直播间(live_room)
+     */
+    @Serializable
+    data class SearchLiveRoomResult(
+        val type: String,
+        val uid: Long,
+        @SerialName("roomid")
+        val roomId: Long,
+        val title: String,
+        val uname: String,
+        @SerialName("uface")
+        private val _uface: String,
+        val online: Int,
+        @SerialName("user_cover")
+        val userCover: String,
+        val cover: String,
+        @SerialName("live_status")
+        val liveStatus: Int,
+        @SerialName("live_time")
+        val liveTime: String,
+        val tags: String,
+        @SerialName("cate_name")
+        val cateName: String,
+        @SerialName("short_id")
+        val shortId: Int? = 0,
+        @SerialName("area_v2_name")
+        val areaName: String? = null,
+        @SerialName("area_v2_id")
+        val areaId: Int? = 0,
+        val attributions: JsonElement? = null,
+        @SerialName("rank_index")
+        val rankIndex: Int,
+        @SerialName("rank_score")
+        val rankScore: Int? = null,
+        @SerialName("rank_offset")
+        val rankOffset: Int,
+        @SerialName("hit_columns")
+        val hitColumns: List<String>? = null,
+        @SerialName("is_live")
+        val isLive: Int? = null
+    ) : SearchResultItem() {
+        val uface: String
+            get() = if (_uface.startsWith("//")) "https:$_uface" else _uface
+    }

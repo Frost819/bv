@@ -78,6 +78,10 @@ data class SearchResultData(
                         searchResultDataJsonArray
                     )
 
+                    "live_room" -> json.decodeFromJsonElement<List<SearchLiveRoomResult>>(
+                        searchResultDataJsonArray
+                    )
+
                     else -> {
                         listOf()
                     }
@@ -104,8 +108,9 @@ data class SearchResultData(
                         searchResultJsonObject
                     )
 
-                    // TODO live search result
-                    "live" -> return@forEach
+                    "live_room" -> json.decodeFromJsonElement<SearchLiveRoomResult>(
+                        searchResultJsonObject
+                    )
 
                     "media_bangumi", "media_ft" -> json.decodeFromJsonElement<SearchMediaResult>(
                         searchResultJsonObject

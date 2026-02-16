@@ -1,8 +1,13 @@
 package dev.aaa1115910.bv.player.tv
 
 import android.os.CountDownTimer
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -21,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.tv.material3.Text
@@ -63,6 +69,7 @@ import dev.aaa1115910.bv.player.tv.controller.SkipEdTip
 import dev.aaa1115910.bv.player.tv.controller.SkipOpTip
 import dev.aaa1115910.bv.player.tv.controller.VideoPlayerController
 import dev.aaa1115910.bv.util.countDownTimer
+import dev.aaa1115910.bv.player.util.DanmakuMaskFinder
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.formatHourMinSec
 import dev.aaa1115910.bv.util.ifElse
@@ -99,6 +106,7 @@ fun BvPlayer(
     onRotationChange: (VideoRotation) -> Unit,
     onPlaySpeedChange: (Float) -> Unit,
     onAudioChange: (Audio, afterChange: suspend () -> Unit) -> Unit,
+    onLiveQualityChange: (Int) -> Unit = {},
     onDanmakuSwitchChange: (List<DanmakuType>) -> Unit,
     onDanmakuSizeChange: (Float) -> Unit,
     onDanmakuOpacityChange: (Float) -> Unit,
@@ -115,6 +123,7 @@ fun BvPlayer(
     onShowDanmakuChange: (Boolean) -> Unit = {},
     onLoopPlayModeChange: (Boolean) -> Unit = {},
     onRefreshVideo: () -> Unit = {},
+    onLiveRetry: () -> Unit = {},
     onShowComment: () -> Unit = {},
     userActionContent: @Composable (
         modifier: Modifier,
@@ -122,7 +131,8 @@ fun BvPlayer(
         onFocus: (String) -> Unit,
         onPauseAutoHide: (Boolean) -> Unit
     ) -> Unit = { _, _, _, _ -> },
-    onOnlineViewerCountTipCanShowChanged: (Boolean) -> Unit = {},
+    onViewerCountTipCanShowChanged: (Boolean) -> Unit = {},
+    viewerCountText: String = "",
 ) {
 //    // 调试重组次数: AtomicInteger，不被 Compose 追踪，只记录真实由外部状态引起的重组次数。
 //    val recomposeCounter = remember { java.util.concurrent.atomic.AtomicInteger(0) }
@@ -193,10 +203,10 @@ fun BvPlayer(
     }
 
     // 跳过片头片尾检测任务
-    val checkSkipTask: () -> Unit = {
-        val currentPosition = (seekState.position / 1000).toInt()  // 毫秒转秒
+    val checkSkipTask: (Long) -> Unit = { positionMs ->
         // 使用 rememberUpdatedState 获取最新值
         if (currentSkipPgcIntroOutro && currentClipInfoList.isNotEmpty() && isPlaying) {
+            val currentPosition = (positionMs / 1000).toInt()  // 毫秒转秒
             currentClipInfoList.forEachIndexed { index, clipInfo ->
                 // 跳过已处理的 clip
                 if (index in processedClipIndices) return@forEachIndexed
@@ -240,20 +250,6 @@ fun BvPlayer(
                     else -> {}  // 忽略其他类型
                 }
             }
-        }
-    }
-
-    // 按需启动跳过检测定时器
-    // 只有当 skipPgcIntroOutro 开启且有 clipInfoList 时才启动
-    DisposableEffect(videoPlayerConfigData.skipPgcIntroOutro, videoPlayerConfigData.clipInfoList) {
-        var checkSkipTimer: Timer? = null
-        if (videoPlayerConfigData.skipPgcIntroOutro && videoPlayerConfigData.clipInfoList.isNotEmpty()) {
-            checkSkipTimer = timeTask(500, 500, "checkSkipTimer") {
-                checkSkipTask()
-            }
-        }
-        onDispose {
-            checkSkipTimer?.cancel()
         }
     }
 
@@ -308,16 +304,6 @@ fun BvPlayer(
         }
         logger.info { "Update danmaku type filters: ${typeFilter.filterSet}" }
         danmakuConfig.updateFilter()
-        mDanmakuPlayer?.updateConfig(danmakuConfig)
-    }
-
-    val updateDanmakuConfig: () -> Unit = {
-        danmakuConfig = danmakuConfig.copy(
-            retainerPolicy = RETAINER_BILIBILI,
-            textSizeScale = videoPlayerConfigData.currentDanmakuScale,
-            rollingDurationFactor = videoPlayerConfigData.currentDanmakuRollingDurationFactor,
-        )
-        logger.info { "Update danmaku config: $danmakuConfig" }
         mDanmakuPlayer?.updateConfig(danmakuConfig)
     }
 
@@ -385,9 +371,18 @@ fun BvPlayer(
     val videoPlayerListener = object : VideoPlayerListener {
         override fun onError(error: Exception) {
             logger.info { "onError: $error" }
-            scope.launch(Dispatchers.Main) {
-                isError = true
-                exception = error.cause as Exception?
+            if (videoPlayerConfigData.isLive) {
+                // 直播模式：自动重连，不立即显示错误 UI（参考 wiliwili 的 retryRequestData）
+                logger.info { "Live mode: triggering auto retry" }
+                scope.launch(Dispatchers.Main) {
+                    isBuffering = true  // 显示缓冲状态代替错误状态
+                }
+                onLiveRetry()
+            } else {
+                scope.launch(Dispatchers.Main) {
+                    isError = true
+                    exception = error.cause as Exception?
+                }
             }
         }
 
@@ -483,6 +478,63 @@ fun BvPlayer(
             mDanmakuPlayer?.seekTo(seekState.position)
             mDanmakuPlayer?.pause()
         }
+
+        override fun onVideoSizeChanged(width: Int, height: Int) {
+            logger.info { "onVideoSizeChanged: ${width}x${height}" }
+            if (width > 0 && height > 0) {
+                scope.launch(Dispatchers.Main) {
+                    val newDefaultAspectRatio =width / height.toFloat()
+                    if (newDefaultAspectRatio != defaultAspectRatio ) {
+                        defaultAspectRatio = newDefaultAspectRatio
+                        updateVideoAspectRatio()
+                    }
+                }
+            }
+        }
+    }
+
+    // 进度轮询：播放时每 200ms 更新进度、检查跳过片头片尾
+    LaunchedEffect(isPlaying, videoPlayerConfigData.isLive) {
+        while (isPlaying && !videoPlayerConfigData.isLive) {
+            val pos = videoPlayer.currentPosition.coerceAtLeast(0L)
+            val dur = videoPlayer.duration.coerceAtLeast(0L)
+            val buf = videoPlayer.bufferedPercentage.coerceIn(0, 100)
+
+            if (seekState.position != pos) seekState.position = pos
+            if (seekState.duration != dur) seekState.duration = dur
+            if (seekState.bufferedPercentage != buf) seekState.bufferedPercentage = buf
+
+            checkSkipTask(pos)
+
+            delay(200)
+        }
+    }
+
+    // 弹幕蒙版跟踪：独立轮询，蒙版活跃时自适应高频率，不影响进度更新和跳过检测
+    LaunchedEffect(isPlaying, videoPlayerConfigData.currentDanmakuMask, videoPlayerDanmakuMaskData.danmakuMasks.size) {
+        if (!videoPlayerConfigData.currentDanmakuMask || videoPlayerDanmakuMaskData.danmakuMasks.isEmpty()) {
+            if (currentDanmakuMaskFrame != null) currentDanmakuMaskFrame = null
+            return@LaunchedEffect
+        }
+        while (isPlaying) {
+            val pos = videoPlayer.currentPosition.coerceAtLeast(0L)
+            val newMask = DanmakuMaskFinder.findMaskFrame(
+                videoPlayerDanmakuMaskData.danmakuMasks,
+                pos
+            )
+            if (currentDanmakuMaskFrame != newMask) {
+                // logger.fInfo { "Danmaku mask changed: ${currentDanmakuMaskFrame?.range}, new: ${newMask?.range}, current pos ${pos}ms" }
+                currentDanmakuMaskFrame = newMask
+            }
+            // 有蒙版帧时精确对齐帧过期时刻；无匹配帧时低频轮询
+            val nextDelay = if (newMask != null) {
+                // logger.fInfo { "Danmaku mask active: ${newMask.range.start}, next change at ${newMask.range.last}ms, current pos ${pos}ms" }
+                (newMask.range.last - pos + 3).coerceIn(33, 200)
+            } else {
+                200L
+            }
+            delay(nextDelay)
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -509,80 +561,6 @@ fun BvPlayer(
                 exception = Exception(videoPlayerLoadStateData.errorMessage)
                 isError = true
             }
-        }
-    }
-
-    LaunchedEffect(videoPlayer) {
-        while (currentCoroutineContext().isActive) {
-            val pos = videoPlayer.currentPosition.coerceAtLeast(0L)
-            val dur = videoPlayer.duration.coerceAtLeast(0L)
-            val buf = videoPlayer.bufferedPercentage
-            if (seekState.position != pos) seekState.position = pos
-            if (seekState.duration != dur) seekState.duration = dur
-            if (seekState.bufferedPercentage != buf) seekState.bufferedPercentage = buf
-            delay(250)
-        }
-    }
-
-    DisposableEffect(Unit) {
-        var updateSeekTimer: Timer? = null
-        var resetTimer: ((Long) -> Unit)? = null
-
-        val updateMask: suspend () -> Unit = {
-            val currentPosition = seekState.position
-            val danmakuMasks = videoPlayerDanmakuMaskData.danmakuMasks.firstOrNull {
-                currentPosition in it.range
-            }?.frames?.firstOrNull { currentPosition in it.range }
-            withContext(Dispatchers.Main) { currentDanmakuMaskFrame = danmakuMasks }
-
-            if (currentDanmakuMaskFrame != null) {
-                resetTimer?.invoke(
-                    max(currentDanmakuMaskFrame!!.range.last - currentPosition + 3, 20)
-                )
-            } else {
-                resetTimer?.invoke(2000)
-            }
-        }
-
-        val timerTask: () -> Unit = {
-            val currentPosition = seekState.position
-            scope.launch(Dispatchers.IO) {
-                if (videoPlayerDanmakuMaskData.danmakuMasks.isNotEmpty()) {
-                    if (currentDanmakuMaskFrame == null) {
-                        //当前无蒙版
-                        updateMask()
-                    } else if (currentPosition !in currentDanmakuMaskFrame!!.range) {
-                        //当前蒙版过期
-                        updateMask()
-                    } else {
-                        //正常情况下不会在未过期时运行到此代码块，除非是卡顿等情况
-                        if (isPlaying) {
-                            //重新计时
-                            val delay =
-                                max(currentDanmakuMaskFrame!!.range.last - currentPosition + 3, 20)
-                            resetTimer?.invoke(delay)
-                        } else {
-                            //暂停中。。。
-                            resetTimer?.invoke(2000)
-                        }
-                    }
-                } else {
-                    //定期检查是否有蒙版
-                    withContext(Dispatchers.Main) { currentDanmakuMaskFrame = null }
-                    resetTimer?.invoke(2000)
-                }
-            }
-        }
-
-        resetTimer = { delay ->
-            updateSeekTimer = timeTask(delay, "updateDanmakuMask", false) {
-                timerTask()
-            }
-        }
-        resetTimer.invoke(0)
-
-        onDispose {
-            updateSeekTimer?.cancel()
         }
     }
 
@@ -643,6 +621,12 @@ fun BvPlayer(
         onDispose { clockRefreshTimer?.cancel() }
     }
 
+    val animatedAspectRatio by animateFloatAsState(
+        targetValue = aspectRatioValue,
+        animationSpec = tween(),
+        label = "animatedAspectRatio"
+    )
+
     CompositionLocalProvider(
         LocalVideoPlayerSeekState provides seekState,
         LocalVideoPlayerClockState provides clockState,
@@ -666,7 +650,8 @@ fun BvPlayer(
     ) {
         VideoPlayerController(
             modifier = modifier
-                .focusRequester(focusRequester),
+                .focusRequester(focusRequester)
+                .fillMaxSize(),
             videoPlayer = videoPlayer,
             playerSeekForwardStep = playerSeekForwardStep,
             playerSeekBackwardStep = playerSeekBackwardStep,
@@ -674,7 +659,8 @@ fun BvPlayer(
             showRelatedVideos = videoPlayerConfigData.showRelatedVideos,
             onToggleRelatedVideos = onToggleRelatedVideos,
             registerShowInfoProvider = { provider -> showInfoProvider = provider },
-            onOnlineViewerCountTipCanShowChanged = onOnlineViewerCountTipCanShowChanged,
+            onViewerCountTipCanShowChanged = onViewerCountTipCanShowChanged,
+            viewerCountText = viewerCountText,
 
             onPlay = { videoPlayer.start() },
             onPause = {
@@ -682,6 +668,7 @@ fun BvPlayer(
                 if (!videoPlayerConfigData.incognitoMode) sendHeartbeat()
             },
             onExit = {
+                videoPlayer.pause()
                 if (!videoPlayerConfigData.incognitoMode) sendHeartbeat()
                 onExit()
             },
@@ -789,6 +776,7 @@ fun BvPlayer(
                     }
                 }
             },
+            onLiveQualityChange = onLiveQualityChange,
             onDanmakuSwitchChange = { enabledDanmakuTypes ->
                 logger.info { "On enabled danmaku type change: $enabledDanmakuTypes" }
                 onDanmakuSwitchChange(enabledDanmakuTypes)
@@ -797,7 +785,9 @@ fun BvPlayer(
             onDanmakuSizeChange = { scale ->
                 logger.info { "On danmaku scale change: $scale" }
                 onDanmakuSizeChange(scale)
-                updateDanmakuConfig()
+                danmakuConfig = danmakuConfig.copy(textSizeScale = scale)
+                logger.info { "Update danmaku config: $danmakuConfig" }
+                mDanmakuPlayer?.updateConfig(danmakuConfig)
             },
             onDanmakuOpacityChange = { opacity ->
                 logger.info { "On danmaku opacity change: $opacity" }
@@ -814,7 +804,9 @@ fun BvPlayer(
             onDanmakuRollingDurationFactorChange = { factor ->
                 logger.info { "On danmaku rolling duration factor change: $factor" }
                 onDanmakuRollingDurationFactorChange(factor)
-                updateDanmakuConfig()
+                danmakuConfig = danmakuConfig.copy(rollingDurationFactor = factor)
+                logger.info { "Update danmaku config: $danmakuConfig" }
+                mDanmakuPlayer?.updateConfig(danmakuConfig)
             },
             onSubtitleChange = { subtitle ->
                 onSubtitleChange(subtitle)
@@ -866,25 +858,31 @@ fun BvPlayer(
                 videoPlayer.setOptions()
             }
 
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+            )
+
             // 将弹幕层副作用独立到子树，保证父级其它状态变化不导致 handle 以外的重组
             DanmakuLayerSideEffects(
                 danmakuLayerHandle = danmakuLayerHandle,
                 area = videoPlayerConfigData.currentDanmakuArea,
                 opacity = videoPlayerConfigData.currentDanmakuOpacity,
                 visible = videoPlayerConfigData.showDanmaku,
-                maskFrame = currentDanmakuMaskFrame.takeIf { videoPlayerConfigData.currentDanmakuMask }
+                maskFrame = currentDanmakuMaskFrame.takeIf { videoPlayerConfigData.currentDanmakuMask },
+                videoAspectRatio = aspectRatioValue
             )
 
             BvVideoPlayer(
                 modifier = Modifier
-                    .ifElse(!videoPlayerVideoInfoData.isLive, Modifier.aspectRatio(aspectRatioValue))
+                    .aspectRatio(animatedAspectRatio)
                     .align(Alignment.Center),
                 videoPlayer = videoPlayer,
                 playerListener = videoPlayerListener,
                 rotationDegrees = currentVideoRotation.degrees,
                 danmakuPlayer = danmakuPlayer,
-                forceUseTextureView = useTextureViewFixPortraitVideo,
-                isLive = videoPlayerVideoInfoData.isLive
+                forceUseTextureView = useTextureViewFixPortraitVideo
             )
 
             DanmakuLayer(
@@ -927,13 +925,15 @@ private fun DanmakuLayerSideEffects(
     opacity: Float,
     visible: Boolean,
     maskFrame: DanmakuMaskFrame?,
+    videoAspectRatio: Float
 ) {
-    LaunchedEffect(area, opacity, visible, maskFrame) {
+    LaunchedEffect(area, opacity, visible, maskFrame, videoAspectRatio) {
         danmakuLayerHandle.update(
             area = area,
             opacity = opacity,
             mask = maskFrame,
             visible = visible,
+            videoAspectRatio = videoAspectRatio
         )
     }
 }

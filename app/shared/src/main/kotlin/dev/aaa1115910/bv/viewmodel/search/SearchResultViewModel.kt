@@ -38,6 +38,7 @@ class SearchResultViewModel(
     var mediaBangumiSearchResult by mutableStateOf(SearchResult(SearchType.MediaBangumi))
     var mediaFtSearchResult by mutableStateOf(SearchResult(SearchType.MediaFt))
     var biliUserSearchResult by mutableStateOf(SearchResult(SearchType.BiliUser))
+    var liveRoomSearchResult by mutableStateOf(SearchResult(SearchType.LiveRoom))
 
     var selectedOrder by mutableStateOf(SearchFilterOrderType.ComprehensiveSort)
     var selectedDuration by mutableStateOf(SearchFilterDuration.All)
@@ -75,6 +76,7 @@ class SearchResultViewModel(
         mediaBangumiSearchResult.resetPage()
         mediaFtSearchResult.resetPage()
         biliUserSearchResult.resetPage()
+        liveRoomSearchResult.resetPage()
     }
 
     private fun clearResults() {
@@ -82,6 +84,7 @@ class SearchResultViewModel(
         mediaBangumiSearchResult.clearResult()
         mediaFtSearchResult.clearResult()
         biliUserSearchResult.clearResult()
+        liveRoomSearchResult.clearResult()
     }
 
     fun init(searchType: SearchType) {
@@ -125,6 +128,9 @@ class SearchResultViewModel(
 
                          SearchType.BiliUser -> biliUserSearchResult =
                              biliUserSearchResult.appendSearchResultData(searchResultResponse)
+
+                        SearchType.LiveRoom -> liveRoomSearchResult =
+                            liveRoomSearchResult.appendSearchResultData(searchResultResponse)
                     }
 
                     // 检查返回的数据数量，如果少于请求的分页数量则设置 hasMore 为 false
@@ -133,6 +139,7 @@ class SearchResultViewModel(
                         SearchType.MediaBangumi -> searchResultResponse.pgcs.size
                         SearchType.MediaFt -> searchResultResponse.pgcs.size
                         SearchType.BiliUser -> searchResultResponse.users.size
+                        SearchType.LiveRoom -> searchResultResponse.liveRooms.size
                     }
                     val requestedPageSize = 20
                     if (returnedCount < requestedPageSize) {
@@ -152,9 +159,10 @@ class SearchResultViewModel(
         var mediaBangumis: List<SearchTypeResult.Pgc> = emptyList(),
         var mediaFts: List<SearchTypeResult.Pgc> = emptyList(),
         var biliUsers: List<SearchTypeResult.User> = emptyList(),
+        var liveRooms: List<SearchTypeResult.LiveRoom> = emptyList(),
         var page: SearchTypePage = SearchTypePage()
     ) {
-        val count get() = videos.size + mediaBangumis.size + mediaFts.size + biliUsers.size
+        val count get() = videos.size + mediaBangumis.size + mediaFts.size + biliUsers.size + liveRooms.size
 
         fun resetPage() {
             page = SearchTypePage()
@@ -165,6 +173,7 @@ class SearchResultViewModel(
             mediaBangumis = emptyList()
             mediaFts = emptyList()
             biliUsers = emptyList()
+            liveRooms = emptyList()
         }
 
         fun appendSearchResultData(searchTypeResult: SearchTypeResult): SearchResult {
@@ -192,6 +201,12 @@ class SearchResultViewModel(
                         this.biliUsers = this@SearchResult.biliUsers + searchTypeResult.users
                     }
                 }
+
+                SearchType.LiveRoom -> {
+                    SearchResult(type).apply {
+                        this.liveRooms = this@SearchResult.liveRooms + searchTypeResult.liveRooms
+                    }
+                }
             }
         }
     }
@@ -205,6 +220,7 @@ enum class SearchResultType(
     MediaBangumi(type = "media_bangumi", R.string.search_result_type_name_media_bangumi),
     MediaFt(type = "media_ft", strRes = R.string.search_result_type_name_media_ft),
     BiliUser(type = "bili_user", strRes = R.string.search_result_type_name_bili_user);
+    // LiveRoom(type = "live_room", strRes = R.string.search_result_type_name_live_room);
 
     fun getDisplayName(context: Context) = context.getString(strRes)
 }

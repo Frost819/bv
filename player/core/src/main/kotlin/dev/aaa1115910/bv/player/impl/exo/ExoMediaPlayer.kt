@@ -16,6 +16,7 @@ import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import dev.aaa1115910.bv.player.AbstractVideoPlayer
 import dev.aaa1115910.bv.player.OkHttpUtil
@@ -116,17 +117,29 @@ class ExoMediaPlayer(
 
     @OptIn(UnstableApi::class)
     override fun playUrl(videoUrl: String?, audioUrl: String?) {
-        val videoMediaSource = videoUrl?.let {
-            ProgressiveMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(MediaItem.fromUri(it))
-        }
-        val audioMediaSource = audioUrl?.let {
-            ProgressiveMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(MediaItem.fromUri(it))
-        }
+        val videoMediaSource = videoUrl?.let { createMediaSource(it) }
+        val audioMediaSource = audioUrl?.let { createMediaSource(it) }
 
         val mediaSources = listOfNotNull(videoMediaSource, audioMediaSource)
         mMediaSource = MergingMediaSource(*mediaSources.toTypedArray())
+    }
+
+    /**
+     * 根据 URL 自动选择合适的 MediaSource
+     * - .m3u8 URL 使用 HlsMediaSource（支持 HLS 直播/点播）
+     * - 其他 URL 使用 ProgressiveMediaSource（支持 FLV/MP4 等逐行下载）
+     */
+    @OptIn(UnstableApi::class)
+    private fun createMediaSource(url: String): MediaSource {
+        val uri = android.net.Uri.parse(url)
+        val path = uri.path?.lowercase() ?: ""
+        return if (path.endsWith(".m3u8")) {
+            HlsMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(MediaItem.fromUri(uri))
+        } else {
+            ProgressiveMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(MediaItem.fromUri(uri))
+        }
     }
 
     @OptIn(UnstableApi::class)
@@ -247,6 +260,14 @@ class ExoMediaPlayer(
         get() = mPlayer?.videoSize?.width ?: 0
     override val videoHeight: Int
         get() = mPlayer?.videoSize?.height ?: 0
+
+    override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
+        mPlayerEventListener?.onVideoSizeChanged(videoSize.width, videoSize.height)
+    }
+
+    override fun onRenderedFirstFrame() {
+        mPlayerEventListener?.onRenderedFirstFrame()
+    }
 
     override fun onPlayerError(error: PlaybackException) {
         mPlayerEventListener?.onError(error)

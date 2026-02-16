@@ -12,3 +12,12 @@ data class DanmakuEvent(
     val fontSize: Int = 25,         // 字号大小
     val color: Int = 0xFFFFFF       // 颜色（十进制RGB整数）
 ) : LiveEvent
+
+data class PopularityChangeEvent(
+    val popularity: Int,
+    val popularityText: String
+) : LiveEvent
+
+data class OnlineRankCountEvent(
+    val count: Int
+) : LiveEvent

@@ -30,8 +30,7 @@ fun BvVideoPlayer(
     playerListener: VideoPlayerListener,
     rotationDegrees: Float = 0f, // 新增参数，视频旋转角度
     danmakuPlayer: DanmakuPlayer? = null,
-    forceUseTextureView: Boolean = false,
-    isLive: Boolean = false
+    forceUseTextureView: Boolean = false
 ) {
     val logger = logger("BvVideoPlayer")
     val context = LocalContext.current
@@ -62,21 +61,7 @@ fun BvVideoPlayer(
                     videoPlayer.mPlayer?.clearVideoTextureView(it)
                 }
             }
-            if (isLive) {
-                AndroidView(
-                    modifier = modifier,
-                    factory = { ctx ->
-                        lastRotationDegrees = 0f
-                        clearVideoView()
-                        PlayerView(ctx).apply {
-                            player = videoPlayer.mPlayer
-                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                            useController = false
-                            logger.info { "Current view type is PlayerView" }
-                        }
-                    }
-                )
-            } else if (forceUseTextureView || rotationDegrees != 0f) {
+            if (forceUseTextureView || rotationDegrees != 0f) {
                 fun applyTextureTransform(tv: TextureView?, degreesRaw: Float) {
                     tv ?: return
                     if (rotationDegrees != lastRotationDegrees) {
