@@ -8,12 +8,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +34,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.aaa1115910.biliapi.entity.live.LiveAreaItem
 import dev.aaa1115910.bv.tv.activities.video.VideoPlayerV3Activity
 import dev.aaa1115910.bv.tv.component.LoadingTip
@@ -95,7 +99,7 @@ fun LiveContent(
     val focusedIndex = liveViewModel.lastFocusedRoomIndex
     val totalItems = liveViewModel.roomList.size
     LaunchedEffect(focusedIndex, totalItems, liveViewModel.loading) {
-        if ((totalItems < 20 || focusedIndex >= totalItems - 12) && liveViewModel.hasMore && !liveViewModel.loading) {
+        if ((totalItems < 10 || focusedIndex >= totalItems - 8) && liveViewModel.hasMore && !liveViewModel.loading) {
             logger.info { "Trigger load more, focusedIndex: $focusedIndex, totalItems: $totalItems" }
             liveViewModel.loadMore()
         }
@@ -300,12 +304,14 @@ fun LiveContent(
                         if (!liveViewModel.hasMore) {
                             item(span = { GridItemSpan(maxLineSpan) }) {
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(20.dp),
+                                    modifier = Modifier.offset(y = (-16).dp),
                                     horizontalArrangement = Arrangement.Center
                                 ) {
-                                    Text(text = "没有更多内容了")
+                                    Text(
+                                        text = "没有更多内容了~",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
                                 }
                             }
                         }

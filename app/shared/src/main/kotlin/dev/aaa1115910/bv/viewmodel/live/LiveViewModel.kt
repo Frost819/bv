@@ -227,7 +227,7 @@ class LiveViewModel(
     }
 
     private suspend fun loadFollowingRooms() {
-        val response = liveRepository.getLiveFollowingList(page = currentPage, pageSize = 30)
+        val response = liveRepository.getLiveFollowingList(page = currentPage, pageSize = 10)
         if (response.code == 0) {
             val data = response.data
             val newItems = data?.list

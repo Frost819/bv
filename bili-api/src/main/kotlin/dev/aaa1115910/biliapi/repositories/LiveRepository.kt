@@ -91,7 +91,7 @@ class LiveRepository(
     ): LiveRecommendResponse = withContext(Dispatchers.IO) {
         client.get("https://api.live.bilibili.com/xlive/web-interface/v1/webMain/getMoreRecList") {
             parameter("platform", "web")
-            parameter("page", page)
+            // parameter("page", page)
         }.body()
     }
 
@@ -102,7 +102,7 @@ class LiveRepository(
      */
     suspend fun getLiveFollowingList(
         page: Int = 1,
-        pageSize: Int = 30,
+        pageSize: Int = 10,
     ): LiveFollowingResponse = withContext(Dispatchers.IO) {
         client.get("https://api.live.bilibili.com/xlive/web-ucenter/user/following") {
             parameter("page", page)

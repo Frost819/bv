@@ -133,22 +133,22 @@ fun UISetting(
                         }
                     )
                 }
-                item {
-                    SettingNumberListItem(
-                        title = stringResource(R.string.settings_ui_ugc_video_info_history_count_title),
-                        supportText = stringResource(R.string.settings_ui_ugc_video_info_history_count_text),
-                        value = ugcVideoInfoHistoryCount.toDouble(),
-                        minValue = 1.0,
-                        maxValue = 10.0,
-                        isInteger = true,
-                        step = 1.0,
-                        onValueChange = {
-                            ugcVideoInfoHistoryCount = it.toInt()
-                            Prefs.ugcVideoInfoHistoryCount = it.toInt()
-                        }
-                    )
-                }
                 if (showUGCVideoInfo) {
+                    item {
+                        SettingNumberListItem(
+                            title = stringResource(R.string.settings_ui_ugc_video_info_history_count_title),
+                            supportText = stringResource(R.string.settings_ui_ugc_video_info_history_count_text),
+                            value = ugcVideoInfoHistoryCount.toDouble(),
+                            minValue = 1.0,
+                            maxValue = 10.0,
+                            isInteger = true,
+                            step = 1.0,
+                            onValueChange = {
+                                ugcVideoInfoHistoryCount = it.toInt()
+                                Prefs.ugcVideoInfoHistoryCount = it.toInt()
+                            }
+                        )
+                    }
                     item {
                         SettingSwitchListItem(
                             title = stringResource(R.string.settings_ui_video_info_history_include_from_player_title),

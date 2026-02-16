@@ -33,29 +33,32 @@ val ALL_CONTROLLER_BUTTON_IDS = listOf(
  */
 fun parseControllerButtonsOrder(orderString: String): List<ControllerButtonConfig> {
     if (orderString.isBlank()) return emptyList()
-    return orderString.split(",").mapNotNull { token ->
-        val trimmed = token.trim()
-        if (trimmed.isEmpty()) return@mapNotNull null
-        val isDefaultFocus = trimmed.startsWith("*")
-        val afterStar = if (isDefaultFocus) trimmed.substring(1) else trimmed
-        val isHidden = afterStar.startsWith("-")
-        val id = if (isHidden) afterStar.substring(1) else afterStar
-        if (id.isEmpty()) return@mapNotNull null
-        ControllerButtonConfig(id, isHidden, isDefaultFocus)
-    }
+    return orderString.split(",")
+        .mapNotNull { token ->
+            val trimmed = token.trim()
+            if (trimmed.isEmpty()) return@mapNotNull null
+            val isDefaultFocus = trimmed.startsWith("*")
+            val afterStar = if (isDefaultFocus) trimmed.substring(1) else trimmed
+            val isHidden = afterStar.startsWith("-")
+            val id = if (isHidden) afterStar.substring(1) else afterStar
+            if (id.isEmpty() || !ALL_CONTROLLER_BUTTON_IDS.contains(id)) return@mapNotNull null
+            ControllerButtonConfig(id, isHidden, isDefaultFocus)
+        }
 }
 
 /**
  * 将控制栏按钮配置列表序列化为字符串
  */
 fun serializeControllerButtonsOrder(configs: List<ControllerButtonConfig>): String {
-    return configs.joinToString(",") { config ->
-        buildString {
-            if (config.isDefaultFocus) append("*")
-            if (config.hidden) append("-")
-            append(config.id)
+    return configs
+        .filter { ALL_CONTROLLER_BUTTON_IDS.contains(it.id) }
+        .joinToString(",") { config ->
+            buildString {
+                if (config.isDefaultFocus) append("*")
+                if (config.hidden) append("-")
+                append(config.id)
+            }
         }
-    }
 }
 
 /**
