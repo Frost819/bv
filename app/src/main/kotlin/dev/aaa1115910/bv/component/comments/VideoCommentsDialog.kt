@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalContext
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -58,6 +59,7 @@ import dev.aaa1115910.biliapi.entity.reply.CommentPage
 import dev.aaa1115910.biliapi.entity.reply.CommentReplyPage
 import dev.aaa1115910.biliapi.entity.reply.CommentSort
 import dev.aaa1115910.biliapi.repositories.CommentRepository
+import dev.aaa1115910.bv.util.toast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.getKoin
@@ -81,6 +83,8 @@ fun VideoCommentsDialog(
 
     val commentRepository: CommentRepository = getKoin().get()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var gatePassed by remember(aid) { mutableStateOf(false) }
     var page by remember { mutableStateOf(Page.Main) }
 
     // --- 主评论 ---
@@ -197,8 +201,10 @@ fun VideoCommentsDialog(
         }
     }
 
-    // 打开时：重置状态 + 拉主评论第一页
+    // 打开时：先 gate（无评论/网络错误就 toast 并关闭），通过后再初始化 UI 状态
     LaunchedEffect(aid) {
+        gatePassed = false
+
         page = Page.Main
         rootComment = null
 
@@ -214,8 +220,29 @@ fun VideoCommentsDialog(
         repliesLoading = false
         repliesError = null
 
-        delay(20)
-        loadComments(reset = true)
+        val firstPage = runCatching {
+            commentRepository.getVideoComments(
+                aid = aid,
+                sort = CommentSort.Hot,
+                page = CommentPage()
+            )
+        }.getOrElse {
+            "网络错误，请稍后重试".toast(context)
+            onDismissRequest()
+            return@LaunchedEffect
+        }
+
+        if (firstPage.comments.isEmpty()) {
+            "暂无评论".toast(context)
+            onDismissRequest()
+            return@LaunchedEffect
+        }
+
+        comments.addAll(firstPage.comments)
+        commentPage = firstPage.nextPage
+        commentsHasNext = firstPage.hasNext
+
+        gatePassed = true
 
         // 兜底给根容器焦点（等列表 item 创建后再把焦点交给 item）
         delay(40)
@@ -267,132 +294,140 @@ fun VideoCommentsDialog(
         }
     }
 
-    Dialog(
-        onDismissRequest = onDismissRequest,
-        properties = DialogProperties(
-            dismissOnBackPress = false,
-            dismissOnClickOutside = false,
-            usePlatformDefaultWidth = false
-        )
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .focusRequester(rootFocusRequester)
-                .focusable()
-                .onPreviewKeyEvent {
-                    if (it.type == KeyEventType.KeyDown && it.key == Key.Back) {
-                        goBackLayer()
-                        true
-                    } else false
-                },
-            shape = RoundedCornerShape(0.dp),
-            colors = androidx.tv.material3.SurfaceDefaults.colors(
-                containerColor = CommentsBg,
-                contentColor = CommentsText
+    if (gatePassed) {
+        Dialog(
+            onDismissRequest = onDismissRequest,
+            properties = DialogProperties(
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false,
+                usePlatformDefaultWidth = false
             )
         ) {
-            Column(
+            Surface(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 28.dp, vertical = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .focusRequester(rootFocusRequester)
+                    .focusable()
+                    .onPreviewKeyEvent {
+                        if (it.type == KeyEventType.KeyDown && it.key == Key.Back) {
+                            goBackLayer()
+                            true
+                        } else false
+                    },
+                shape = RoundedCornerShape(0.dp),
+                colors = androidx.tv.material3.SurfaceDefaults.colors(
+                    containerColor = CommentsBg,
+                    contentColor = CommentsText
+                )
             ) {
-                when (page) {
-                    Page.Main -> {
-                        if (commentsError != null) {
-                            InlineErrorText(text = commentsError ?: "加载失败")
-                        }
-
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            state = commentsListState,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            itemsIndexed(comments, key = { _, c -> c.rpid }) { _, comment ->
-                                val fr = mainItemFocusRequesters.getOrPut(comment.rpid) { FocusRequester() }
-
-                                LightCommentItem(
-                                    modifier = Modifier
-                                        .focusRequester(fr)
-                                        .onFocusChanged {
-                                            if (it.hasFocus) {
-                                                lastMainFocusedRpid = comment.rpid
-                                            }
-                                        },
-                                    comment = comment,
-                                    showRepliesHint = comment.repliesCount > 0,
-                                    onClick = {
-                                        if (comment.repliesCount <= 0) return@LightCommentItem
-
-                                        // 进入回复页前，明确记录“从哪条评论进入”
-                                        lastMainFocusedRpid = comment.rpid
-
-                                        rootComment = comment
-                                        page = Page.Replies
-
-                                        replies.clear()
-                                        replyPage = CommentReplyPage()
-                                        repliesHasNext = true
-                                        repliesError = null
-                                        loadReplies(reset = true)
-                                    }
-                                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 28.dp, vertical = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    when (page) {
+                        Page.Main -> {
+                            if (commentsError != null) {
+                                InlineErrorText(text = commentsError ?: "加载失败")
                             }
 
-                            item {
-                                BottomStateLight(
-                                    loading = commentsLoading,
-                                    hasNext = commentsHasNext,
-                                    empty = comments.isEmpty(),
-                                    emptyText = "暂无评论"
-                                )
-                            }
-                        }
-                    }
-
-                    Page.Replies -> {
-                        val root = rootComment
-                        if (root == null) {
-                            Text(
-                                text = "未选择根评论",
-                                color = CommentsText.copy(alpha = 0.70f),
-                                fontSize = 20.sp,
-                                modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
-                            )
-                        } else {
-                            Column(
+                            LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
+                                state = commentsListState,
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                RootCommentHeader(comment = root)
+                                itemsIndexed(comments, key = { _, c -> c.rpid }) { _, comment ->
+                                    val fr =
+                                        mainItemFocusRequesters.getOrPut(comment.rpid) { FocusRequester() }
 
-                                if (repliesError != null) {
-                                    InlineErrorText(text = repliesError ?: "加载失败")
+                                    LightCommentItem(
+                                        modifier = Modifier
+                                            .focusRequester(fr)
+                                            .onFocusChanged {
+                                                if (it.hasFocus) {
+                                                    lastMainFocusedRpid = comment.rpid
+                                                }
+                                            },
+                                        comment = comment,
+                                        showRepliesHint = comment.repliesCount > 0,
+                                        onClick = {
+                                            if (comment.repliesCount <= 0) return@LightCommentItem
+
+                                            // 进入回复页前，明确记录“从哪条评论进入”
+                                            lastMainFocusedRpid = comment.rpid
+
+                                            rootComment = comment
+                                            page = Page.Replies
+
+                                            replies.clear()
+                                            replyPage = CommentReplyPage()
+                                            repliesHasNext = true
+                                            repliesError = null
+                                            loadReplies(reset = true)
+                                        }
+                                    )
                                 }
 
-                                LazyColumn(
+                                item {
+                                    BottomStateLight(
+                                        loading = commentsLoading,
+                                        hasNext = commentsHasNext,
+                                        empty = comments.isEmpty(),
+                                        emptyText = "暂无评论"
+                                    )
+                                }
+                            }
+                        }
+
+                        Page.Replies -> {
+                            val root = rootComment
+                            if (root == null) {
+                                Text(
+                                    text = "未选择根评论",
+                                    color = CommentsText.copy(alpha = 0.70f),
+                                    fontSize = 20.sp,
+                                    modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
+                                )
+                            } else {
+                                Column(
                                     modifier = Modifier.fillMaxSize(),
-                                    state = repliesListState,
                                     verticalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    itemsIndexed(replies, key = { _, c -> c.rpid }) { index, reply ->
-                                        val itemModifier = if (index == 0) Modifier.focusRequester(firstReplyItemFocusRequester) else Modifier
-                                        LightCommentItem(
-                                            modifier = itemModifier,
-                                            comment = reply,
-                                            showRepliesHint = false,
-                                            onClick = {}
-                                        )
+                                    RootCommentHeader(comment = root)
+
+                                    if (repliesError != null) {
+                                        InlineErrorText(text = repliesError ?: "加载失败")
                                     }
 
-                                    item {
-                                        BottomStateLight(
-                                            loading = repliesLoading,
-                                            hasNext = repliesHasNext,
-                                            empty = replies.isEmpty(),
-                                            emptyText = "暂无回复"
-                                        )
+                                    LazyColumn(
+                                        modifier = Modifier.fillMaxSize(),
+                                        state = repliesListState,
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        itemsIndexed(
+                                            replies,
+                                            key = { _, c -> c.rpid }) { index, reply ->
+                                            val itemModifier =
+                                                if (index == 0) Modifier.focusRequester(
+                                                    firstReplyItemFocusRequester
+                                                ) else Modifier
+                                            LightCommentItem(
+                                                modifier = itemModifier,
+                                                comment = reply,
+                                                showRepliesHint = false,
+                                                onClick = {}
+                                            )
+                                        }
+
+                                        item {
+                                            BottomStateLight(
+                                                loading = repliesLoading,
+                                                hasNext = repliesHasNext,
+                                                empty = replies.isEmpty(),
+                                                emptyText = "暂无回复"
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -458,7 +493,6 @@ private fun RootCommentHeader(comment: Comment) {
                 color = CommentsText,
                 fontSize = 24.sp,
                 lineHeight = 28.sp,
-                maxLines = 6,
                 overflow = TextOverflow.Ellipsis
             )
         }
@@ -561,7 +595,7 @@ private fun LightCommentItem(
                     text = buildMessageAnnotated(comment.message),
                     color = CommentsText,
                     fontSize = 24.sp,
-                    maxLines = 6,
+                    lineHeight = 28.sp,
                     overflow = TextOverflow.Ellipsis
                 )
 
