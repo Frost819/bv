@@ -27,6 +27,7 @@ data class PlayerUiState(
     val seasonId: Int = 0,
     val authorMid: Long = 0,
     val authorName: String = "",
+    val coAuthors: List<dev.aaa1115910.biliapi.entity.user.CoAuthor> = emptyList(),
     val title: String = "",
     val videoHeight: Int = 0,
     val videoWidth: Int = 0,

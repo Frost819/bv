@@ -28,11 +28,30 @@ data class VideoDetail(
     val userActions: UserActions,
     val history: History,
     val playerIcon: PlayerIcon? = null,
-    val isUpowerExclusive: Boolean = false
+    val isUpowerExclusive: Boolean = false,
+    val coAuthors: List<dev.aaa1115910.biliapi.entity.user.CoAuthor> = emptyList()
 ) {
     companion object {
         fun fromViewReply(viewReply: ViewReply): VideoDetail {
             if (!viewReply.hasActivitySeason()) {
+                val staff = viewReply.staffList.map {
+                    dev.aaa1115910.biliapi.entity.user.CoAuthor(
+                        mid = it.mid,
+                        name = it.name,
+                        face = it.face,
+                        title = it.title
+                    )
+                }
+                val owner = viewReply.arc.author
+                val coAuthors = reorderUpGroupFirst(
+                    mergeOwnerIntoStaffFirst(
+                        ownerMid = owner.mid,
+                        ownerName = owner.name,
+                        ownerFace = owner.face,
+                        staff = staff
+                    )
+                )
+
                 return VideoDetail(
                     bvid = viewReply.bvid,
                     aid = viewReply.arc.aid,
@@ -54,9 +73,28 @@ data class VideoDetail(
                     tags = viewReply.tagList.map { Tag.fromTag(it) },
                     userActions = UserActions.fromReqUser(viewReply.reqUser),
                     history = History.fromHistory(viewReply.history),
-                    playerIcon = viewReply.playerIcon?.let { PlayerIcon.fromPlayerIcon(it) }
+                    playerIcon = viewReply.playerIcon?.let { PlayerIcon.fromPlayerIcon(it) },
+                    coAuthors = coAuthors
                 )
             } else {
+                val staff = viewReply.activitySeason.staffList.map {
+                    dev.aaa1115910.biliapi.entity.user.CoAuthor(
+                        mid = it.mid,
+                        name = it.name,
+                        face = it.face,
+                        title = it.title
+                    )
+                }
+                val owner = viewReply.activitySeason.arc.author
+                val coAuthors = reorderUpGroupFirst(
+                    mergeOwnerIntoStaffFirst(
+                        ownerMid = owner.mid,
+                        ownerName = owner.name,
+                        ownerFace = owner.face,
+                        staff = staff
+                    )
+                )
+
                 return VideoDetail(
                     bvid = viewReply.activitySeason.bvid,
                     aid = viewReply.activitySeason.arc.aid,
@@ -86,12 +124,31 @@ data class VideoDetail(
                         PlayerIcon.fromPlayerIcon(
                             it
                         )
-                    }
+                    },
+                    coAuthors = coAuthors
                 )
             }
         }
 
-        fun fromVideoDetail(videoDetail: dev.aaa1115910.biliapi.http.entity.video.VideoDetail) =
+        fun fromVideoDetail(videoDetail: dev.aaa1115910.biliapi.http.entity.video.VideoDetail) = run {
+            val owner = videoDetail.view.owner
+            val staff = videoDetail.view.staff.map {
+                dev.aaa1115910.biliapi.entity.user.CoAuthor(
+                    mid = it.mid,
+                    name = it.name,
+                    face = it.face,
+                    title = it.title
+                )
+            }
+            val coAuthors = reorderUpGroupFirst(
+                mergeOwnerIntoStaffFirst(
+                    ownerMid = owner.mid,
+                    ownerName = owner.name,
+                    ownerFace = owner.face,
+                    staff = staff
+                )
+            )
+
             VideoDetail(
                 bvid = videoDetail.view.bvid,
                 aid = videoDetail.view.aid,
@@ -113,8 +170,46 @@ data class VideoDetail(
                 userActions = UserActions(),
                 history = History(0, 0),
                 playerIcon = null,
-                isUpowerExclusive = videoDetail.view.isUpowerExclusive?: false
+                isUpowerExclusive = videoDetail.view.isUpowerExclusive?: false,
+                coAuthors = coAuthors
             )
+        }
+
+        private fun mergeOwnerIntoStaffFirst(
+            ownerMid: Long,
+            ownerName: String,
+            ownerFace: String,
+            staff: List<dev.aaa1115910.biliapi.entity.user.CoAuthor>
+        ): List<dev.aaa1115910.biliapi.entity.user.CoAuthor> {
+            val ownerAsCoAuthor = dev.aaa1115910.biliapi.entity.user.CoAuthor(
+                mid = ownerMid,
+                name = ownerName,
+                face = ownerFace,
+                title = "UP主"
+            )
+
+            // staff 为空：兜底只显示 UP主
+            val merged = if (staff.isEmpty()) {
+                listOf(ownerAsCoAuthor)
+            } else {
+                // staff 不含 owner：把 UP主 补到最前面，保证“投稿成员”在顶部
+                if (staff.any { it.mid == ownerMid }) staff else listOf(ownerAsCoAuthor) + staff
+            }
+
+            // 稳定去重：保留第一次出现的条目
+            return merged.distinctBy { it.mid }
+        }
+
+        private fun reorderUpGroupFirst(list: List<dev.aaa1115910.biliapi.entity.user.CoAuthor>): List<dev.aaa1115910.biliapi.entity.user.CoAuthor> {
+            // 如果存在 title=="UP主" 的条目，尽量让它在前面。
+            // 最终弹窗分组排序仍在 UI 层做（确保 title=="UP主" 组排第一）。
+            val idx = list.indexOfFirst { it.title == "UP主" }
+            if (idx <= 0) return list
+            val mutable = list.toMutableList()
+            val item = mutable.removeAt(idx)
+            mutable.add(0, item)
+            return mutable
+        }
     }
 
     data class Stat(

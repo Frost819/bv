@@ -25,6 +25,9 @@ import dev.aaa1115910.bv.component.DanmakuPlayerCompose
 import dev.aaa1115910.bv.component.controllers.VideoPlayerController
 import dev.aaa1115910.bv.component.controllers.VideoProgressSeek
 import dev.aaa1115910.bv.component.ifElse
+import dev.aaa1115910.bv.component.CoAuthorsDialogHost
+import dev.aaa1115910.bv.component.handleUpHomeClick
+import dev.aaa1115910.bv.component.rememberCoAuthorsDialogState
 import dev.aaa1115910.bv.entity.VideoAspectRatio
 import dev.aaa1115910.bv.entity.VideoListItem
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
@@ -50,6 +53,9 @@ fun VideoPlayerV3Screen(
     val logger = KotlinLogging.logger { }
     val context = LocalContext.current
     val videoPlayer = playerViewModel.videoPlayer!!
+
+    val coAuthorsDialogState = rememberCoAuthorsDialogState()
+    var lastCoAuthorsDialogVisible by remember { mutableStateOf(false) }
 
     val maskFinder = remember { DanmakuMaskFinder() }
     var currentDanmakuMaskFrame: DanmakuMaskFrame? by remember { mutableStateOf(null) }
@@ -85,6 +91,14 @@ fun VideoPlayerV3Screen(
             // 周期延迟
             delay(15000)
         }
+    }
+
+    LaunchedEffect(coAuthorsDialogState.visible) {
+        val now = coAuthorsDialogState.visible
+        if (!now && lastCoAuthorsDialogVisible) {
+            videoPlayer.start()
+        }
+        lastCoAuthorsDialogVisible = now
     }
 
     // 弹幕防遮挡蒙版更新
@@ -161,10 +175,24 @@ fun VideoPlayerV3Screen(
             isLooping = !isLooping
         },
         onGoToUpPage = {
-            UpInfoActivity.actionStart(
-                context,
-                mid = uiState.authorMid,
-                name = uiState.authorName
+            val dedup = uiState.coAuthors.distinctBy { it.mid }
+
+            // 多作者：打开弹窗前立刻暂停
+            if (dedup.size > 1) {
+                videoPlayer.pause()
+                playerViewModel.trySendHeartbeat()
+            }
+
+            handleUpHomeClick(
+                authors = uiState.coAuthors,
+                state = coAuthorsDialogState,
+                onNavigateSingle = { mid, name ->
+                    UpInfoActivity.actionStart(
+                        context,
+                        mid = mid,
+                        name = name
+                    )
+                }
             )
         },
 
@@ -255,4 +283,11 @@ fun VideoPlayerV3Screen(
             }
         }
     }
+
+    CoAuthorsDialogHost(
+        state = coAuthorsDialogState,
+        onClickAuthor = { mid, name ->
+            UpInfoActivity.actionStart(context, mid = mid, name = name)
+        }
+    )
 }

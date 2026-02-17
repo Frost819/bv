@@ -190,7 +190,10 @@ class VideoPlayerV3ViewModel(
                 if (newDetail == null) return@onEach
 
                 _uiState.update { currentState ->
-                    currentState.copy(relatedVideos = newDetail.relatedVideos)
+                    currentState.copy(
+                        relatedVideos = newDetail.relatedVideos,
+                        coAuthors = newDetail.coAuthors
+                    )
                 }
                 logger.fInfo { "Sync related videos from repo" }
             }

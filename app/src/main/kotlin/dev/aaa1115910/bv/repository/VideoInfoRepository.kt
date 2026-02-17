@@ -65,7 +65,8 @@ class VideoInfoRepository(private val videoDetailRepository: VideoDetailReposito
             pages = videoDetail.pages,
             relatedVideos = mapToVideoCardData(videoDetail.relatedVideos),
             ugcSeason = videoDetail.ugcSeason,
-        )
+        coAuthors = videoDetail.coAuthors,
+            )
 
         _videoDetailState.update { videoDetailState }
     }

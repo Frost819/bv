@@ -49,4 +49,5 @@ data class VideoDetailState(
     val isLiked: Boolean,
     val isCoined: Boolean,
     val isFavorite: Boolean,
+    val coAuthors: List<dev.aaa1115910.biliapi.entity.user.CoAuthor> = emptyList(),
 )
