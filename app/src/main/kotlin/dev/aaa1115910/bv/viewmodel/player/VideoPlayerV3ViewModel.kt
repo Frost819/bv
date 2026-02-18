@@ -126,9 +126,23 @@ class VideoPlayerV3ViewModel(
     // 一旦命中 surface/codec 输出相关异常，就认为当前 ExoPlayer 出问题，下次回场必须重建
     @Volatile
     private var surfaceBugDetected: Boolean = false
-    // 仅首次打印环境信息（设备 + Media3 版本）
+
+    @Volatile
+    private var suppressPlayerErrors: Boolean = false
+
+    @Volatile
+    private var needRecreateOnStart: Boolean = false
+
+    // 用于断点续播（毫秒）
+    private var pendingResumePositionMs: Long = 0L
+
+    // 防止 onStart 反复触发导致重复重建/prepare
+    private val recreateInProgress = AtomicBoolean(false)
+
+    // 仅首次打印环境信息（设备 + Media3 版本），便于你贴 Logcat 排查
     @Volatile
     private var envLogged: Boolean = false
+
     private val typeFilter = TypeFilter()
     private var danmakuConfig = DanmakuConfig()
 
