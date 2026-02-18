@@ -2,6 +2,8 @@ package dev.aaa1115910.bv.viewmodel.player
 
 import android.net.Uri
 import android.util.Log
+import android.os.Build
+import java.util.concurrent.atomic.AtomicBoolean
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -80,6 +82,22 @@ import java.net.URI
 import java.util.Calendar
 import kotlin.coroutines.cancellation.CancellationException
 
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+private fun media3Slashy(): String = androidx.media3.common.MediaLibraryInfo.VERSION_SLASHY
+
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+private fun hasDetachSurfaceTimeout(t: Throwable?): Boolean {
+    var cur: Throwable? = t
+    while (cur != null) {
+        if (cur is androidx.media3.exoplayer.ExoTimeoutException &&
+            cur.timeoutOperation ==
+            androidx.media3.exoplayer.ExoTimeoutException.TIMEOUT_OPERATION_DETACH_SURFACE
+        ) return true
+        cur = cur.cause
+    }
+    return false
+}
+
 @KoinViewModel
 
 class VideoPlayerV3ViewModel(
@@ -94,6 +112,23 @@ class VideoPlayerV3ViewModel(
         private set
 
     private var playData: PlayData? = null
+    @Volatile
+    private var suppressPlayerErrors: Boolean = false
+    @Volatile
+    private var needRecreateOnStart: Boolean = false
+    // 用于断点续播（毫秒）
+    private var pendingResumePositionMs: Long = 0L
+    // 防止 onStart 反复触发导致重复重建/prepare
+    private val recreateInProgress = AtomicBoolean(false)
+    // 快恢复开关：true=切后台只 pause，不 release；false=保持“每次 onStop 都 release 重建”
+    @Volatile
+    private var fastResumeEnabled: Boolean = true
+    // 一旦命中 surface/codec 输出相关异常，就认为当前 ExoPlayer 出问题，下次回场必须重建
+    @Volatile
+    private var surfaceBugDetected: Boolean = false
+    // 仅首次打印环境信息（设备 + Media3 版本）
+    @Volatile
+    private var envLogged: Boolean = false
     private val typeFilter = TypeFilter()
     private var danmakuConfig = DanmakuConfig()
 
@@ -114,6 +149,32 @@ class VideoPlayerV3ViewModel(
 
     private val videoPlayerListener = object : VideoPlayerListener {
         override fun onError(error: Exception) {
+            // 抑制期：stop/surfaceDestroyed/回场 attach 阶段的 surface 类错误不进 UI，避免“进/退页面闪抽风”
+            if (suppressPlayerErrors) {
+                val isDetachTimeoutByType = hasDetachSurfaceTimeout(error)
+
+                // 字符串兜底（避免厂商/版本差异导致类型判断漏判）
+                val msg = if (!isDetachTimeoutByType) error.message.orEmpty() else ""
+                val st = if (!isDetachTimeoutByType) error.stackTraceToString() else ""
+
+                val isSurfaceDetachError =
+                    isDetachTimeoutByType ||
+                            msg.contains("Detaching surface timed out", ignoreCase = true) ||
+                            st.contains("Detaching surface timed out", ignoreCase = true) ||
+                            st.contains("native_setSurface", ignoreCase = true) ||
+                            st.contains("setOutputSurface", ignoreCase = true)
+
+                if (isSurfaceDetachError) {
+                    // 命中该类错误，就认为当前 ExoPlayer 可能已出问题，下次回场必须重建
+                    surfaceBugDetected = true
+                    needRecreateOnStart = true
+
+                    Log.e("BugDebug", "ViewModel onError suppressed (surface bug): ${error.message}", error)
+                    return
+                }
+            }
+
+            Log.e("BugDebug", "ViewModel onError -> PlayerState.Error", error)
             logger.info { "onError: $error" }
             _uiState.update {
                 it.copy(
@@ -291,6 +352,190 @@ class VideoPlayerV3ViewModel(
 
         videoPlayer?.release()
         videoPlayer = null
+    }
+
+    fun setSuppressPlayerErrors(suppress: Boolean) {
+        suppressPlayerErrors = suppress
+        Log.i("BugDebug", "ViewModel setSuppressPlayerErrors=$suppress")
+    }
+
+    /**
+     * Host(Activity) stop 时调用：
+     * - 记录断点（ms）
+     * - 标记下次 start 要重建
+     * - 释放旧 ExoPlayer（这台真机上 old 实例常已不可恢复）
+     */
+    fun onHostStopReleaseForRecreate() {
+        val player = videoPlayer
+        val pos = player?.currentPosition ?: 0L
+        pendingResumePositionMs = pos.coerceAtLeast(0L)
+        needRecreateOnStart = true
+
+        // 复用seekToLastPlayed 机制（单位：秒）
+        val resumeSec = (pendingResumePositionMs / 1000L).toInt().coerceAtLeast(0)
+        _uiState.update { it.copy(lastPlayed = resumeSec) }
+
+        Log.i(
+            "BugDebug",
+            "ViewModel onHostStopReleaseForRecreate: posMs=$pendingResumePositionMs resumeSec=$resumeSec"
+        )
+
+        // 尽量先“解绑视频输出”再 release，减少厂商 codec/surface bug 触发概率
+        runCatching {
+            // 没有 PlayerView 引用时，也可以让 ExoPlayer 尽量清掉 video output
+            (player as? dev.aaa1115910.bv.player.impl.exo.ExoMediaPlayer)
+                ?.mPlayer
+                ?.clearVideoSurface()
+        }
+
+        // 释放坏掉的 ExoPlayer。这里不把 videoPlayer 置 null，避免 Compose 侧使用 !! 直接 NPE。
+        runCatching { player?.release() }
+            .onFailure { Log.e("BugDebug", "ViewModel: release() failed", it) }
+    }
+
+    /**
+     * Host(Activity) start 时调用：如需则重建 ExoPlayer 并自动续播。
+     */
+    fun onHostStartRecreateAndAutoPlayIfNeeded() {
+        if (!needRecreateOnStart) return
+        // 幂等/防并发（onStart 可能被重复触发）
+        if (!recreateInProgress.compareAndSet(false, true)) {
+            Log.w("BugDebug", "ViewModel onHostStart: recreate already in progress, skip")
+            return
+        }
+
+        needRecreateOnStart = false
+
+        try {
+            val player = videoPlayer
+            if (player == null) {
+                Log.e("BugDebug", "ViewModel onHostStart: videoPlayer is null (unexpected)")
+                return
+            }
+
+            Log.i("BugDebug", "ViewModel onHostStart: recreate player and auto play")
+
+            // 重建 ExoPlayer
+            runCatching { player.initPlayer() }
+                .onFailure {
+                    Log.e("BugDebug", "ViewModel: initPlayer() failed", it)
+                    _uiState.update { s ->
+                        s.copy(
+                            playerState = PlayerState.Error(
+                                it.message ?: "initPlayer failed"
+                            )
+                        )
+                    }
+                    return
+                }
+
+            // 仅首次打印环境信息（设备 + Media3 版本）
+            if (!envLogged) {
+                envLogged = true
+                Log.i(
+                    "BugDebug",
+                    "Env: MANUFACTURER=${Build.MANUFACTURER}, MODEL=${Build.MODEL}, SDK=${Build.VERSION.SDK_INT}," +
+                            "Media3=${media3Slashy()}," + "softDecode=${Prefs.enableSoftwareVideoDecoder}"
+                )
+            }
+
+            // 重新 prepare 播放源：优先复用已加载的 playData（避免再次请求）
+            //    playQuality() 是 ViewModel 内 private，可直接调用。
+            if (playData != null) {
+                runCatching {
+                    playQuality(
+                        qn = _uiState.value.mediaProfileState.qualityId,
+                        codec = _uiState.value.mediaProfileState.videoCodec,
+                        audio = _uiState.value.mediaProfileState.audio
+                    )
+                    // 手动恢复到暂停时的进度条
+                    if (pendingResumePositionMs > 0) {
+                        player.seekTo(pendingResumePositionMs)
+                        // 清空 UI 状态里的 lastPlayed，防止 onPlay 再次触发跳转提示
+                        _uiState.update { it.copy(lastPlayed = 0) }
+                    }
+                    player.setOptions() // playWhenReady=true
+                    player.start()      // 自动播放
+                }.onFailure {
+                    Log.e("BugDebug", "ViewModel: replay with cached playData failed", it)
+                    _uiState.update { s ->
+                        s.copy(
+                            playerState = PlayerState.Error(
+                                it.message ?: "replay failed"
+                            )
+                        )
+                    }
+                }
+            } else {
+                // 没有 playData 时重新拉取（会走你现有 loadPlayUrlImpl 流程）
+                // setOptions 先开，确保准备好后自动播放。
+                player.setOptions()
+
+                val st = _uiState.value
+                Log.w("BugDebug", "ViewModel: playData is null, fallback to loadPlayUrl")
+                loadPlayUrl(
+                    avid = st.aid,
+                    cid = st.cid,
+                    epid = st.epid,
+                    title = st.title
+                )
+            }
+        } finally {
+            recreateInProgress.set(false)
+        }
+    }
+
+    /**
+     * Host(Activity) stop 时调用（快路径）：
+     * - 默认只 pause，不 release（秒回）
+     * - 如果检测到 surfaceBugDetected，则回退到“release + 下次重建”
+     */
+    fun onHostStopFastResume() {
+        val player = videoPlayer ?: return
+
+        // 记录断点（ms）；用于兜底重建时 seek
+        pendingResumePositionMs = player.currentPosition.coerceAtLeast(0L)
+        val resumeSec = (pendingResumePositionMs / 1000L).toInt().coerceAtLeast(0)
+        _uiState.update { it.copy(lastPlayed = resumeSec) }
+
+        Log.i(
+            "BugDebug",
+            "ViewModel onHostStopFastResume: fast=$fastResumeEnabled surfaceBugDetected=$surfaceBugDetected posMs=$pendingResumePositionMs"
+        )
+
+        // 无论快慢策略，先暂停，避免后台继续播放
+        runCatching { player.pause() }
+
+        // 慢但稳：（每次 stop 都 release）
+        if (!fastResumeEnabled) {
+            onHostStopReleaseForRecreate()
+            return
+        }
+
+        // 快但可能翻车：只有检测到 surface/codec 输出 bug 时才回退到 release+重建
+        if (surfaceBugDetected) {
+            onHostStopReleaseForRecreate()
+        }
+    }
+
+    /**
+     * Host(Activity) start 时调用：
+     * - 若 needRecreateOnStart=true：“重建 + playQuality/prepare + 自动续播”
+     * - 否则：直接 start（秒回，不重建，不重新 prepare）
+     */
+    fun onHostStartFastResumeOrRecreate() {
+        if (needRecreateOnStart) {
+            Log.i("BugDebug", "ViewModel onHostStartFastResumeOrRecreate: recreate")
+            // 重建成功后把 surfaceBugDetected 清掉（否则会一直走慢路径）
+            onHostStartRecreateAndAutoPlayIfNeeded()
+            surfaceBugDetected = false
+            return
+        }
+
+        if (!fastResumeEnabled) return
+
+        Log.i("BugDebug", "ViewModel onHostStartFastResumeOrRecreate: fast resume")
+        runCatching { videoPlayer?.start() }
     }
 
     fun initDanmakuPlayer() {

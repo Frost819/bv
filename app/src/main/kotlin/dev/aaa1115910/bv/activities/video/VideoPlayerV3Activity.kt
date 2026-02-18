@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
+import android.util.Log
+import androidx.lifecycle.lifecycleScope
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
@@ -22,6 +24,8 @@ import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.viewmodel.player.VideoPlayerV3ViewModel
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class VideoPlayerV3Activity : ComponentActivity() {
@@ -78,6 +82,27 @@ class VideoPlayerV3Activity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+
+        // 回到前台：先进入抑制期，避免 attach surface 阶段闪抽风
+        playerViewModel.setSuppressPlayerErrors(true)
+        Log.i("BugDebug", "VideoPlayerV3Activity onStart: suppressPlayerErrors=true (resuming)")
+
+        // 快恢复（不重建）或按需重建
+        playerViewModel.onHostStartFastResumeOrRecreate()
+
+        lifecycleScope.launch {
+            delay(500)
+            // 只有当页面还在前台时才恢复
+            if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+                // 退出抑制期
+                playerViewModel.setSuppressPlayerErrors(false)
+                Log.i("BugDebug", "VideoPlayerV3Activity onStart: suppressPlayerErrors=false")
+            }
+        }
+    }
+
     override fun onResume() {
         super.onResume()
 
@@ -105,12 +130,30 @@ class VideoPlayerV3Activity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
 
+        // 进入后台/跳转别的 Activity 前：抑制 stop/surfaceDestroyed 期间的 surface-detach 类错误进入 UI
+        playerViewModel.setSuppressPlayerErrors(true)
+        Log.i("BugDebug", "VideoPlayerV3Activity onPause: suppressPlayerErrors=true")
+
         // 恢复状态栏
         WindowInsetsControllerCompat(window, window.decorView)
             .show(WindowInsetsCompat.Type.systemBars())
 
         playerViewModel.videoPlayer?.pause()
         playerViewModel.danmakuPlayer?.pause()
+    }
+
+    override fun onStop() {
+        // 尽量早做，避免 stop 阶段 surfaceDestroyed 触发后再处理
+        Log.i("BugDebug", "VideoPlayerV3Activity onStop: isFinishing=$isFinishing")
+
+        if (!isFinishing) {
+            playerViewModel.onHostStopFastResume()
+        } else {
+            // 退出 Activity 时也抑制错误，避免“退出前闪抽风”
+            playerViewModel.setSuppressPlayerErrors(true)
+        }
+
+        super.onStop()
     }
 
     private fun initVideoPlayer() {
