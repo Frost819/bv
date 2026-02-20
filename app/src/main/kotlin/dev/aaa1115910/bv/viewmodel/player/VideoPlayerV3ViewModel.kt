@@ -2,6 +2,7 @@ package dev.aaa1115910.bv.viewmodel.player
 
 import android.net.Uri
 import android.util.Log
+import java.util.concurrent.atomic.AtomicBoolean
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -93,6 +94,45 @@ class VideoPlayerV3ViewModel(
         private set
 
     private var playData: PlayData? = null
+
+    private data class ContinueSelection(
+        val type: SubtitleType,
+        val langKey: String
+    )
+
+    private data class ContinuePlayPending(
+        val aid: Long,
+        val cid: Long,
+        val selection: ContinueSelection? // null 表示：连播时强制不自动开启字幕（本集字幕为“关闭”）
+    )
+
+    @Volatile
+    private var continuePlayPending: ContinuePlayPending? = null
+
+    @Volatile
+    private var suppressPlayerErrors: Boolean = false
+
+    @Volatile
+    private var needRecreateOnStart: Boolean = false
+
+    // 快恢复开关：true=切后台只 pause，不 release；false=保持“每次 onStop 都 release 重建”
+    @Volatile
+    private var fastResumeEnabled: Boolean = true
+
+    // 一旦命中 surface/codec 输出相关异常，就认为当前 ExoPlayer 出问题，下次回场必须重建
+    @Volatile
+    private var surfaceBugDetected: Boolean = false
+
+    // 用于断点续播（毫秒）
+    private var pendingResumePositionMs: Long = 0L
+
+    // 防止 onStart 反复触发导致重复重建/prepare
+    private val recreateInProgress = AtomicBoolean(false)
+
+    // 仅首次打印环境信息（设备 + Media3 版本），便于你贴 Logcat 排查
+    @Volatile
+    private var envLogged: Boolean = false
+
     private val typeFilter = TypeFilter()
     private var danmakuConfig = DanmakuConfig()
 
@@ -604,16 +644,52 @@ class VideoPlayerV3ViewModel(
             loadDanmaku(cid)
             updateDanmakuMask()
             updateSubtitle()
+            // ===== 自动字幕：连播继承优先，其次普通自动开启 =====
+            val pending = continuePlayPending
+
+            // 只有当“本次 loadPlayUrl 的目标 aid/cid”与 pending 匹配，才认为这是连播触发的下一集
+            if (pending != null && pending.aid == avid && pending.cid == cid && Prefs.continuePlayAutoSubtitleEnabled) {
+                // 消费 pending（无论成功与否都清掉，避免污染后续普通进入）
+                continuePlayPending = null
+
+                val selection = pending.selection
+                if (selection != null) {
+                    val targetSubtitle = pickContinuePlaySubtitle(selection, _uiState.value.availableSubtitles)
+                    if (targetSubtitle != null) {
+                        logger.info { "Continue play auto subtitle: ${targetSubtitle.langDoc} (id=${targetSubtitle.id})" }
+                        loadSubtitle(targetSubtitle.id)
+                    } else {
+                        logger.info { "Continue play auto subtitle: no match for ${selection.type}|${selection.langKey}, skip" }
+                    }
+                } else {
+                    // 本集字幕为“关闭”：下一集也不自动开启字幕（且不跑普通自动开启）
+                    logger.info { "Continue play auto subtitle: last episode subtitle is OFF, keep OFF" }
+                }
+            } else {
+                // 清理可能的陈旧 pending（比如用户中途手动切了视频导致 aid/cid 不匹配）
+                // 以及：用户在倒计时/切换间隙把“连播自动字幕”关掉，此时也应清掉 pending，回到普通自动开启逻辑
+                if (pending != null && (pending.aid != avid || pending.cid != cid || !Prefs.continuePlayAutoSubtitleEnabled)) {
+                    continuePlayPending = null
+                }
+
+                val targetSubtitle = pickNormalAutoSubtitle(_uiState.value.availableSubtitles)
+                if (targetSubtitle != null) {
+                    logger.info { "Normal auto subtitle: ${targetSubtitle.langDoc} (id=${targetSubtitle.id})" }
+                    loadSubtitle(targetSubtitle.id)
+                }
+            }
             updateVideoShot()
             updateVideoPages()
             clearVideoShotCache()
 
+            /*
             //如果是继续播放下一集，且之前开启了字幕，就会自动加载第一条字幕，主要用于观看番剧时自动加载字幕
             val lastPlayEnabledSubtitle = _uiState.value.subtitleId != -1L
             if (lastPlayEnabledSubtitle) {
                 logger.info { "Subtitle is enabled, next video will enable subtitle automatic" }
                 enableFirstSubtitle()
             }
+            */
         }
     }
 
@@ -945,6 +1021,75 @@ class VideoPlayerV3ViewModel(
         }
     }
 
+    private fun Subtitle.normalizedLangKey(): String {
+        val raw = (lang.ifBlank { langDoc }).trim()
+        if (raw.isEmpty()) return ""
+
+        val noAiPrefix = if (raw.startsWith("ai-", ignoreCase = true)) raw.substring(3) else raw
+        val primary = noAiPrefix.substringBefore("-")
+        return primary.lowercase()
+    }
+
+    private fun pickContinuePlaySubtitle(
+        selection: ContinueSelection,
+        tracks: List<Subtitle>
+    ): Subtitle? {
+        val list = tracks.filter { it.id != -1L }
+        fun find(type: SubtitleType): Subtitle? =
+            list.firstOrNull { it.type == type && it.normalizedLangKey() == selection.langKey }
+
+        return if (selection.type == SubtitleType.AI) {
+            // AI 同语言优先，兜底 CC 同语言
+            find(SubtitleType.AI) ?: find(SubtitleType.CC)
+        } else {
+            // 非 AI：只能 CC 同语言，不兜底
+            find(SubtitleType.CC)
+        }
+    }
+
+    private data class LangTracks(
+        var cc: Subtitle? = null,
+        var ai: Subtitle? = null
+    )
+
+    private fun pickNormalAutoSubtitle(tracks: List<Subtitle>): Subtitle? {
+        val ruleTokens = Prefs.autoSubtitleRuleTokens.toSet()
+        if (ruleTokens.isEmpty()) return null
+
+        val byLang = linkedMapOf<String, LangTracks>()
+        tracks.filter { it.id != -1L }.forEach { t ->
+            val key = t.normalizedLangKey()
+            if (key.isBlank()) return@forEach
+
+            val entry = byLang.getOrPut(key) { LangTracks() }
+            when (t.type) {
+                SubtitleType.CC -> if (entry.cc == null) entry.cc = t
+                SubtitleType.AI -> if (entry.ai == null) entry.ai = t
+            }
+        }
+
+        fun langSortKey(langKey: String): Pair<Int, String> = when (langKey) {
+            "zh" -> 0 to ""
+            "en" -> 1 to ""
+            else -> 2 to langKey
+        }
+
+        val orderedLangKeys = byLang.keys.sortedWith(compareBy({ langSortKey(it).first }, { langSortKey(it).second }))
+        orderedLangKeys.forEach { langKey ->
+            val entry = byLang[langKey] ?: return@forEach
+
+            // 同语言：CC 优先于 AI
+            if (entry.cc != null && ruleTokens.contains("CC|$langKey")) {
+                return entry.cc
+            }
+            if (entry.ai != null && ruleTokens.contains("AI|$langKey")) {
+                return entry.ai
+            }
+        }
+
+        return null
+    }
+
     private fun enableFirstSubtitle() {
         runCatching {
             logger.info { "Load first subtitle" }
@@ -1124,9 +1269,40 @@ class VideoPlayerV3ViewModel(
     }
 
     private fun playNextTarget(target: NextPlayTarget) {
+        fun prepareContinuePending(nextAid: Long, nextCid: Long) {
+            if (!Prefs.continuePlayAutoSubtitleEnabled) {
+                continuePlayPending = null
+                return
+            }
+
+            val state = _uiState.value
+            val currentSubtitleId = state.subtitleId
+
+            val selection: ContinueSelection? = if (currentSubtitleId == -1L) {
+                // 本集字幕关闭：下一集也不自动开任何字幕（且不跑普通自动开启）
+                null
+            } else {
+                state.availableSubtitles
+                    .firstOrNull { it.id == currentSubtitleId }
+                    ?.let { track ->
+                        ContinueSelection(
+                            type = track.type,
+                            langKey = track.normalizedLangKey()
+                        )
+                    }
+            }
+
+            continuePlayPending = ContinuePlayPending(
+                aid = nextAid,
+                cid = nextCid,
+                selection = selection
+            )
+        }
+
         when (target) {
             is NextPlayTarget.UgcPage -> {
                 logger.info { "Play next UGC page: ${target.page.title}" }
+
                 playNewVideo(
                     VideoListItem(
                         aid = target.parentVideo.aid,
@@ -1138,6 +1314,12 @@ class VideoPlayerV3ViewModel(
 
             is NextPlayTarget.VideoItem -> {
                 logger.info { "Play next video item: ${target.video.title}" }
+
+                prepareContinuePending(
+                    nextAid = target.video.aid,
+                    nextCid = target.video.cid
+                )
+
                 playNewVideo(
                     VideoListItem(
                         aid = target.video.aid,

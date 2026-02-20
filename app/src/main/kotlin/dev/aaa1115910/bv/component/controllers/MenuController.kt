@@ -327,6 +327,8 @@ enum class VideoPlayerDanmakuMenuItem(private val strRes: Int) {
 
 enum class VideoPlayerClosedCaptionMenuItem(private val strRes: Int) {
     Switch(R.string.video_player_menu_subtitle_switch),
+    AutoEnableRules(R.string.video_player_menu_subtitle_auto_enable_rules),
+    ContinuePlay(R.string.video_player_menu_subtitle_continue_play_auto_enable),
     Size(R.string.video_player_menu_subtitle_size),
     Opacity(R.string.video_player_menu_subtitle_background_opacity),
     Padding(R.string.video_player_menu_subtitle_bottom_padding);

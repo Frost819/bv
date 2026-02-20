@@ -751,6 +751,8 @@
     <string name="video_player_menu_subtitle_bottom_padding">底部间距</string>
     <string name="video_player_menu_subtitle_size">字体大小</string>
     <string name="video_player_menu_subtitle_switch">选择字幕</string>
+    <string name="video_player_menu_subtitle_auto_enable_rules">自动开启</string>
+    <string name="video_player_menu_subtitle_continue_play_auto_enable">字幕连播</string>
     <string name="video_player_press_back_again_to_exit">再次按下返回键退出播放</string>
     <string name="video_player_referer">https://www.bilibili.com</string>
     <string name="video_player_user_agent_client">Bilibili Freedoooooom/MarkII</string>

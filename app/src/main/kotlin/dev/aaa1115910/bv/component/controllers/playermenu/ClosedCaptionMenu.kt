@@ -16,7 +16,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.input.key.Key
@@ -31,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.aaa1115910.biliapi.entity.video.Subtitle
 import dev.aaa1115910.biliapi.entity.video.SubtitleType
+import dev.aaa1115910.bv.util.Prefs
+import dev.aaa1115910.bv.component.controllers.playermenu.component.CheckBoxMenuList
 import dev.aaa1115910.bv.component.controllers.LocalMenuFocusStateData
 import dev.aaa1115910.bv.component.controllers.MenuFocusState
 import dev.aaa1115910.bv.component.controllers.VideoPlayerClosedCaptionMenuItem
@@ -68,8 +72,70 @@ fun ClosedCaptionMenuList(
         val menuItemsModifier = Modifier
             .width(216.dp)
             .padding(horizontal = 8.dp)
+        // 真实字幕轨道是否存在（排除 id=-1 的“关闭”）
+        val hasRealSubtitleTrack = remember(availableSubtitleTracks) {
+            availableSubtitleTracks.any { it.id != -1L }
+        }
+
+        // 自动开启规则的可选项（为空则右侧面板应禁用）
+        val autoRuleOptions = remember(availableSubtitleTracks) {
+            buildAutoRuleOptions(availableSubtitleTracks)
+        }
         AnimatedVisibility(visible = focusState.focusState != MenuFocusState.MenuNav) {
             when (selectedClosedCaptionMenuItem) {
+                VideoPlayerClosedCaptionMenuItem.AutoEnableRules -> {
+                    // 规则项：按当前视频真实存在的字幕轨道生成（CC 显示“中文/English”，AI 显示“中文（AI）/English（AI）”）
+                    val options = remember(availableSubtitleTracks) {
+                        buildAutoRuleOptions(availableSubtitleTracks)
+                    }
+
+                    var selectedTokens by remember {
+                        mutableStateOf(Prefs.autoSubtitleRuleTokens.toSet())
+                    }
+
+                    val selectedIndexes = remember(options, selectedTokens) {
+                        options.mapIndexedNotNull { index, opt ->
+                            if (selectedTokens.contains(opt.token)) index else null
+                        }
+                    }
+
+                    CheckBoxMenuList(
+                        modifier = menuItemsModifier,
+                        items = options.map { it.label },
+                        selected = selectedIndexes,
+                        onSelectedChanged = { indexes ->
+                            val newTokens = indexes.mapNotNull { i ->
+                                options.getOrNull(i)?.token
+                            }.toSet()
+
+                            selectedTokens = newTokens
+                            Prefs.autoSubtitleRuleTokens = newTokens.sorted()
+                        },
+                        onFocusBackToParent = {
+                            onFocusStateChange(MenuFocusState.Menu)
+                            focusRequester.requestFocus()
+                        }
+                    )
+                }
+
+                VideoPlayerClosedCaptionMenuItem.ContinuePlay -> {
+                    var enabled by remember { mutableStateOf(Prefs.continuePlayAutoSubtitleEnabled) }
+
+                    RadioMenuList(
+                        modifier = menuItemsModifier,
+                        items = listOf("关闭", "开启"),
+                        selected = if (enabled) 1 else 0,
+                        onSelectedChanged = {
+                            enabled = it == 1
+                            Prefs.continuePlayAutoSubtitleEnabled = enabled
+                        },
+                        onFocusBackToParent = {
+                            onFocusStateChange(MenuFocusState.Menu)
+                            focusRequester.requestFocus()
+                        },
+                    )
+                }
+
                 VideoPlayerClosedCaptionMenuItem.Switch -> RadioMenuList(
                     modifier = menuItemsModifier,
                     items = availableSubtitleTracks.map {
@@ -143,15 +209,105 @@ fun ClosedCaptionMenuList(
             contentPadding = PaddingValues(8.dp)
         ) {
             itemsIndexed(VideoPlayerClosedCaptionMenuItem.entries) { index, item ->
+                val enabled = when (item) {
+                    VideoPlayerClosedCaptionMenuItem.Switch -> hasRealSubtitleTrack
+                    VideoPlayerClosedCaptionMenuItem.AutoEnableRules -> autoRuleOptions.isNotEmpty()
+                    else -> true
+                }
+
                 MenuListItem(
                     modifier = Modifier
-                        .ifElse(index == 0, Modifier.focusRequester(restorerFocusRequester)),
+                        .ifElse(index == 0, Modifier.focusRequester(restorerFocusRequester))
+                        .focusProperties { canFocus = enabled }
+                        .alpha(if (enabled) 1f else 0.45f),
                     text = item.getDisplayName(context),
                     selected = selectedClosedCaptionMenuItem == item,
                     onClick = {},
-                    onFocus = { selectedClosedCaptionMenuItem = item },
+                    onFocus = { if (enabled) selectedClosedCaptionMenuItem = item },
                 )
             }
         }
     }
+}
+
+private data class AutoRuleOption(
+    val token: String, // "CC|zh" / "AI|en"
+    val label: String  // "中文" / "中文（AI）"
+)
+
+private fun Subtitle.normalizedLangKey(): String {
+    // 优先使用 lang，兜底 langDoc
+    val raw = (lang.ifBlank { langDoc }).trim()
+    if (raw.isEmpty()) return ""
+
+    val noAiPrefix = if (raw.startsWith("ai-", ignoreCase = true)) raw.substring(3) else raw
+    val primary = noAiPrefix.substringBefore("-")
+    return primary.lowercase()
+}
+
+private fun cleanLangDocForDisplay(doc: String): String {
+    return doc
+        .replace("（自动生成）", "")
+        .replace("（自动翻译）", "")
+        .trim()
+}
+
+private fun buildAutoRuleOptions(tracks: List<Subtitle>): List<AutoRuleOption> {
+    // 仅基于“当前视频存在的轨道”生成可选项：某语言没有 CC 就不生成 CC 选项；同理 AI。
+    data class LangInfo(
+        var baseName: String = "",
+        var hasCC: Boolean = false,
+        var hasAI: Boolean = false,
+    )
+
+    val infoByLang = linkedMapOf<String, LangInfo>()
+    tracks.filter { it.id != -1L }.forEach { t ->
+        val key = t.normalizedLangKey()
+        if (key.isBlank()) return@forEach
+
+        val info = infoByLang.getOrPut(key) { LangInfo() }
+        val name = cleanLangDocForDisplay(t.langDoc)
+
+        // baseName 优先取 CC 的显示名
+        if (info.baseName.isBlank() || (t.type == SubtitleType.CC && !info.hasCC)) {
+            info.baseName = name
+        }
+
+        when (t.type) {
+            SubtitleType.CC -> info.hasCC = true
+            SubtitleType.AI -> info.hasAI = true
+        }
+    }
+
+    fun langSortKey(langKey: String): Pair<Int, String> = when (langKey) {
+        "zh" -> 0 to ""
+        "en" -> 1 to ""
+        else -> 2 to langKey
+    }
+
+    val orderedLangKeys = infoByLang.keys.sortedWith(compareBy({ langSortKey(it).first }, { langSortKey(it).second }))
+
+    val result = mutableListOf<AutoRuleOption>()
+    orderedLangKeys.forEach { langKey ->
+        val info = infoByLang[langKey] ?: return@forEach
+        val name = info.baseName.ifBlank { langKey }
+
+        if (info.hasCC) {
+            result.add(
+                AutoRuleOption(
+                    token = "CC|$langKey",
+                    label = name
+                )
+            )
+        }
+        if (info.hasAI) {
+            result.add(
+                AutoRuleOption(
+                    token = "AI|$langKey",
+                    label = "$name(AI)"
+                )
+            )
+        }
+    }
+    return result
 }

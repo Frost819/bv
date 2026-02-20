@@ -151,6 +151,36 @@ object Prefs {
         restore = { it.dp }
     )
 
+    /**
+     * 自动开启字幕规则（列表映射为 CSV 存储）
+     *
+     * token 格式：
+     * - "CC|zh"
+     * - "AI|en"
+     *
+     * 说明：
+     * - langKey 为归一化后的主语言段（去掉 ai- 前缀，再取 '-' 前主段，转小写）
+     * - aiType(生成/翻译) 不拆分，统一归到 AI
+     */
+    var autoSubtitleRuleTokens by pref(
+        PrefKeys.prefAutoSubtitleRuleTokensKey,
+        emptyList(),
+        save = { list -> list.joinToString(",") },
+        restore = { str ->
+            if (str.isBlank()) emptyList()
+            else str.split(",")
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .distinct()
+        }
+    )
+
+    //连播下一集是否自动开启字幕（继承上一集选择）
+    var continuePlayAutoSubtitleEnabled by pref(
+        PrefKeys.prefContinuePlayAutoSubtitleEnabledKey,
+        false
+    )
+
     var showFps by pref(PrefKeys.prefShowFpsKey, false)
 
     var buvid by pref(PrefKeys.prefBuvidKey, "")
@@ -310,6 +340,10 @@ private object PrefKeys {
     val prefDefaultSubtitleFontSizeKey = intPreferencesKey("dsfs")
     val prefDefaultSubtitleBackgroundOpacityKey = floatPreferencesKey("dsbo")
     val prefDefaultSubtitleBottomPaddingKey = intPreferencesKey("dsbp")
+    // 自动字幕
+    val prefAutoSubtitleRuleTokensKey = stringPreferencesKey("auto_subtitle_rules_csv")
+    val prefContinuePlayAutoSubtitleEnabledKey =
+        booleanPreferencesKey("continue_play_auto_subtitle_enabled")
     val prefShowFpsKey = booleanPreferencesKey("sf")
     val prefBuvidKey = stringPreferencesKey("random_buvid")
     val prefBuvid3Key = stringPreferencesKey("random_buvid3")
