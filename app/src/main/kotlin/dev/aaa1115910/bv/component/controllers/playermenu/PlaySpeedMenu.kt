@@ -1,4 +1,4 @@
-package dev.aaa1115910.bv.component.controllers.playermenu
+package dev.aaa1115910.bv.component.controllers2.playermenu
 
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
@@ -23,18 +23,20 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.aaa1115910.bv.R
-import dev.aaa1115910.bv.component.controllers.MenuFocusState
-import dev.aaa1115910.bv.component.controllers.playermenu.component.MenuListItem
+import dev.aaa1115910.bv.component.controllers.LocalVideoPlayerControllerData
+import dev.aaa1115910.bv.component.controllers2.MenuFocusState
+import dev.aaa1115910.bv.component.controllers2.playermenu.component.MenuListItem
 import dev.aaa1115910.bv.component.ifElse
 
 @Composable
 fun PlaySpeedMenuList(
     modifier: Modifier = Modifier,
-    currentSelectedPlaySpeedItem: PlaySpeedItem,
+    onSelectedPlaySpeedItemChange: (PlaySpeedItem) -> Unit,
     onPlaySpeedChange: (Float) -> Unit,
     onFocusStateChange: (MenuFocusState) -> Unit
 ) {
     val context = LocalContext.current
+    val data = LocalVideoPlayerControllerData.current
     val focusRequester = remember { FocusRequester() }
 
     Row(
@@ -64,13 +66,14 @@ fun PlaySpeedMenuList(
                 MenuListItem(
                     modifier = Modifier
                         .ifElse(
-                            index == currentSelectedPlaySpeedItem.ordinal,
+                            index == data.currentSelectedPlaySpeedItem.ordinal,
                             Modifier.focusRequester(focusRequester)
                         ),
                     text = item.getDisplayName(context),
-                    selected = currentSelectedPlaySpeedItem == item,
+                    selected = data.currentSelectedPlaySpeedItem == item,
                     onClick = {
                         onPlaySpeedChange(item.speed)
+                        onSelectedPlaySpeedItemChange(item)
                     },
                 )
             }
@@ -81,19 +84,19 @@ fun PlaySpeedMenuList(
 }
 
 enum class PlaySpeedItem(val code: Int, private val strRes: Int, val speed: Float) {
-    x2(4, R.string.play_speed_x2, 2f),
-    x1_5(3, R.string.play_speed_x1_5, 1.5f),
-    x1_25(2, R.string.play_speed_x1_25, 1.25f),
+    x0_5(0, R.string.play_speed_x0_5, 0.5f),
     x1(1, R.string.play_speed_x1, 1f),
-    x0_5(0, R.string.play_speed_x0_5, 0.5f);
+    x1_25(2, R.string.play_speed_x1_25, 1.25f),
+    x1_5(3, R.string.play_speed_x1_5, 1.5f),
+    x1_75(5, R.string.play_speed_x1_75, 1.75f), // <-- 这是你新加的 1.75 倍
+    x2(4, R.string.play_speed_x2, 2f),
+    x2_5(6, R.string.play_speed_x2_5, 2.5f),    // <-- 这是你新加的 2.5 倍
+    x2_75(7, R.string.play_speed_x2_75, 2.75f), // <-- 这是你新加的 2.75 倍
+    x3(8, R.string.play_speed_x3, 3f);          // <-- 这是你新加的 3.0 倍
 
     companion object {
         fun fromCode(code: Int): PlaySpeedItem {
             return entries.find { it.code == code } ?: x1
-        }
-
-        fun fromSpeed(speed: Float): PlaySpeedItem {
-            return entries.find { it.speed == speed } ?: x1
         }
     }
 
