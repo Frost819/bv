@@ -39,7 +39,9 @@ fun BVTheme(
     val view = LocalView.current
 
     val colorSchemeTv = darkColorScheme(
-        border = Color.White
+        border = Color.White,
+        background = Color.Black,
+        surface = Color.Black
     )
     val colorSchemeCommon = androidx.compose.material3.darkColorScheme()
     val typographyTv =
