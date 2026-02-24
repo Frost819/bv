@@ -379,7 +379,8 @@ fun VideoPlayerController(
                 )
             },
             onToggleLoop = onToggleLoop,
-            onGoToUpPage = onGoToUpPage
+            onGoToUpPage = onGoToUpPage,
+            hasMultipleCoAuthors = uiState.coAuthors.distinctBy { it.mid }.size > 1,
         )
 
         VideoListController(
