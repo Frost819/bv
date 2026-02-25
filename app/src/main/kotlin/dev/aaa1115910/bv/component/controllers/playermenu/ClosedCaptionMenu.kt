@@ -77,21 +77,23 @@ fun ClosedCaptionMenuList(
             availableSubtitleTracks.any { it.id != -1L }
         }
 
+        // 自动开启规则：需要“可展示的 options”
+        // - 当前视频有的轨道要展示
+        // - 已经选中的规则 token，即使当前视频没有对应轨道，也要展示（用于取消）
+        var selectedTokens by remember {
+            mutableStateOf(Prefs.autoSubtitleRuleTokens.toSet())
+        }
+
         // 自动开启规则的可选项（为空则右侧面板应禁用）
-        val autoRuleOptions = remember(availableSubtitleTracks) {
-            buildAutoRuleOptions(availableSubtitleTracks)
+        val autoRuleOptions = remember(availableSubtitleTracks, selectedTokens) {
+            buildAutoRuleOptions(availableSubtitleTracks, selectedTokens)
         }
         AnimatedVisibility(visible = focusState.focusState != MenuFocusState.MenuNav) {
             when (selectedClosedCaptionMenuItem) {
                 VideoPlayerClosedCaptionMenuItem.AutoEnableRules -> {
                     // 规则项：按当前视频真实存在的字幕轨道生成（CC 显示“中文/English”，AI 显示“中文（AI）/English（AI）”）
-                    val options = remember(availableSubtitleTracks) {
-                        buildAutoRuleOptions(availableSubtitleTracks)
-                    }
-
-                    var selectedTokens by remember {
-                        mutableStateOf(Prefs.autoSubtitleRuleTokens.toSet())
-                    }
+                    // options = 当前视频可用轨道 + 已选中的规则 token（即使当前视频无此轨道也展示，便于取消）
+                    val options = autoRuleOptions
 
                     val selectedIndexes = remember(options, selectedTokens) {
                         options.mapIndexedNotNull { index, opt ->
@@ -252,15 +254,29 @@ private fun cleanLangDocForDisplay(doc: String): String {
         .trim()
 }
 
-private fun buildAutoRuleOptions(tracks: List<Subtitle>): List<AutoRuleOption> {
-    // 仅基于“当前视频存在的轨道”生成可选项：某语言没有 CC 就不生成 CC 选项；同理 AI。
+private fun defaultLangName(langKey: String): String = when (langKey.lowercase()) {
+    "zh" -> "中文"
+    "en" -> "English"
+    else -> langKey
+}
+
+private fun buildAutoRuleOptions(
+    tracks: List<Subtitle>,
+    selectedTokens: Set<String>
+): List<AutoRuleOption> {
+    // options = 当前视频轨道 + 已选 token（即使当前视频缺失对应语言/类型，也要给用户一个取消入口）
     data class LangInfo(
         var baseName: String = "",
         var hasCC: Boolean = false,
         var hasAI: Boolean = false,
+        // 标记是否为当前视频真实存在的轨道
+        var isRealCC: Boolean = false,
+        var isRealAI: Boolean = false
     )
 
     val infoByLang = linkedMapOf<String, LangInfo>()
+
+    // 先从当前视频真实轨道收集语言信息，某语言没有 CC 就不生成 CC 选项；同理 AI
     tracks.filter { it.id != -1L }.forEach { t ->
         val key = t.normalizedLangKey()
         if (key.isBlank()) return@forEach
@@ -274,8 +290,36 @@ private fun buildAutoRuleOptions(tracks: List<Subtitle>): List<AutoRuleOption> {
         }
 
         when (t.type) {
-            SubtitleType.CC -> info.hasCC = true
-            SubtitleType.AI -> info.hasAI = true
+            SubtitleType.CC -> {
+                info.hasCC = true
+                info.isRealCC = true // 这是实际存在的轨道
+            }
+            SubtitleType.AI -> {
+                info.hasAI = true
+                info.isRealAI = true // 这是实际存在的的轨道
+            }
+        }
+    }
+
+    // 再把“已选 token”合并进来（保证跨视频仍可看到并取消）
+    selectedTokens.forEach { token ->
+        val parts = token.split("|", limit = 2)
+        if (parts.size != 2) return@forEach
+
+        val typePart = parts[0].trim()
+        val langKey = parts[1].trim().lowercase()
+        if (langKey.isBlank()) return@forEach
+
+        val info = infoByLang.getOrPut(langKey) { LangInfo() }
+
+        when (typePart) {
+            "CC" -> info.hasCC = true
+            "AI" -> info.hasAI = true
+            else -> return@forEach
+        }
+
+        if (info.baseName.isBlank()) {
+            info.baseName = defaultLangName(langKey)
         }
     }
 
@@ -290,13 +334,13 @@ private fun buildAutoRuleOptions(tracks: List<Subtitle>): List<AutoRuleOption> {
     val result = mutableListOf<AutoRuleOption>()
     orderedLangKeys.forEach { langKey ->
         val info = infoByLang[langKey] ?: return@forEach
-        val name = info.baseName.ifBlank { langKey }
+        val name = info.baseName.ifBlank { defaultLangName(langKey) }
 
         if (info.hasCC) {
             result.add(
                 AutoRuleOption(
                     token = "CC|$langKey",
-                    label = name
+                    label = if (info.isRealCC) name else "! $name" // 如果不是实际存在，加 !
                 )
             )
         }
@@ -304,7 +348,7 @@ private fun buildAutoRuleOptions(tracks: List<Subtitle>): List<AutoRuleOption> {
             result.add(
                 AutoRuleOption(
                     token = "AI|$langKey",
-                    label = "$name(AI)"
+                    label = if (info.isRealAI) "$name(AI)" else "! $name(AI)" // 如果不是实际存在，加 !
                 )
             )
         }
