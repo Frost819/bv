@@ -17,6 +17,7 @@ import com.kuaishou.akdanmaku.ecs.component.filter.TypeFilter
 import com.kuaishou.akdanmaku.ext.RETAINER_BILIBILI
 import com.kuaishou.akdanmaku.render.SimpleRenderer
 import com.kuaishou.akdanmaku.ui.DanmakuPlayer
+import com.kuaishou.akdanmaku.ui.DanmakuView
 import dev.aaa1115910.biliapi.entity.ApiType
 import dev.aaa1115910.biliapi.entity.PlayData
 import dev.aaa1115910.biliapi.entity.video.HeartbeatVideoType
@@ -61,6 +62,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -90,8 +92,11 @@ class VideoPlayerV3ViewModel(
 
     var videoPlayer: AbstractVideoPlayer? by mutableStateOf(null)
         private set
-    var danmakuPlayer: DanmakuPlayer? by mutableStateOf(null)
-        private set
+    // 结构性约束：外部不再能读到 danmakuPlayer
+    private var danmakuPlayer: DanmakuPlayer? by mutableStateOf(null)
+
+    // 用于 bindView：把 view 的生命周期交给 UI，但“绑定关系/释放时机”由 ViewModel 统一管理
+    private var danmakuView: DanmakuView? = null
 
     private var playData: PlayData? = null
     private val typeFilter = TypeFilter()
@@ -108,6 +113,10 @@ class VideoPlayerV3ViewModel(
     private var seekerUpdateJob: Job? = null
     private var clockUpdateJob: Job? = null
     private var heartbeatJob: Job? = null
+
+    private var danmakuLoadJob: Job? = null
+    // 加固：AkDanmaku 内部有非线程安全结构（ObjectPool），把所有 DanmakuPlayer 操作串行化到同一把锁里
+    private val danmakuPlayerLock = Any()
 
     private var backToStartCountdownJob: Job? = null
     private var playNextCountdownJob: Job? = null
@@ -134,7 +143,7 @@ class VideoPlayerV3ViewModel(
 
         override fun onPlay() {
             logger.info { "onPlay" }
-            danmakuPlayer?.start()
+            withDanmakuPlayerLocked { danmakuPlayer?.start() }
             _uiState.update { it.copy(playerState = PlayerState.Playing, isBuffering = false) }
 
             if (_uiState.value.lastPlayed > 0) {
@@ -146,21 +155,21 @@ class VideoPlayerV3ViewModel(
         override fun onPause() {
             logger.info { "onPause" }
 
-            danmakuPlayer?.pause()
+            withDanmakuPlayerLocked { danmakuPlayer?.pause() }
             _uiState.update { it.copy(playerState = PlayerState.Paused) }
         }
 
         override fun onBuffering() {
             logger.info { "onBuffering" }
 
-            danmakuPlayer?.pause()
+            withDanmakuPlayerLocked { danmakuPlayer?.pause() }
             _uiState.update { it.copy(isBuffering = true) }
         }
 
         override fun onEnd() {
             logger.info { "onEnd" }
 
-            danmakuPlayer?.pause()
+            withDanmakuPlayerLocked { danmakuPlayer?.pause() }
             stopSeekerUpdater()
 
             _uiState.update { it.copy(playerState = PlayerState.Ended) }
@@ -221,6 +230,7 @@ class VideoPlayerV3ViewModel(
                     speedFactor = Prefs.defaultDanmakuSpeedFactor,
                     maskEnabled = Prefs.defaultDanmakuMask,
                     enabledTypes = Prefs.defaultDanmakuTypes,
+                    danmakuEnabled = Prefs.defaultDanmakuEnabled,
                 ),
                 subtitleState = SubtitleState(
                     fontSize = Prefs.defaultSubtitleFontSize,
@@ -293,12 +303,12 @@ class VideoPlayerV3ViewModel(
         videoPlayer = null
     }
 
-    fun initDanmakuPlayer() {
+    private fun initDanmakuPlayer() {
         danmakuPlayer = DanmakuPlayer(SimpleRenderer())
         initDanmakuConfig()
     }
 
-    fun releaseDanmakuPlayer() {
+    private fun releaseDanmakuPlayer() {
         danmakuPlayer?.release()
         danmakuPlayer = null
     }
@@ -348,7 +358,7 @@ class VideoPlayerV3ViewModel(
 
         _uiState.update { it.copy(playSpeed = targetSpeed) }
         videoPlayer?.speed = targetSpeed
-        danmakuPlayer?.updatePlaySpeed(targetSpeed)
+        withDanmakuPlayerLocked { danmakuPlayer?.updatePlaySpeed(targetSpeed) }
     }
 
     fun updateVideoAspectRatio(aspectRatio: VideoAspectRatio) {
@@ -390,14 +400,18 @@ class VideoPlayerV3ViewModel(
             is DanmakuSettingAction.SetArea -> old.copy(area = action.value)
             is DanmakuSettingAction.SetSpeedFactor -> old.copy(speedFactor = action.value)
             is DanmakuSettingAction.SetMaskEnabled -> old.copy(maskEnabled = action.enabled)
+            is DanmakuSettingAction.SetDanmakuEnabled -> old.copy(danmakuEnabled = action.enabled)
             is DanmakuSettingAction.SetEnabledTypes -> old.copy(enabledTypes = action.types)
         }
 
         if (old == new) return
 
+        val wasEnabled = old.danmakuEnabled
+        val isEnabled = new.danmakuEnabled
+
         _uiState.update { it.copy(danmakuState = new) }
 
-        // ===== 副作用处理 =====
+        // ===== 持久化/配置副作用 =====
         if (new.enabledTypes != old.enabledTypes) {
             updateDanmakuConfigTypeFilter(new.enabledTypes)
             Prefs.defaultDanmakuTypes = new.enabledTypes
@@ -419,6 +433,98 @@ class VideoPlayerV3ViewModel(
         if (new.maskEnabled != old.maskEnabled) {
             Prefs.defaultDanmakuMask = new.maskEnabled
         }
+        if (new.danmakuEnabled != old.danmakuEnabled) {
+            Prefs.defaultDanmakuEnabled = new.danmakuEnabled
+        }
+
+        // 关闭时必须 release，开启时重建并 seek 对齐。
+        if (wasEnabled && !isEnabled) {
+            // 关弹幕：真正停下来（停止帧回调/线程/计算）
+            // 先 release 止血，再后台等待旧任务收尾（避免“关弹幕还要等解析完/等 IO 返回”的体感延迟）
+            viewModelScope.launch {
+                stopDanmakuHard()
+            }
+            return
+        }
+
+        if (!wasEnabled && isEnabled) {
+            // 开弹幕：重建引擎 + 拉取弹幕 + seek 对齐当前视频时间
+            // 关键加固：先 cancelAndJoin，确保不会和旧 load 交错
+            viewModelScope.launch {
+                danmakuLoadJob?.cancelAndJoin()
+                danmakuLoadJob = null
+
+                withDanmakuPlayerLocked {
+                    if (danmakuPlayer == null) {
+                        // 约束：unsafeInitDanmakuPlayer() 必须同步完成“基础可用状态”（不要在内部 launch/withContext/suspend）。
+                        unsafeInitDanmakuPlayer()
+                    }
+                    // 若你实现了“重建后重放所有配置”的 apply 模板：建议在这里（同一时序口径）先重放一次，减少竞态窗口。
+                    // 注意：apply 内只允许 direct call（不允许 launch/IO/长逻辑）；并且 direct call 自己要走锁口径。
+                }
+
+                // 新建引擎后需要把当前倍速重新灌进去（否则可能只改了 state，没落到新引擎）
+                // 重要：不要在锁内调用“可能包含协程/切线程/复杂逻辑”的函数，避免锁持有过久或潜在死锁。
+                // 注意：updatePlaySpeed 内部会触碰 danmakuPlayer，请确保“直接 player 调用点”受 danmakuPlayerLock 保护（见下方锁策略说明）。
+                updatePlaySpeed(forceUpdate = true)
+
+                val cid = _uiState.value.cid
+                val currentPlayer = withDanmakuPlayerLocked { danmakuPlayer } ?: return@launch
+
+                // 建议：解析用单线程 IO 并发度，避免抢占其它 IO（也便于与 shouldContinue/StopParsingException 配合更快退出）
+                val danmakuParseDispatcher = Dispatchers.IO.limitedParallelism(1)
+                danmakuLoadJob = viewModelScope.launch(danmakuParseDispatcher) {
+                    // loadDanmaku 内部会发网络请求 + 解析 + updateData，可能耗时
+                    loadDanmaku(cid, expectedPlayer = currentPlayer)
+
+                    // seek 需要在数据注入后做一次（避免时间轴错位）
+                    withContext(Dispatchers.Main) {
+                        withDanmakuPlayerLocked {
+                            // 关弹幕/切集/重建导致实例变化时，禁止继续灌入/seek
+                            if (!_uiState.value.danmakuState.danmakuEnabled) return@withDanmakuPlayerLocked
+                            if (danmakuPlayer !== currentPlayer) return@withDanmakuPlayerLocked
+
+                            // 这里必须用“最新 position”，避免 seekTo 的时间已过期
+                            val latestPos = videoPlayer?.currentPosition ?: 0L
+                            currentPlayer.seekTo(latestPos)
+                            currentPlayer.pause()
+
+                            if (_uiState.value.playerState == PlayerState.Playing) {
+                                currentPlayer.start()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun safeInitDanmakuPlayer() = withDanmakuPlayerLocked {
+        if (danmakuPlayer == null) unsafeInitDanmakuPlayer()
+    }
+
+    // release 需要在有 Looper 的线程调用（通常 Main）
+    fun safeReleaseDanmakuPlayer() = withDanmakuPlayerLocked { unsafeReleaseDanmakuPlayer() }
+
+    fun safePauseDanmakuPlayer() = withDanmakuPlayerLocked { danmakuPlayer?.pause() }
+
+    fun safeSeekDanmakuPlayer(posMs: Long) = withDanmakuPlayerLocked { danmakuPlayer?.seekTo(posMs) }
+
+    // 分批/流式喂入弹幕数据：在锁内做“实例一致性”二次确认，防止旧 job 灌入新/旧实例
+    fun safeUpdateDanmakuData(expected: DanmakuPlayer, items: List<DanmakuItemData>): Boolean = withDanmakuPlayerLocked {
+        if (!_uiState.value.danmakuState.danmakuEnabled) return@withDanmakuPlayerLocked false
+        if (danmakuPlayer !== expected) return@withDanmakuPlayerLocked false
+        expected.updateData(items)
+        true
+    }
+
+    fun attachDanmakuView(view: DanmakuView) = withDanmakuPlayerLocked {
+        danmakuView = view
+        danmakuPlayer?.bindView(view)
+    }
+
+    fun detachDanmakuView(view: DanmakuView) = withDanmakuPlayerLocked {
+        if (danmakuView === view) danmakuView = null
     }
 
     fun updateSubtitleState(action: SubtitleSettingAction) {
@@ -528,9 +634,9 @@ class VideoPlayerV3ViewModel(
         _uiState.update { it.copy(showBackToStart = false) }
 
         videoPlayer?.seekTo(0)
-        danmakuPlayer?.seekTo(0)
+        withDanmakuPlayerLocked { danmakuPlayer?.seekTo(0) }
         // akdanmaku 会在跳转后立即播放，如果需要缓冲则会导致弹幕不同步
-        danmakuPlayer?.pause()
+        withDanmakuPlayerLocked { danmakuPlayer?.pause() }
     }
 
     /**
@@ -551,9 +657,9 @@ class VideoPlayerV3ViewModel(
     fun seekToTime(time: Long) {
         videoPlayer?.seekTo(time)
         _seekerState.update { it.copy(currentTime = time) }
-        danmakuPlayer?.seekTo(time)
+        withDanmakuPlayerLocked { danmakuPlayer?.seekTo(time) }
         // akdanmaku 会在跳转后立即播放，如果需要缓冲则会导致弹幕不同步
-        danmakuPlayer?.pause()
+        withDanmakuPlayerLocked { danmakuPlayer?.pause() }
     }
 
     fun playNewVideo(video: VideoListItem, updateList: Boolean = false) {
@@ -567,15 +673,10 @@ class VideoPlayerV3ViewModel(
             viewModelScope.launch(Dispatchers.IO) {
                 videoInfoRepository.loadVideoDetail(video.aid, Prefs.apiType)
             }
-            // 切换分P时不需要更新视频列表
             if (updateList) {
                 videoInfoRepository.updateVideoList(listOf(video))
             }
         }
-
-        // 重置弹幕
-        releaseDanmakuPlayer()
-        initDanmakuPlayer()
 
         // 更新UiState
         _uiState.update {
@@ -588,13 +689,33 @@ class VideoPlayerV3ViewModel(
             )
         }
 
-        // 加载新播放url
-        loadPlayUrl(
-            avid = video.aid,
-            cid = video.cid,
-            epid = video.epid,
-        )
+        // 先串行完成弹幕重置，再加载新播放地址与弹幕
+        viewModelScope.launch {
+            resetDanmakuForVideoSwitch()
+            loadPlayUrl(
+                avid = video.aid,
+                cid = video.cid,
+                epid = video.epid,
+            )
+        }
     }
+
+        private suspend fun resetDanmakuForVideoSwitch() {
+            val job = danmakuLoadJob
+            danmakuLoadJob = null
+            job?.cancel()
+            withContext(Dispatchers.Default) {
+                kotlinx.coroutines.withTimeoutOrNull(300) { job?.cancelAndJoin() }
+            }
+            withContext(Dispatchers.Main) {
+                withDanmakuPlayerLocked {
+                    unsafeReleaseDanmakuPlayer()
+                    if (_uiState.value.danmakuState.danmakuEnabled) {
+                        unsafeInitDanmakuPlayer()
+                    }
+                }
+            }
+        }
 
     fun trySendHeartbeat() {
         if (Prefs.incognitoMode) return
@@ -629,6 +750,19 @@ class VideoPlayerV3ViewModel(
 
             loadDanmaku(cid)
             updateDanmakuMask()
+            val danmakuEnabled = _uiState.value.danmakuState.danmakuEnabled
+            if (danmakuEnabled) {
+                val currentPlayer = withDanmakuPlayerLocked { danmakuPlayer }
+                if (currentPlayer != null) {
+                    loadDanmaku(cid, expectedPlayer = currentPlayer)
+                }
+                if (_uiState.value.danmakuState.maskEnabled) {
+                    updateDanmakuMask()
+                }
+            } else {
+                // 这里不 release，避免切换/重建瞬间的主线程尖峰
+                stopDanmakuLoadOnly()
+            }
             updateSubtitle()
             updateVideoShot()
             updateVideoPages()
@@ -909,7 +1043,9 @@ class VideoPlayerV3ViewModel(
 
     }
 
-    private suspend fun loadDanmaku(cid: Long) {
+    private suspend fun loadDanmaku(cid: Long, expectedPlayer: DanmakuPlayer? = null) {
+        if (!_uiState.value.danmakuState.danmakuEnabled) return
+
         runCatching {
             val danmakuXmlData = BiliHttpApi.getDanmakuXml(cid = cid, sessData = Prefs.sessData)
 
@@ -928,8 +1064,21 @@ class VideoPlayerV3ViewModel(
                 )
             }
         }.onSuccess { list ->
-            danmakuPlayer?.updateData(list)
-            logger.fInfo { "Load danmaku success, size: ${list.size}" }
+            val injected = if (expectedPlayer != null) {
+                safeUpdateDanmakuData(expectedPlayer, list)
+            } else {
+                withDanmakuPlayerLocked {
+                    if (!_uiState.value.danmakuState.danmakuEnabled) return@withDanmakuPlayerLocked false
+                    danmakuPlayer?.updateData(list)
+                    true
+                }
+            }
+
+            if (injected) {
+                logger.fInfo { "Load danmaku success, size: ${list.size}" }
+            } else {
+                logger.fInfo { "Skip danmaku injection due to player changed/disabled" }
+            }
         }.onFailure { error ->
             logger.fWarn { "Load danmaku failed: ${error.stackTraceToString()}" }
         }
@@ -1043,6 +1192,39 @@ class VideoPlayerV3ViewModel(
         }
     }
 
+    private suspend fun stopDanmakuLoadOnly() {
+        val job = danmakuLoadJob
+        danmakuLoadJob = null
+        job?.cancel()
+        withContext(Dispatchers.Default) {
+            kotlinx.coroutines.withTimeoutOrNull(200) { job?.cancelAndJoin() }
+        }
+    }
+
+    private suspend fun stopDanmakuHard() {
+        val job = danmakuLoadJob
+        danmakuLoadJob = null
+        job?.cancel()
+        // release 必须在有 Looper 的线程（通常 Main）
+        withContext(Dispatchers.Main) {
+            safeReleaseDanmakuPlayer()
+        }
+        withContext(Dispatchers.Default) {
+            kotlinx.coroutines.withTimeoutOrNull(200) { job?.cancelAndJoin() }
+        }
+    }
+
+    private fun unsafeInitDanmakuPlayer() {
+        danmakuPlayer = DanmakuPlayer(SimpleRenderer())
+        initDanmakuConfig()
+        danmakuView?.let { v -> danmakuPlayer?.bindView(v) }
+    }
+
+    private fun unsafeReleaseDanmakuPlayer() {
+        danmakuPlayer?.release()
+        danmakuPlayer = null
+    }
+
     private suspend fun updateVideoShot() {
         _uiState.update { it.copy(videoShot = null) }
 
@@ -1091,7 +1273,7 @@ class VideoPlayerV3ViewModel(
         )
         danmakuConfig.updateFilter()
         logger.info { "Init danmaku config: $danmakuConfig" }
-        danmakuPlayer?.updateConfig(danmakuConfig)
+        withDanmakuPlayerLocked { danmakuPlayer?.updateConfig(danmakuConfig) }
     }
 
     private fun updateDanmakuConfigTypeFilter(enabledDanmakuTypes: List<DanmakuType>) {
@@ -1113,7 +1295,7 @@ class VideoPlayerV3ViewModel(
         }
         logger.info { "Update danmaku type filters: ${typeFilter.filterSet}" }
         danmakuConfig.updateFilter()
-        danmakuPlayer?.updateConfig(danmakuConfig)
+        withDanmakuPlayerLocked { danmakuPlayer?.updateConfig(danmakuConfig) }
     }
 
     private fun updateDanmakuScale(scale: Float) {
@@ -1122,17 +1304,17 @@ class VideoPlayerV3ViewModel(
         danmakuConfig = danmakuConfig.copy(
             textSizeScale = scale,
         )
-        danmakuPlayer?.updateConfig(danmakuConfig)
+        withDanmakuPlayerLocked { danmakuPlayer?.updateConfig(danmakuConfig) }
 
         // 更新弹幕库之后updateConfig会导致滚动速度被重置，所以这里需要重新设置
-        danmakuPlayer?.setDanmakuRollingSpeed(_uiState.value.danmakuState.speedFactor)
+        withDanmakuPlayerLocked { danmakuPlayer?.setDanmakuRollingSpeed(_uiState.value.danmakuState.speedFactor) }
     }
 
     private fun updateDanmakuSpeedFactor(factor: Float) {
         logger.info { "Update danmaku rolling speed factor: $factor" }
         _uiState.update { it.copy(danmakuState = it.danmakuState.copy(speedFactor = factor)) }
 
-        danmakuPlayer?.setDanmakuRollingSpeed(factor)
+        withDanmakuPlayerLocked { danmakuPlayer?.setDanmakuRollingSpeed(factor) }
     }
 
     private fun startNextEpisodeCountdown(target: NextPlayTarget) {
@@ -1184,9 +1366,9 @@ class VideoPlayerV3ViewModel(
         logger.fInfo { "Back to history: ${time.formatHourMinSec()}" }
 
         videoPlayer?.seekTo(time)
-        danmakuPlayer?.seekTo(time)
+        withDanmakuPlayerLocked { danmakuPlayer?.seekTo(time) }
         // akdanmaku 会在跳转后立即播放，如果需要缓冲则会导致弹幕不同步
-        danmakuPlayer?.pause()
+        withDanmakuPlayerLocked { danmakuPlayer?.pause() }
 
         _uiState.update { it.copy(showBackToStart = true) }
 
@@ -1269,6 +1451,9 @@ class VideoPlayerV3ViewModel(
             .toString()
     }
 
+    private inline fun <T> withDanmakuPlayerLocked(block: () -> T): T =
+        synchronized(danmakuPlayerLock) { block() }
+
     private sealed interface NextPlayTarget {
         val title: String
 
@@ -1312,6 +1497,7 @@ sealed interface DanmakuSettingAction {
     data class SetSpeedFactor(val value: Float) : DanmakuSettingAction
     data class SetMaskEnabled(val enabled: Boolean) : DanmakuSettingAction
     data class SetEnabledTypes(val types: List<DanmakuType>) : DanmakuSettingAction
+    data class SetDanmakuEnabled(val enabled: Boolean) : DanmakuSettingAction
 }
 
 sealed interface SubtitleSettingAction {

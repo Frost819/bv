@@ -240,7 +240,8 @@ fun VideoPlayerV3Screen(
                         { Prefs.defaultDanmakuMask },
                         Modifier.danmakuMask(currentDanmakuMaskFrame, aspectRatio, areaRatio)
                     ),
-                danmakuPlayer = playerViewModel.danmakuPlayer
+                onViewCreated = { playerViewModel.attachDanmakuView(it) },
+                onViewDisposed = { playerViewModel.detachDanmakuView(it) },
             )
             if (Prefs.showPersistentSeek) {
                 VideoProgressSeek(

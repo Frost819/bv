@@ -351,18 +351,17 @@ fun VideoPlayerController(
             videoShot = uiState.videoShot,
             videoShotCache = uiState.videoShotCache,
             fromSeason = fromSeason,
-            danmakuEnabled = uiState.danmakuState.enabledTypes.isNotEmpty(),
+            danmakuEnabled = uiState.danmakuState.danmakuEnabled,
             isLooping = isLooping,
             onDirectionLeft = { onDirectionLeft() },
             onDirectionRight = { onDirectionRight() },
             onSeekGoTime = { onSeekGoTime() },
             onPlayPause = { onPlayPause() },
             onDanmakuSwitchChange = {
-                if (uiState.danmakuState.enabledTypes.isEmpty()) {
-                    onDanmakuSettingChange(DanmakuSettingAction.SetEnabledTypes(DanmakuType.entries))
-                } else {
-                    onDanmakuSettingChange(DanmakuSettingAction.SetEnabledTypes(emptyList()))
-                }
+
+                    onDanmakuSettingChange(
+                    DanmakuSettingAction.SetDanmakuEnabled(!uiState.danmakuState.danmakuEnabled)
+                )
             },
             onShowSettings = {
                 showInfoSeekController = false
@@ -414,8 +413,10 @@ fun VideoPlayerController(
             },
             onAspectRatioChange = onAspectRatioChange,
             onPlaySpeedChange = onPlaySpeedChange,
-            onDanmakuSwitchChange = { danmakuTypes ->
-                onDanmakuSettingChange(DanmakuSettingAction.SetEnabledTypes(danmakuTypes))
+            onDanmakuSwitchChange = {
+                onDanmakuSettingChange(
+                            DanmakuSettingAction.SetDanmakuEnabled(!uiState.danmakuState.danmakuEnabled)
+                        )
             },
             onDanmakuSizeChange = { scale ->
                 onDanmakuSettingChange(DanmakuSettingAction.SetScale(scale))
