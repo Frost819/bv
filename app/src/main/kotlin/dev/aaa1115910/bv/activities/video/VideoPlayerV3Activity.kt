@@ -84,20 +84,19 @@ class VideoPlayerV3Activity : ComponentActivity() {
     }
 
     override fun onStart() {
-        super.onStart()
-
-        // 回到前台：先进入抑制期，避免 attach surface 阶段闪抽风
+        // 先进入抑制期，再走 super，覆盖 Lifecycle.ON_START 期间可能发生的 surface 相关竞态
         playerViewModel.setSuppressPlayerErrors(true)
         Log.i("BugDebug", "VideoPlayerV3Activity onStart: suppressPlayerErrors=true (resuming)")
+
+        super.onStart()
 
         // 快恢复（不重建）或按需重建
         playerViewModel.onHostStartFastResumeOrRecreate()
 
         lifecycleScope.launch {
             delay(500)
-            // 只有当页面还在前台时才恢复
-            if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
-                // 退出抑制期
+            // 仅当页面已真正回到可交互前台时才退出抑制
+            if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
                 playerViewModel.setSuppressPlayerErrors(false)
                 Log.i("BugDebug", "VideoPlayerV3Activity onStart: suppressPlayerErrors=false")
             }
@@ -129,11 +128,11 @@ class VideoPlayerV3Activity : ComponentActivity() {
     }
 
     override fun onPause() {
-        super.onPause()
-
-        // 进入后台/跳转别的 Activity 前：抑制 stop/surfaceDestroyed 期间的 surface-detach 类错误进入 UI
+        // 先进入抑制期，再走 super，覆盖 Lifecycle.ON_PAUSE 期间的 surface detach 竞态
         playerViewModel.setSuppressPlayerErrors(true)
         Log.i("BugDebug", "VideoPlayerV3Activity onPause: suppressPlayerErrors=true")
+
+        super.onPause()
 
         // 恢复状态栏
         WindowInsetsControllerCompat(window, window.decorView)

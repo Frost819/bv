@@ -127,18 +127,6 @@ class VideoPlayerV3ViewModel(
     @Volatile
     private var surfaceBugDetected: Boolean = false
 
-    @Volatile
-    private var suppressPlayerErrors: Boolean = false
-
-    @Volatile
-    private var needRecreateOnStart: Boolean = false
-
-    // 用于断点续播（毫秒）
-    private var pendingResumePositionMs: Long = 0L
-
-    // 防止 onStart 反复触发导致重复重建/prepare
-    private val recreateInProgress = AtomicBoolean(false)
-
     // 仅首次打印环境信息（设备 + Media3 版本），便于你贴 Logcat 排查
     @Volatile
     private var envLogged: Boolean = false
@@ -491,7 +479,6 @@ class VideoPlayerV3ViewModel(
                     avid = st.aid,
                     cid = st.cid,
                     epid = st.epid,
-                    title = st.title
                 )
             }
         } finally {
@@ -1126,10 +1113,9 @@ class VideoPlayerV3ViewModel(
             ?: playData!!.flac.takeIf { it?.codecId == targetAudio.code }
             ?: playData!!.dashAudios.minByOrNull { it.codecId }
 
-        // App 播放源可能返回空的 dashAudios（此时允许仅播放视频，避免 first() 触发 List is empty）
-        var audioUrl: String? = audioItem?.baseUrl
-        val audioUrls = mutableListOf<String>()
-        audioItem?.baseUrl?.let { audioUrls.add(it) }
+        var audioUrl = audioItem?.baseUrl ?: playData!!.dashAudios.first().baseUrl
+        val audioUrls = mutableListOf<String?>()
+        audioUrls.add(audioItem?.baseUrl)
         audioUrls.addAll(audioItem?.backUrl ?: emptyList())
 
         logger.fInfo { "all video hosts: ${videoUrls.map { with(URI(it)) { "$scheme://$authority" } }}" }
@@ -1138,11 +1124,11 @@ class VideoPlayerV3ViewModel(
         //replace cdn
         if (Prefs.enableProxy && state.proxyArea != ProxyArea.MainLand) {
             videoUrl = videoUrl.replaceUrlDomainWithAliCdn()
-            audioUrl = audioUrl?.replaceUrlDomainWithAliCdn()
+            audioUrl = audioUrl.replaceUrlDomainWithAliCdn()
         } else {
             // 如果未通过网络代理获得播放地址，才判断是否应该替换为官方 cdn
             videoUrl = selectOfficialCdnUrl(videoUrls.filterNotNull())
-            audioUrl = if (audioUrls.isNotEmpty()) selectOfficialCdnUrl(audioUrls) else null
+            audioUrl = selectOfficialCdnUrl(audioUrls.filterNotNull())
         }
 
         logger.fInfo {
