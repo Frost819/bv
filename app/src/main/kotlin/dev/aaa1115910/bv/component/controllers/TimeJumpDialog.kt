@@ -28,6 +28,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -255,13 +257,28 @@ fun TimeJumpDialog(
                     horizontalArrangement = Arrangement.spacedBy(gap),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TimeJumpBarKey(
-                        text = "◀",
-                        modifier = Modifier
-                            .width(keySize)
-                            .height(gridH),
-                        onClick = { selectPrev() }
-                    )
+                    Column(
+                        modifier = Modifier.height(gridH), // 确保按钮组整体高度与网格高度一致
+                        verticalArrangement = Arrangement.spacedBy(gap) // 中间留出 gap 空隙
+                    ) {
+                        TimeJumpBarKey(
+                            text = "◀",
+                            modifier = Modifier
+                                .width(keySize)
+                                .weight(1f), // 自动占满一半剩余高度（顶部对齐）
+                            fontSize = 14.sp,
+                            onClick = { selectPrev() }
+                        )
+
+                        TimeJumpBarKey(
+                            text = "▶",
+                            modifier = Modifier
+                                .width(keySize)
+                                .weight(1f), // 自动占满另一半剩余高度（底部对齐）
+                            fontSize = 14.sp,
+                            onClick = { selectNext() }
+                        )
+                    }
 
                     Column(
                         modifier = Modifier.width(gridW),
@@ -292,13 +309,28 @@ fun TimeJumpDialog(
                         }
                     }
 
-                    TimeJumpBarKey(
-                        text = "▶",
-                        modifier = Modifier
-                            .width(keySize)
-                            .height(gridH),
-                        onClick = { selectNext() }
-                    )
+                    Column(
+                        modifier = Modifier.height(gridH),
+                        verticalArrangement = Arrangement.spacedBy(gap)
+                    ) {
+                        TimeJumpBarKey(
+                            text = "▶",
+                            modifier = Modifier
+                                .width(keySize)
+                                .weight(1f),
+                            fontSize = 14.sp,
+                            onClick = { selectNext() }
+                        )
+
+                        TimeJumpBarKey(
+                            text = "◀",
+                            modifier = Modifier
+                                .width(keySize)
+                                .weight(1f),
+                            fontSize = 14.sp,
+                            onClick = { selectPrev() }
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(2.dp))
@@ -314,9 +346,6 @@ fun TimeJumpDialog(
             }
         },
         confirmButton = {},
-        modifier = Modifier
-            .border(1.dp, Color.White.copy(alpha = 0.25f), shape)
-            .background(Color.Black.copy(alpha = 0.85f), shape),
     )
 }
 
@@ -368,6 +397,7 @@ private fun TimeJumpKey(
 private fun TimeJumpBarKey(
     text: String,
     modifier: Modifier = Modifier,
+    fontSize: TextUnit = TextUnit.Unspecified,
     onClick: () -> Unit
 ) {
     Surface(
@@ -381,7 +411,7 @@ private fun TimeJumpBarKey(
                 .padding(horizontal = 8.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = text, style = MaterialTheme.typography.titleMedium)
+            Text(text = text, fontSize = fontSize, style = MaterialTheme.typography.titleMedium)
         }
     }
 }
