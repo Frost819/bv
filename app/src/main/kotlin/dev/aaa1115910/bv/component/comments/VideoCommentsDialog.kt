@@ -10,14 +10,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -31,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -39,26 +44,34 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.platform.LocalContext
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import dev.aaa1115910.biliapi.entity.reply.Comment
+import dev.aaa1115910.biliapi.repositories.CommentRepository
 import dev.aaa1115910.biliapi.entity.reply.CommentPage
 import dev.aaa1115910.biliapi.entity.reply.CommentReplyPage
 import dev.aaa1115910.biliapi.entity.reply.CommentSort
-import dev.aaa1115910.biliapi.repositories.CommentRepository
 import dev.aaa1115910.bv.util.toast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -69,8 +82,10 @@ private val CommentsText = Color(0xFF000000)
 private val UserNameColor = Color(0xFFFE7297)
 private val MentionColor = Color(0xFF008DC3)
 
-// 保守匹配：必须是 " 空格 + @ + 内容 + 空格 "
-private val MentionRegex = Regex(" @(.+?) ")
+private data class MessageRenderData(
+    val text: AnnotatedString,
+    val inlineContent: Map<String, InlineTextContent>
+)
 
 private enum class Page { Main, Replies }
 @Composable
@@ -109,8 +124,29 @@ fun VideoCommentsDialog(
     var repliesError by remember { mutableStateOf<String?>(null) }
     val repliesListState = rememberLazyListState()
 
-    // 回复页只要能聚焦即可，这里仍用“第一个回复”做初始落点
-    val firstReplyItemFocusRequester = remember { FocusRequester() }
+    // 回复列表 item 焦点请求器（rpid -> requester）
+    val replyItemFocusRequesters = remember { mutableMapOf<Long, FocusRequester>() }
+
+    // 图片全屏预览：仅保存“当前评论图片集”
+    var previewPictures by remember { mutableStateOf<List<Comment.Picture>>(emptyList()) }
+    var previewIndex by remember { mutableIntStateOf(0) }
+
+    fun openPreview(pictures: List<Comment.Picture>, index: Int) {
+        if (pictures.isEmpty()) return
+        previewPictures = pictures
+        previewIndex = index.coerceIn(0, pictures.lastIndex)
+    }
+
+    fun closePreview() {
+        previewPictures = emptyList()
+        previewIndex = 0
+    }
+
+    fun switchPreview(delta: Int) {
+        if (previewPictures.isEmpty()) return
+        val size = previewPictures.size
+        previewIndex = (previewIndex + delta + size) % size
+    }
 
     // 根容器兜底焦点（无数据/异常时）
     val rootFocusRequester = remember { FocusRequester() }
@@ -134,6 +170,11 @@ fun VideoCommentsDialog(
     }
 
     fun goBackLayer(): Boolean {
+        if (previewPictures.isNotEmpty()) {
+            closePreview()
+            return true
+        }
+
         return if (page == Page.Replies) {
             page = Page.Main
             rootComment = null
@@ -142,6 +183,7 @@ fun VideoCommentsDialog(
             replyPage = CommentReplyPage()
             repliesHasNext = true
             repliesError = null
+            replyItemFocusRequesters.clear()
 
             requestMainFocusRestore()
             true
@@ -219,6 +261,9 @@ fun VideoCommentsDialog(
         repliesHasNext = true
         repliesLoading = false
         repliesError = null
+        replyItemFocusRequesters.clear()
+
+        closePreview()
 
         val firstPage = runCatching {
             commentRepository.getVideoComments(
@@ -259,12 +304,15 @@ fun VideoCommentsDialog(
         }
     }
 
-    // 回复列表有数据后，聚焦第一个回复
+    // 回复列表有数据后，聚焦第一个回复正文
     LaunchedEffect(page, replies.size) {
         if (page == Page.Replies && replies.isNotEmpty()) {
             scope.launch {
                 delay(50)
-                runCatching { firstReplyItemFocusRequester.requestFocus() }
+                val firstRpid = replies.firstOrNull()?.rpid
+                val requester = firstRpid?.let { replyItemFocusRequesters[it] }
+                if (requester != null) runCatching { requester.requestFocus() }
+                else runCatching { rootFocusRequester.requestFocus() }
             }
         }
     }
@@ -337,18 +385,25 @@ fun VideoCommentsDialog(
                                 state = commentsListState,
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                itemsIndexed(comments, key = { _, c -> c.rpid }) { _, comment ->
-                                    val fr =
+                                itemsIndexed(comments, key = { _, c -> c.rpid }) { index, comment ->
+                                    val bodyFr =
                                         mainItemFocusRequesters.getOrPut(comment.rpid) { FocusRequester() }
+                                    val prevBodyFr = comments
+                                        .getOrNull(index - 1)
+                                        ?.let { mainItemFocusRequesters.getOrPut(it.rpid) { FocusRequester() } }
+                                    val nextBodyFr = comments
+                                        .getOrNull(index + 1)
+                                        ?.let { mainItemFocusRequesters.getOrPut(it.rpid) { FocusRequester() } }
 
                                     LightCommentItem(
-                                        modifier = Modifier
-                                            .focusRequester(fr)
-                                            .onFocusChanged {
-                                                if (it.hasFocus) {
-                                                    lastMainFocusedRpid = comment.rpid
-                                                }
-                                            },
+                                        modifier = Modifier.onFocusChanged {
+                                            if (it.hasFocus) {
+                                                lastMainFocusedRpid = comment.rpid
+                                            }
+                                        },
+                                        bodyFocusRequester = bodyFr,
+                                        previousBodyFocusRequester = prevBodyFr,
+                                        nextBodyFocusRequester = nextBodyFr,
                                         comment = comment,
                                         showRepliesHint = comment.repliesCount > 0,
                                         onClick = {
@@ -364,7 +419,11 @@ fun VideoCommentsDialog(
                                             replyPage = CommentReplyPage()
                                             repliesHasNext = true
                                             repliesError = null
+                                            replyItemFocusRequesters.clear()
                                             loadReplies(reset = true)
+                                        },
+                                        onImageClick = { imgIndex ->
+                                            openPreview(comment.pictures, imgIndex)
                                         }
                                     )
                                 }
@@ -407,16 +466,27 @@ fun VideoCommentsDialog(
                                     ) {
                                         itemsIndexed(
                                             replies,
-                                            key = { _, c -> c.rpid }) { index, reply ->
-                                            val itemModifier =
-                                                if (index == 0) Modifier.focusRequester(
-                                                    firstReplyItemFocusRequester
-                                                ) else Modifier
+                                            key = { _, c -> c.rpid }
+                                        ) { index, reply ->
+                                            val bodyFr =
+                                                replyItemFocusRequesters.getOrPut(reply.rpid) { FocusRequester() }
+                                            val prevBodyFr = replies
+                                                .getOrNull(index - 1)
+                                                ?.let { replyItemFocusRequesters.getOrPut(it.rpid) { FocusRequester() } }
+                                            val nextBodyFr = replies
+                                                .getOrNull(index + 1)
+                                                ?.let { replyItemFocusRequesters.getOrPut(it.rpid) { FocusRequester() } }
+
                                             LightCommentItem(
-                                                modifier = itemModifier,
+                                                bodyFocusRequester = bodyFr,
+                                                previousBodyFocusRequester = prevBodyFr,
+                                                nextBodyFocusRequester = nextBodyFr,
                                                 comment = reply,
                                                 showRepliesHint = false,
-                                                onClick = {}
+                                                onClick = {},
+                                                onImageClick = { imgIndex ->
+                                                    openPreview(reply.pictures, imgIndex)
+                                                }
                                             )
                                         }
 
@@ -436,6 +506,14 @@ fun VideoCommentsDialog(
                 }
             }
         }
+        if (previewPictures.isNotEmpty()) {
+            CommentImagePreviewDialog(
+                pictures = previewPictures,
+                currentIndex = previewIndex,
+                onDismissRequest = { closePreview() },
+                onSwitch = { delta -> switchPreview(delta) }
+            )
+        }
     }
 }
 
@@ -448,7 +526,7 @@ private fun RootCommentHeader(comment: Comment) {
             .background(Color.Black.copy(alpha = 0.04f))
             .padding(12.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -488,13 +566,11 @@ private fun RootCommentHeader(comment: Comment) {
                 )
             }
 
-            Text(
-                text = buildMessageAnnotated(comment.message),
-                color = CommentsText,
-                fontSize = 24.sp,
-                lineHeight = 28.sp,
-                overflow = TextOverflow.Ellipsis
-            )
+            CommentMessageText(comment = comment)
+
+            if (comment.pictures.isNotEmpty()) {
+                RootCommentPictures(pictures = comment.pictures)
+            }
         }
     }
 }
@@ -502,167 +578,369 @@ private fun RootCommentHeader(comment: Comment) {
 @Composable
 private fun LightCommentItem(
     modifier: Modifier = Modifier,
+    bodyFocusRequester: FocusRequester,
+    previousBodyFocusRequester: FocusRequester? = null,
+    nextBodyFocusRequester: FocusRequester? = null,
     comment: Comment,
     showRepliesHint: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onImageClick: (Int) -> Unit
 ) {
-    var hasFocus by remember { mutableStateOf(false) }
+    val pictures = comment.pictures
+    val pictureFocusRequesters = remember(comment.rpid, pictures.size) {
+        List(pictures.size) { FocusRequester() }
+    }
+    var bodyHasFocus by remember(comment.rpid) { mutableStateOf(false) }
 
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .onFocusChanged { hasFocus = it.hasFocus }
-            .border(
-                width = 3.dp,
-                color = if (hasFocus) CommentsText else Color.Transparent,
-                shape = MaterialTheme.shapes.medium
-            ),
-        shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.medium),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.Transparent,
-            focusedContainerColor = Color.Transparent,
-            pressedContainerColor = Color.Transparent
-        ),
-        scale = ClickableSurfaceDefaults.scale(
-            focusedScale = 1f,
-            pressedScale = 1f
-        ),
-        enabled = true,
-        onClick = onClick
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top
+        Surface(
+            modifier = modifier
+                .fillMaxWidth()
+                .focusRequester(bodyFocusRequester)
+                .focusProperties {
+                    previousBodyFocusRequester?.let { up = it }
+                    if (pictures.isNotEmpty()) {
+                        down = pictureFocusRequesters.first()
+                    } else {
+                        nextBodyFocusRequester?.let { down = it }
+                    }
+                }
+                .onFocusChanged { bodyHasFocus = it.hasFocus }
+                .border(
+                    width = 3.dp,
+                    color = if (bodyHasFocus) UserNameColor else Color.Transparent,
+                    shape = MaterialTheme.shapes.medium
+                ),
+            shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.medium),
+            colors = ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                focusedContainerColor = Color.Transparent,
+                pressedContainerColor = Color.Transparent
+            ),
+            scale = ClickableSurfaceDefaults.scale(
+                focusedScale = 1f,
+                pressedScale = 1f
+            ),
+            enabled = true,
+            onClick = onClick
         ) {
-            AsyncImage(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.06f)),
-                model = comment.member.avatar,
-                contentDescription = null
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+            Row(
+                modifier = Modifier.padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Top
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                AsyncImage(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.06f)),
+                    model = comment.member.avatar,
+                    contentDescription = null
+                )
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = comment.member.name,
+                                color = UserNameColor,
+                                fontSize = 26.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            if (comment.isPinned) {
+                                PinnedBadgeLight()
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
                         Text(
-                            text = comment.member.name,
-                            color = UserNameColor,
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            text = comment.timeDesc,
+                            color = CommentsText.copy(alpha = 0.70f),
+                            fontSize = 18.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
 
-                        if (comment.isPinned) {
-                            PinnedBadgeLight()
-                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Text(
+                            text = "赞 ${comment.like}",
+                            color = CommentsText.copy(alpha = 0.70f),
+                            fontSize = 18.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
 
-                    Spacer(modifier = Modifier.weight(1f))
+                    CommentMessageText(comment = comment)
 
-                    Text(
-                        text = comment.timeDesc,
-                        color = CommentsText.copy(alpha = 0.70f),
-                        fontSize = 18.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Text(
-                        text = "赞 ${comment.like}",
-                        color = CommentsText.copy(alpha = 0.70f),
-                        fontSize = 18.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    if (showRepliesHint) {
+                        Text(
+                            text = "${comment.repliesCount} 条回复 >>",
+                            color = CommentsText.copy(alpha = 0.85f),
+                            fontSize = 18.sp,
+                            lineHeight = 22.sp,
+                            maxLines = 2
+                        )
+                    }
                 }
+            }
+        }
 
-                Text(
-                    text = buildMessageAnnotated(comment.message),
-                    color = CommentsText,
-                    fontSize = 24.sp,
-                    lineHeight = 28.sp,
-                    overflow = TextOverflow.Ellipsis
-                )
+        if (pictures.isNotEmpty()) {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                itemsIndexed(pictures, key = { index, p -> "${comment.rpid}-${p.imgSrc}-$index" }) { index, picture ->
+                    val fr = pictureFocusRequesters[index]
+                    val upRequester = if (index == 0) bodyFocusRequester else pictureFocusRequesters[index - 1]
+                    val downRequester = if (index == pictures.lastIndex) {
+                        nextBodyFocusRequester ?: FocusRequester.Default
+                    } else {
+                        pictureFocusRequesters[index + 1]
+                    }
+                    var pictureHasFocus by remember(comment.rpid, index) { mutableStateOf(false) }
 
-                if (showRepliesHint) {
-                    Text(
-                        text = "${comment.repliesCount} 条回复 >>",
-                        color = CommentsText.copy(alpha = 0.85f),
-                        fontSize = 18.sp,
-                        lineHeight = 22.sp,
-                        maxLines = 2
-                    )
+                    Surface(
+                        modifier = Modifier
+                            .width(184.dp)
+                            .height(112.dp)
+                            .focusRequester(fr)
+                            .focusProperties {
+                                up = upRequester
+                                down = downRequester
+                            }
+                            .onFocusChanged { pictureHasFocus = it.hasFocus }
+                            .border(
+                                width = if (pictureHasFocus) 3.dp else 0.dp,
+                                color = if (pictureHasFocus) UserNameColor else Color.Transparent,
+                                shape = MaterialTheme.shapes.small
+                            ),
+                        shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.small),
+                        colors = ClickableSurfaceDefaults.colors(
+                            containerColor = CommentsBg,
+                            focusedContainerColor = CommentsBg,
+                            pressedContainerColor = CommentsBg
+                        ),
+                        scale = ClickableSurfaceDefaults.scale(
+                            focusedScale = 1f,
+                            pressedScale = 1f
+                        ),
+                        enabled = true,
+                        onClick = { onImageClick(index) }
+                    ) {
+                        AsyncImage(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(CommentsBg),
+                            model = picture.imgSrc,
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            alignment = Alignment.Center
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-private fun buildMessageAnnotated(message: String) = buildAnnotatedString {
-    var cursor = 0
-    val matches = MentionRegex.findAll(message)
-    for (m in matches) {
-        val start = m.range.first
-        val end = m.range.last + 1
-
-        if (start > cursor) {
-            append(message.substring(cursor, start))
-        }
-
-        // m.value 形如 " @xxx "；group(1) 为 "xxx"（不含 @）
-        val mentionBody = m.groups[1]?.value ?: ""
-
-        // 前导空格（默认色）
-        append(" ")
-
-        // @mention（上色）
-        withStyle(SpanStyle(color = MentionColor, fontWeight = FontWeight.Medium)) {
-            append("@")
-            append(mentionBody)
-        }
-
-        // 尾随空格（默认色）
-        append(" ")
-
-        cursor = end
+@Composable
+private fun CommentMessageText(comment: Comment) {
+    val renderData = remember(comment.rpid, comment.messageParts, comment.message) {
+        buildMessageRenderData(comment)
     }
 
-    if (cursor < message.length) {
-        append(message.substring(cursor))
+    BasicText(
+        text = renderData.text,
+        inlineContent = renderData.inlineContent,
+        style = TextStyle(
+            color = CommentsText,
+            fontSize = 24.sp,
+            lineHeight = 28.sp
+        ),
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+private fun buildMessageRenderData(comment: Comment): MessageRenderData {
+    val parts = comment.messageParts.ifEmpty {
+        listOf(Comment.MessagePart.Text(comment.message))
+    }
+
+    val inlineContent = linkedMapOf<String, InlineTextContent>()
+    var emoteIndex = 0
+    val text = buildAnnotatedString {
+        parts.forEach { part ->
+            when (part) {
+                is Comment.MessagePart.Text -> {
+                    if (part.isMention) {
+                        withStyle(SpanStyle(color = MentionColor, fontWeight = FontWeight.Medium)) {
+                            append(part.text)
+                        }
+                    } else {
+                        append(part.text)
+                    }
+                }
+
+                is Comment.MessagePart.Emote -> {
+                    val id = "comment_emote_$emoteIndex"
+                    appendInlineContent(id, part.alt.ifBlank { part.code })
+                    inlineContent[id] = InlineTextContent(
+                        Placeholder(
+                            width = 1.1.em,
+                            height = 1.1.em,
+                            placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter
+                        )
+                    ) {
+                        AsyncImage(
+                            modifier = Modifier.fillMaxSize(),
+                            model = part.url,
+                            contentDescription = part.alt,
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                    emoteIndex += 1
+                }
+            }
+        }
+    }
+    return MessageRenderData(text = text, inlineContent = inlineContent)
+}
+
+@Composable
+private fun RootCommentPictures(pictures: List<Comment.Picture>) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        itemsIndexed(pictures, key = { index, p -> "root-${p.imgSrc}-$index" }) { _, picture ->
+            Box(
+                modifier = Modifier
+                    .width(184.dp)
+                    .height(112.dp)
+                    .clip(MaterialTheme.shapes.small)
+                    .background(CommentsBg)
+            ) {
+                AsyncImage(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(CommentsBg),
+                    model = picture.imgSrc,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    alignment = Alignment.Center
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommentImagePreviewDialog(
+    pictures: List<Comment.Picture>,
+    currentIndex: Int,
+    onDismissRequest: () -> Unit,
+    onSwitch: (delta: Int) -> Unit
+) {
+    if (pictures.isEmpty()) return
+    val safeIndex = currentIndex.coerceIn(0, pictures.lastIndex)
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(pictures, safeIndex) {
+        delay(20)
+        runCatching { focusRequester.requestFocus() }
+    }
+
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(focusRequester)
+                .focusable()
+                .onPreviewKeyEvent {
+                    if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when (it.key) {
+                        Key.Back -> {
+                            onDismissRequest()
+                            true
+                        }
+
+                        Key.DirectionLeft -> {
+                            onSwitch(-1)
+                            true
+                        }
+
+                        Key.DirectionRight -> {
+                            onSwitch(1)
+                            true
+                        }
+
+                        else -> false
+                    }
+                },
+            shape = RoundedCornerShape(0.dp),
+            colors = androidx.tv.material3.SurfaceDefaults.colors(
+                containerColor = CommentsBg,
+                contentColor = CommentsText
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(CommentsBg)
+            ) {
+                AsyncImage(
+                    modifier = Modifier.fillMaxSize(),
+                    model = pictures[safeIndex].imgSrc,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    alignment = Alignment.Center
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun PinnedBadgeLight() {
-    Box(
+    Text(
+        text = "置顶",
+        color = UserNameColor,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Medium,
         modifier = Modifier
-            .clip(RoundedCornerShape(percent = 50))
-            .background(Color.Black.copy(alpha = 0.08f))
-            .padding(horizontal = 10.dp, vertical = 2.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "▲",
-            color = CommentsText,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium
-        )
-    }
+            .border(
+                width = 1.dp,                    // 边框粗细
+                color = UserNameColor,           // 边框颜色与文字一致
+                shape = RoundedCornerShape(3.dp) // 图片中的小圆角
+            )
+            .padding(horizontal = 4.dp, vertical = 1.dp) // 文字与边框之间的间距
+    )
 }
 
 @Composable

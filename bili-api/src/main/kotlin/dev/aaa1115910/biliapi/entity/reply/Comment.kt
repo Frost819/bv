@@ -74,6 +74,8 @@ data class Comment(
     val type: Long,
     val parent: Long,
     val message: String,
+    val messageParts: List<MessagePart> = emptyList(),
+    val pictures: List<Picture> = emptyList(),
     val member: Member,
     val timeDesc: String,
     val like: Long,
@@ -81,9 +83,32 @@ data class Comment(
     val isPinned: Boolean
 ) {
     companion object {
+        // 保守匹配：必须是 " 空格 + @ + 内容 + 空格 "
+        private val MentionRegex = Regex(" @(.+?) ")
+
         fun fromReplyInfo(info: ReplyInfo, forcePinned: Boolean): Comment {
             val pinnedByFlag =
                 info.replyControl.isUpTop || info.replyControl.isAdminTop || info.replyControl.isVoteTop
+
+            val emoteMap = info.content.emoteMap.mapValues { (_, emote) ->
+                EmoteResource(
+                    url = emote.url,
+                    text = emote.text
+                )
+            }
+            val messageParts = parseMessageParts(
+                message = info.content.message,
+                emoteMap = emoteMap
+            )
+            val pictures = info.content.picturesList.map {
+                Picture(
+                    imgSrc = it.imgSrc,
+                    imgWidth = it.imgWidth,
+                    imgHeight = it.imgHeight,
+                    imgSize = it.imgSize
+                )
+            }
+
             return Comment(
                 rpid = info.id,
                 mid = info.mid,
@@ -91,6 +116,8 @@ data class Comment(
                 type = info.type,
                 parent = info.parent,
                 message = info.content.message,
+                messageParts = messageParts,
+                pictures = pictures,
                 member = Member(
                     mid = info.mid,
                     avatar = info.member.face,
@@ -102,11 +129,113 @@ data class Comment(
                 isPinned = forcePinned || pinnedByFlag
             )
         }
+
+        private fun parseMessageParts(
+            message: String,
+            emoteMap: Map<String, EmoteResource>
+        ): List<MessagePart> {
+            if (message.isEmpty()) return emptyList()
+            if (emoteMap.isEmpty()) return splitTextByMention(message)
+
+            val emoteCodes = emoteMap.keys
+                .asSequence()
+                .filter { it.isNotEmpty() }
+                .sortedByDescending { it.length }
+                .toList()
+            if (emoteCodes.isEmpty()) return splitTextByMention(message)
+
+            val result = mutableListOf<MessagePart>()
+            val textBuffer = StringBuilder()
+            var cursor = 0
+
+            fun flushTextBuffer() {
+                if (textBuffer.isEmpty()) return
+                result += splitTextByMention(textBuffer.toString())
+                textBuffer.clear()
+            }
+
+            while (cursor < message.length) {
+                val matchedCode = emoteCodes.firstOrNull { code ->
+                    message.startsWith(code, startIndex = cursor)
+                }
+                if (matchedCode != null) {
+                    val emote = emoteMap[matchedCode]
+                    if (emote != null && emote.url.isNotBlank()) {
+                        flushTextBuffer()
+                        result += MessagePart.Emote(
+                            code = matchedCode,
+                            url = emote.url,
+                            alt = emote.text.ifBlank { matchedCode }
+                        )
+                        cursor += matchedCode.length
+                        continue
+                    }
+                }
+
+                textBuffer.append(message[cursor])
+                cursor += 1
+            }
+
+            flushTextBuffer()
+            return result
+        }
+
+        private fun splitTextByMention(text: String): List<MessagePart.Text> {
+            if (text.isEmpty()) return emptyList()
+
+            val result = mutableListOf<MessagePart.Text>()
+            var cursor = 0
+            val matches = MentionRegex.findAll(text)
+            for (m in matches) {
+                val start = m.range.first
+                val end = m.range.last + 1
+                if (start > cursor) {
+                    result += MessagePart.Text(text.substring(cursor, start))
+                }
+
+                val mentionBody = m.groups[1]?.value.orEmpty()
+                result += MessagePart.Text(" ")
+                result += MessagePart.Text("@$mentionBody", isMention = true)
+                result += MessagePart.Text(" ")
+
+                cursor = end
+            }
+
+            if (cursor < text.length) {
+                result += MessagePart.Text(text.substring(cursor))
+            }
+            return result
+        }
     }
 
     data class Member(
         val mid: Long,
         val avatar: String,
         val name: String
+    )
+
+    data class Picture(
+        val imgSrc: String,
+        val imgWidth: Double,
+        val imgHeight: Double,
+        val imgSize: Double
+    )
+
+    sealed class MessagePart {
+        data class Text(
+            val text: String,
+            val isMention: Boolean = false
+        ) : MessagePart()
+
+        data class Emote(
+            val code: String,
+            val url: String,
+            val alt: String
+        ) : MessagePart()
+    }
+
+    private data class EmoteResource(
+        val url: String,
+        val text: String
     )
 }
