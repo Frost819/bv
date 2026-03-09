@@ -215,6 +215,8 @@
     <string name="search_result_type_name_media_bangumi">番剧</string>
     <string name="search_result_type_name_media_ft">影视</string>
     <string name="search_result_type_name_video">视频</string>
+    <string name="search_result_empty">暂无搜索结果</string>
+    <string name="search_result_load_error">搜索失败，请稍后重试</string>
 
     <string name="season_count_tip">系列共 %1$s 部</string>
     <string name="season_feature_film">正片</string>

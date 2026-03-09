@@ -180,8 +180,13 @@ fun SearchResultScreen(
     }
 
     LaunchedEffect(
-        selectedOrder, selectedDuration, selectedPartition, selectedChildPartition
+        searchResultViewModel.keyword,
+        selectedOrder,
+        selectedDuration,
+        selectedPartition,
+        selectedChildPartition
     ) {
+        if (searchResultViewModel.keyword.isBlank()) return@LaunchedEffect
         logger.fInfo { "Start update search result because filter updated" }
         searchResultViewModel.update()
     }
@@ -263,6 +268,20 @@ fun SearchResultScreen(
             )
 
             Spacer(modifier = Modifier.height(6.dp))
+
+            if (searchResult.count == 0) {
+                val statusText = when {
+                    searchResultViewModel.isSearching -> stringResource(R.string.loading)
+                    !searchResultViewModel.searchErrorMessage.isNullOrBlank() ->
+                        stringResource(R.string.search_result_load_error)
+                    else -> stringResource(R.string.search_result_empty)
+                }
+                Text(
+                    text = statusText,
+                    color = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(horizontal = 48.dp, vertical = 12.dp)
+                )
+            }
 
             TvLazyVerticalGrid(
                 modifier = Modifier
