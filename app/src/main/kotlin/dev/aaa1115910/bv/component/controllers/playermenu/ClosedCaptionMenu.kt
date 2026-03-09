@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,15 +79,27 @@ fun ClosedCaptionMenuList(
         }
 
         // 自动开启规则：需要“可展示的 options”
-        // - 当前视频有的轨道要展示
-        // - 已经选中的规则 token，即使当前视频没有对应轨道，也要展示（用于取消）
+       // - 当前视频有的轨道要展示
+       // - 已经选中的规则 token，即使当前视频没有对应轨道，也要展示（用于取消）
         var selectedTokens by remember {
             mutableStateOf(Prefs.autoSubtitleRuleTokens.toSet())
         }
+        var selectedTokenLabels by remember {
+            mutableStateOf(Prefs.autoSubtitleRuleTokenLabels)
+        }
 
         // 自动开启规则的可选项（为空则右侧面板应禁用）
-        val autoRuleOptions = remember(availableSubtitleTracks, selectedTokens) {
-            buildAutoRuleOptions(availableSubtitleTracks, selectedTokens)
+        val autoRuleBuildResult = remember(availableSubtitleTracks, selectedTokens, selectedTokenLabels) {
+            buildAutoRuleOptions(availableSubtitleTracks, selectedTokens, selectedTokenLabels)
+        }
+        val autoRuleOptions = autoRuleBuildResult.options
+
+        // 开启“真实轨道名覆盖映射”：当前视频有真实轨道时，更新已选规则对应展示名
+        LaunchedEffect(autoRuleBuildResult.selectedTokenLabels) {
+            if (autoRuleBuildResult.selectedTokenLabels != selectedTokenLabels) {
+                selectedTokenLabels = autoRuleBuildResult.selectedTokenLabels
+                Prefs.autoSubtitleRuleTokenLabels = autoRuleBuildResult.selectedTokenLabels
+            }
         }
         AnimatedVisibility(visible = focusState.focusState != MenuFocusState.MenuNav) {
             when (selectedClosedCaptionMenuItem) {
@@ -110,8 +123,20 @@ fun ClosedCaptionMenuList(
                                 options.getOrNull(i)?.token
                             }.toSet()
 
+                            val newTokenLabels = selectedTokenLabels
+                                .filterKeys { it in newTokens }
+                                .toMutableMap()
+
+                            indexes.forEach { i ->
+                                options.getOrNull(i)?.let { opt ->
+                                    newTokenLabels[opt.token] = opt.persistLabel.ifBlank { opt.token }
+                                }
+                            }
+
                             selectedTokens = newTokens
+                            selectedTokenLabels = newTokenLabels
                             Prefs.autoSubtitleRuleTokens = newTokens.sorted()
+                            Prefs.autoSubtitleRuleTokenLabels = newTokenLabels
                         },
                         onFocusBackToParent = {
                             onFocusStateChange(MenuFocusState.Menu)
@@ -194,10 +219,7 @@ fun ClosedCaptionMenuList(
                 .padding(horizontal = 8.dp)
                 .onPreviewKeyEvent {
                     if (it.type == KeyEventType.KeyUp) {
-                        if (listOf(Key.Enter, Key.DirectionCenter).contains(it.key)) {
-                            return@onPreviewKeyEvent false
-                        }
-                        return@onPreviewKeyEvent true
+                        return@onPreviewKeyEvent it.key != Key.Enter && it.key != Key.DirectionCenter
                     }
                     when (it.key) {
                         Key.DirectionRight -> onFocusStateChange(MenuFocusState.MenuNav)
@@ -213,7 +235,8 @@ fun ClosedCaptionMenuList(
             itemsIndexed(VideoPlayerClosedCaptionMenuItem.entries) { index, item ->
                 val enabled = when (item) {
                     VideoPlayerClosedCaptionMenuItem.Switch -> hasRealSubtitleTrack
-                    VideoPlayerClosedCaptionMenuItem.AutoEnableRules -> autoRuleOptions.isNotEmpty()
+                    VideoPlayerClosedCaptionMenuItem.AutoEnableRules ->
+                        autoRuleOptions.isNotEmpty() || selectedTokens.isNotEmpty()
                     else -> true
                 }
 
@@ -233,8 +256,14 @@ fun ClosedCaptionMenuList(
 }
 
 private data class AutoRuleOption(
-    val token: String, // "CC|zh" / "AI|en"
-    val label: String  // "中文" / "中文（AI）"
+    val token: String,       // "CC|zh" / "AI|en"
+    val label: String,       // 显示给 UI 的文本（缺失时带 ! 前缀）
+    val persistLabel: String // 实际持久化文本（不带 ! 前缀）
+)
+
+private data class AutoRuleBuildResult(
+    val options: List<AutoRuleOption>,
+    val selectedTokenLabels: Map<String, String>
 )
 
 private fun Subtitle.normalizedLangKey(): String {
@@ -254,54 +283,57 @@ private fun cleanLangDocForDisplay(doc: String): String {
         .trim()
 }
 
-private fun defaultLangName(langKey: String): String = when (langKey.lowercase()) {
-    "zh" -> "中文"
-    "en" -> "English"
-    else -> langKey
-}
-
 private fun buildAutoRuleOptions(
     tracks: List<Subtitle>,
-    selectedTokens: Set<String>
-): List<AutoRuleOption> {
+    selectedTokens: Set<String>,
+    selectedTokenLabels: Map<String, String>
+): AutoRuleBuildResult {
     // options = 当前视频轨道 + 已选 token（即使当前视频缺失对应语言/类型，也要给用户一个取消入口）
     data class LangInfo(
-        var baseName: String = "",
-        var hasCC: Boolean = false,
-        var hasAI: Boolean = false,
-        // 标记是否为当前视频真实存在的轨道
-        var isRealCC: Boolean = false,
-        var isRealAI: Boolean = false
+        var ccLabel: String? = null,
+        var aiLabel: String? = null,
+        var hasSelectedCC: Boolean = false,
+        var hasSelectedAI: Boolean = false
     )
 
     val infoByLang = linkedMapOf<String, LangInfo>()
 
-    // 先从当前视频真实轨道收集语言信息，某语言没有 CC 就不生成 CC 选项；同理 AI
+    // 仅保留“当前已选 token”对应的 label，避免历史垃圾数据累积
+    val normalizedSelectedTokenLabels = selectedTokenLabels
+        .filterKeys { it in selectedTokens }
+        .toMutableMap()
+
+    // 先从当前视频真实轨道收集语言信息
     tracks.filter { it.id != -1L }.forEach { t ->
         val key = t.normalizedLangKey()
         if (key.isBlank()) return@forEach
 
         val info = infoByLang.getOrPut(key) { LangInfo() }
-        val name = cleanLangDocForDisplay(t.langDoc)
-
-        // baseName 优先取 CC 的显示名
-        if (info.baseName.isBlank() || (t.type == SubtitleType.CC && !info.hasCC)) {
-            info.baseName = name
-        }
+        val baseName = cleanLangDocForDisplay(t.langDoc)
 
         when (t.type) {
             SubtitleType.CC -> {
-                info.hasCC = true
-                info.isRealCC = true // 这是实际存在的轨道
+                if (info.ccLabel == null) info.ccLabel = baseName
+                val token = "CC|$key"
+                // 开启“真实轨道名覆盖映射”：仅覆盖当前已选规则
+                if (selectedTokens.contains(token)) {
+                    normalizedSelectedTokenLabels[token] = baseName
+                }
             }
+
             SubtitleType.AI -> {
-                info.hasAI = true
-                info.isRealAI = true // 这是实际存在的的轨道
+                val aiName = "$baseName(AI)"
+                if (info.aiLabel == null) info.aiLabel = aiName
+                val token = "AI|$key"
+                // 开启“真实轨道名覆盖映射”：仅覆盖当前已选规则
+                if (selectedTokens.contains(token)) {
+                    normalizedSelectedTokenLabels[token] = aiName
+                }
             }
         }
     }
 
-    // 再把“已选 token”合并进来（保证跨视频仍可看到并取消）
+    // 合并已选 token（保证跨视频可见并可取消）
     selectedTokens.forEach { token ->
         val parts = token.split("|", limit = 2)
         if (parts.size != 2) return@forEach
@@ -311,15 +343,10 @@ private fun buildAutoRuleOptions(
         if (langKey.isBlank()) return@forEach
 
         val info = infoByLang.getOrPut(langKey) { LangInfo() }
-
         when (typePart) {
-            "CC" -> info.hasCC = true
-            "AI" -> info.hasAI = true
+            "CC" -> info.hasSelectedCC = true
+            "AI" -> info.hasSelectedAI = true
             else -> return@forEach
-        }
-
-        if (info.baseName.isBlank()) {
-            info.baseName = defaultLangName(langKey)
         }
     }
 
@@ -329,29 +356,41 @@ private fun buildAutoRuleOptions(
         else -> 2 to langKey
     }
 
-    val orderedLangKeys = infoByLang.keys.sortedWith(compareBy({ langSortKey(it).first }, { langSortKey(it).second }))
+    val orderedLangKeys = infoByLang.keys.sortedWith(
+        compareBy({ langSortKey(it).first }, { langSortKey(it).second })
+    )
 
     val result = mutableListOf<AutoRuleOption>()
     orderedLangKeys.forEach { langKey ->
         val info = infoByLang[langKey] ?: return@forEach
-        val name = info.baseName.ifBlank { defaultLangName(langKey) }
 
-        if (info.hasCC) {
+        val ccToken = "CC|$langKey"
+        val ccPersistedLabel = info.ccLabel ?: normalizedSelectedTokenLabels[ccToken] ?: ccToken
+        if (info.ccLabel != null || info.hasSelectedCC) {
             result.add(
                 AutoRuleOption(
-                    token = "CC|$langKey",
-                    label = if (info.isRealCC) name else "! $name" // 如果不是实际存在，加 !
+                    token = ccToken,
+                    label = if (info.ccLabel != null) ccPersistedLabel else "！$ccPersistedLabel",
+                    persistLabel = ccPersistedLabel
                 )
             )
         }
-        if (info.hasAI) {
+
+        val aiToken = "AI|$langKey"
+        val aiPersistedLabel = info.aiLabel ?: normalizedSelectedTokenLabels[aiToken] ?: aiToken
+        if (info.aiLabel != null || info.hasSelectedAI) {
             result.add(
                 AutoRuleOption(
-                    token = "AI|$langKey",
-                    label = if (info.isRealAI) "$name(AI)" else "! $name(AI)" // 如果不是实际存在，加 !
+                    token = aiToken,
+                    label = if (info.aiLabel != null) aiPersistedLabel else "！$aiPersistedLabel",
+                    persistLabel = aiPersistedLabel
                 )
             )
         }
     }
-    return result
+
+    return AutoRuleBuildResult(
+        options = result,
+        selectedTokenLabels = normalizedSelectedTokenLabels.toMap()
+    )
 }
