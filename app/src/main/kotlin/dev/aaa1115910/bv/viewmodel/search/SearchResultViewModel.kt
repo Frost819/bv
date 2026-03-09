@@ -47,10 +47,14 @@ class SearchResultViewModel(
     private val hasMore = true
 
     var enableProxySearchResult = false
+    var isSearching by mutableStateOf(false)
+    var searchErrorMessage by mutableStateOf<String?>(null)
+    private var pendingRequestCount by mutableStateOf(0)
 
     fun update() {
         resetPages()
         clearResults()
+        searchErrorMessage = null
         SearchType.entries.forEach { loadMore(it, true) }
     }
 
@@ -76,6 +80,8 @@ class SearchResultViewModel(
         if (updating && !ignoreUpdating) return
 
         updating = true
+        pendingRequestCount++
+        isSearching = true
         viewModelScope.launch(Dispatchers.IO) {
             val page = when (searchType) {
                 SearchType.Video -> videoSearchResult.page
@@ -84,7 +90,7 @@ class SearchResultViewModel(
                 SearchType.BiliUser -> biliUserSearchResult.page
             }
             logger.fInfo { "Load search result: [keyword=$keyword, type=$searchType, page=${page}]" }
-            runCatching {
+            val result = runCatching {
                 val searchResultResponse = searchRepository.searchType(
                     keyword = keyword,
                     type = searchType,
@@ -115,6 +121,20 @@ class SearchResultViewModel(
                         }
                     }
                 }
+            }
+
+            withContext(Dispatchers.Main) {
+                result.onFailure {
+                    logger.error(it) {
+                        "Load search result failed: [keyword=$keyword, type=$searchType, page=$page]"
+                    }
+                    searchErrorMessage = it.message ?: "unknown error"
+                }
+                result.onSuccess {
+                    searchErrorMessage = null
+                }
+                pendingRequestCount = (pendingRequestCount - 1).coerceAtLeast(0)
+                isSearching = pendingRequestCount > 0
             }
             updating = false
         }
