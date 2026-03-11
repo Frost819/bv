@@ -1,6 +1,10 @@
 package dev.aaa1115910.biliapi.entity.reply
 
 import bilibili.main.community.reply.v1.ReplyInfo
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 data class CommentsData(
     val comments: List<Comment> = emptyList(),
@@ -123,11 +127,62 @@ data class Comment(
                     avatar = info.member.face,
                     name = info.member.name
                 ),
-                timeDesc = info.replyControl.timeDesc,
+                timeDesc = formatCommentTimeDescWithSeconds(
+                    ctime = info.ctime,
+                    fallback = info.replyControl.timeDesc
+                ),
                 like = info.like,
                 repliesCount = info.count.toInt(),
                 isPinned = forcePinned || pinnedByFlag
             )
+        }
+
+        private fun formatCommentTimeDescWithSeconds(
+            ctime: Long,
+            fallback: String
+        ): String {
+            if (ctime <= 0L) return fallback
+
+            return runCatching {
+                // 兼容秒/毫秒时间戳
+                val millis = if (ctime < 10_000_000_000L) ctime * 1000L else ctime
+                val date = Date(millis)
+
+                val nowCal = Calendar.getInstance()
+                val targetCal = Calendar.getInstance().apply { timeInMillis = millis }
+
+                fun Calendar.toStartOfDay(): Calendar = (clone() as Calendar).apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+
+                val todayStart = nowCal.toStartOfDay()
+                val targetStart = targetCal.toStartOfDay()
+                val diffDays = ((todayStart.timeInMillis - targetStart.timeInMillis) / 86_400_000L).toInt()
+
+                val timePart = SimpleDateFormat("HH:mm:ss", Locale.CHINESE).format(date)
+
+                when (diffDays) {
+                    0 -> "今天 ${timePart} 发布"
+                    1 -> "昨天 ${timePart} 发布"
+                    2 -> "前天 ${timePart} 发布"
+                    else -> {
+                        // 这里沿用 formatPubTimeString 的“今年不带年、跨年带年”逻辑，只是补上秒
+                        val year = targetCal.get(Calendar.YEAR)
+                        val currentYear = nowCal.get(Calendar.YEAR)
+                        val pattern = if (year == currentYear) {
+                            "MM月dd日HH:mm:ss"
+                        } else {
+                            "yyyy年MM月dd日HH:mm:ss"
+                        }
+                        "${SimpleDateFormat(pattern, Locale.CHINESE).format(date)} 发布"
+                    }
+                }
+            }.getOrElse {
+                fallback
+            }
         }
 
         private fun parseMessageParts(

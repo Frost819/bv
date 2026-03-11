@@ -22,6 +22,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -31,6 +35,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PlayCircleOutline
+import androidx.compose.ui.focus.FocusRequester.Companion.Default
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,7 +53,6 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
@@ -57,6 +63,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -73,8 +80,14 @@ import dev.aaa1115910.biliapi.entity.reply.CommentPage
 import dev.aaa1115910.biliapi.entity.reply.CommentReplyPage
 import dev.aaa1115910.biliapi.entity.reply.CommentSort
 import dev.aaa1115910.bv.util.toast
+import dev.aaa1115910.biliapi.http.BiliHttpApi
+import dev.aaa1115910.bv.activities.video.VideoInfoActivity
+import dev.aaa1115910.bv.util.Prefs
+import dev.aaa1115910.bv.util.launchPlayerActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.koin.compose.getKoin
 
 private val CommentsBg = Color(0xFFFBFBF4)
@@ -82,10 +95,134 @@ private val CommentsText = Color(0xFF000000)
 private val UserNameColor = Color(0xFFFE7297)
 private val MentionColor = Color(0xFF008DC3)
 
-private data class MessageRenderData(
-    val text: AnnotatedString,
-    val inlineContent: Map<String, InlineTextContent>
+private val BILIBILI_VIDEO_LINK_REGEX = Regex(
+    "((?:https?://)?(?:[a-zA-Z0-9-]+\\.)*bilibili\\.com/video/([bB][vV][A-Za-z0-9]{10}|[aA][vV]\\d+)[a-zA-Z0-9\\-._~:/?#@!$&*+=%]*)"
 )
+
+private val VIDEO_ID_IN_URL_REGEX = Regex("/video/([bB][vV][A-Za-z0-9]{10}|[aA][vV]\\d+)")
+
+private val TRAILING_NOISE = setOf('.', ',', '!', '?', ';', ':', '"', '\'', ')', ']', '}')
+
+private data class ResolvedVideoLink(
+    val aid: Long,
+    val cid: Long,
+    val title: String
+)
+
+private sealed class MessageToken {
+    data class Text(val text: String, val isMention: Boolean = false) : MessageToken()
+    data class Emote(val code: String, val url: String, val alt: String) : MessageToken()
+    data class VideoLink(val data: VideoLinkToken) : MessageToken()
+}
+
+private data class VideoLinkToken(
+    val rawUrl: String,
+    val cleanedUrl: String,
+    val videoId: String
+)
+
+private fun trimTrailingNoise(rawUrl: String): String {
+    var s = rawUrl.trim()
+    while (s.isNotEmpty()) {
+        val c = s.last()
+        if (c !in TRAILING_NOISE) break
+
+        val keepBracket = when (c) {
+            ')' -> s.count { it == '(' } >= s.count { it == ')' }
+            ']' -> s.count { it == '[' } >= s.count { it == ']' }
+            '}' -> s.count { it == '{' } >= s.count { it == '}' }
+            else -> false
+        }
+        if (keepBracket) break
+        s = s.dropLast(1)
+    }
+    return s
+}
+
+private fun splitTextByVideoLink(text: String, isMention: Boolean): List<MessageToken> {
+    if (text.isEmpty()) return emptyList()
+    if (isMention) return listOf(MessageToken.Text(text, isMention = true))
+
+    val result = mutableListOf<MessageToken>()
+    var cursor = 0
+    BILIBILI_VIDEO_LINK_REGEX.findAll(text).forEach { m ->
+        val start = m.range.first
+        val end = m.range.last + 1
+        if (start > cursor) {
+            result += MessageToken.Text(text.substring(cursor, start))
+        }
+
+        val rawUrl = m.value
+        val cleanedUrl = trimTrailingNoise(rawUrl)
+        val videoId = VIDEO_ID_IN_URL_REGEX.find(cleanedUrl)?.groupValues?.getOrNull(1)
+            ?: m.groupValues.getOrNull(2)
+
+        result += if (!videoId.isNullOrBlank()) {
+            MessageToken.VideoLink(
+                VideoLinkToken(
+                    rawUrl = rawUrl,
+                    cleanedUrl = cleanedUrl,
+                    videoId = videoId
+                )
+            )
+        } else {
+            MessageToken.Text(rawUrl)
+        }
+        cursor = end
+    }
+
+    if (cursor < text.length) {
+        result += MessageToken.Text(text.substring(cursor))
+    }
+    return result
+}
+
+private fun buildMessageTokens(comment: Comment): List<MessageToken> {
+    val parts = comment.messageParts.ifEmpty {
+        listOf(Comment.MessagePart.Text(comment.message))
+    }
+
+    val tokens = mutableListOf<MessageToken>()
+    parts.forEach { part ->
+        when (part) {
+            is Comment.MessagePart.Text -> {
+                tokens += splitTextByVideoLink(part.text, part.isMention)
+            }
+
+            is Comment.MessagePart.Emote -> {
+                tokens += MessageToken.Emote(
+                    code = part.code,
+                    url = part.url,
+                    alt = part.alt
+                )
+            }
+        }
+    }
+    return tokens
+}
+
+private suspend fun resolveVideoLink(token: VideoLinkToken): ResolvedVideoLink? {
+    return withContext(Dispatchers.IO) {
+        val sessData = Prefs.sessData.takeIf { it.isNotBlank() }
+        val id = token.videoId
+
+        runCatching {
+            val response = if (id.startsWith("av", ignoreCase = true)) {
+                val aid = id.drop(2).toLong()
+                BiliHttpApi.getVideoInfo(av = aid, sessData = sessData)
+            } else {
+                val normalizedBvid = "BV" + id.drop(2)
+                BiliHttpApi.getVideoInfo(bv = normalizedBvid, sessData = sessData)
+            }
+            val data = response.getResponseData()
+            ResolvedVideoLink(
+                aid = data.aid,
+                cid = data.cid,
+                title = data.title
+            )
+        }.getOrNull()
+    }
+}
 
 private enum class Page { Main, Replies }
 @Composable
@@ -424,6 +561,21 @@ fun VideoCommentsDialog(
                                         },
                                         onImageClick = { imgIndex ->
                                             openPreview(comment.pictures, imgIndex)
+                                        },
+                                        onVideoLinkClick = { link ->
+                                            if (Prefs.showVideoInfo) {
+                                                VideoInfoActivity.actionStart(context, link.aid)
+                                            } else {
+                                                launchPlayerActivity(
+                                                    context = context,
+                                                    avid = link.aid,
+                                                    cid = link.cid,
+                                                    title = link.title,
+                                                    partTitle = "",
+                                                    played = 0,
+                                                    fromSeason = false
+                                                )
+                                            }
                                         }
                                     )
                                 }
@@ -486,6 +638,21 @@ fun VideoCommentsDialog(
                                                 onClick = {},
                                                 onImageClick = { imgIndex ->
                                                     openPreview(reply.pictures, imgIndex)
+                                                },
+                                                onVideoLinkClick = { link ->
+                                                    if (Prefs.showVideoInfo) {
+                                                        VideoInfoActivity.actionStart(context, link.aid)
+                                                    } else {
+                                                        launchPlayerActivity(
+                                                            context = context,
+                                                            avid = link.aid,
+                                                            cid = link.cid,
+                                                            title = link.title,
+                                                            partTitle = "",
+                                                            played = 0,
+                                                            fromSeason = false
+                                                        )
+                                                    }
                                                 }
                                             )
                                         }
@@ -566,7 +733,16 @@ private fun RootCommentHeader(comment: Comment) {
                 )
             }
 
-            CommentMessageText(comment = comment)
+            CommentMessageText(
+                comment = comment,
+                maxLines = 5,
+                enableLinkFocus = false,
+                bodyFocusRequester = null,
+                linkFocusRequesters = emptyList(),
+                firstPictureFocusRequester = null,
+                nextBodyFocusRequester = null,
+                onVideoLinkClick = null
+            )
 
             if (comment.pictures.isNotEmpty()) {
                 RootCommentPictures(pictures = comment.pictures)
@@ -584,13 +760,32 @@ private fun LightCommentItem(
     comment: Comment,
     showRepliesHint: Boolean,
     onClick: () -> Unit,
-    onImageClick: (Int) -> Unit
+    onImageClick: (Int) -> Unit,
+    onVideoLinkClick: (ResolvedVideoLink) -> Unit
 ) {
     val pictures = comment.pictures
+    val tokens = remember(comment.rpid, comment.messageParts, comment.message) {
+        buildMessageTokens(comment)
+    }
+    val linkCount = remember(tokens) { tokens.count { it is MessageToken.VideoLink } }
+
+    val linkFocusRequesters = remember(comment.rpid, linkCount) {
+        List(linkCount) { FocusRequester() }
+    }
     val pictureFocusRequesters = remember(comment.rpid, pictures.size) {
         List(pictures.size) { FocusRequester() }
     }
     var bodyHasFocus by remember(comment.rpid) { mutableStateOf(false) }
+
+    // 为文本区创建一个滚动状态和协程作用域
+    val textScrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+
+    val firstInteractiveRequester = when {
+        linkFocusRequesters.isNotEmpty() -> linkFocusRequesters.first()
+        pictureFocusRequesters.isNotEmpty() -> pictureFocusRequesters.first()
+        else -> null
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -602,13 +797,40 @@ private fun LightCommentItem(
                 .focusRequester(bodyFocusRequester)
                 .focusProperties {
                     previousBodyFocusRequester?.let { up = it }
-                    if (pictures.isNotEmpty()) {
-                        down = pictureFocusRequesters.first()
-                    } else {
-                        nextBodyFocusRequester?.let { down = it }
+                    when {
+                        firstInteractiveRequester != null -> down = firstInteractiveRequester
+                        nextBodyFocusRequester != null -> down = nextBodyFocusRequester
                     }
                 }
                 .onFocusChanged { bodyHasFocus = it.hasFocus }
+                // 拦截遥控器上下按键接管滚动
+                .onPreviewKeyEvent { event ->
+                    // 只有当这条评论主体获得焦点时，才接管按键
+                    if (bodyHasFocus && event.type == KeyEventType.KeyDown) {
+                        when (event.key) {
+                            Key.DirectionDown -> {
+                                // 如果文本还没滚到底部，按“下”键就向下滚动文本
+                                if (textScrollState.value < textScrollState.maxValue) {
+                                    coroutineScope.launch {
+                                        // 60f 大约等于两行文字的高度，滚动速度可自行微调
+                                        textScrollState.animateScrollBy(60f)
+                                    }
+                                    return@onPreviewKeyEvent true // 拦截事件，防止焦点跳走
+                                }
+                            }
+                            Key.DirectionUp -> {
+                                // 如果文本还没滚到顶部，按“上”键就向上滚动文本
+                                if (textScrollState.value > 0) {
+                                    coroutineScope.launch {
+                                        textScrollState.animateScrollBy(-60f)
+                                    }
+                                    return@onPreviewKeyEvent true // 拦截事件，防止焦点跳走
+                                }
+                            }
+                        }
+                    }
+                    false // 已经到底/到顶，或者按了左右键，放行默认的焦点移动
+                }
                 .border(
                     width = 3.dp,
                     color = if (bodyHasFocus) UserNameColor else Color.Transparent,
@@ -688,7 +910,19 @@ private fun LightCommentItem(
                         )
                     }
 
-                    CommentMessageText(comment = comment)
+                    CommentMessageText(
+                        modifier = Modifier
+                            .heightIn(max = 240.dp)
+                            .verticalScroll(textScrollState),
+                        comment = comment,
+                        maxLines = Int.MAX_VALUE,
+                        enableLinkFocus = true,
+                        bodyFocusRequester = bodyFocusRequester,
+                        linkFocusRequesters = linkFocusRequesters,
+                        firstPictureFocusRequester = pictureFocusRequesters.firstOrNull(),
+                        nextBodyFocusRequester = nextBodyFocusRequester,
+                        onVideoLinkClick = onVideoLinkClick
+                    )
 
                     if (showRepliesHint) {
                         Text(
@@ -710,9 +944,13 @@ private fun LightCommentItem(
             ) {
                 itemsIndexed(pictures, key = { index, p -> "${comment.rpid}-${p.imgSrc}-$index" }) { index, picture ->
                     val fr = pictureFocusRequesters[index]
-                    val upRequester = if (index == 0) bodyFocusRequester else pictureFocusRequesters[index - 1]
+                    val upRequester = when {
+                        index > 0 -> pictureFocusRequesters[index - 1]
+                        linkFocusRequesters.isNotEmpty() -> linkFocusRequesters.last()
+                        else -> bodyFocusRequester
+                    }
                     val downRequester = if (index == pictures.lastIndex) {
-                        nextBodyFocusRequester ?: FocusRequester.Default
+                        nextBodyFocusRequester ?: Default
                     } else {
                         pictureFocusRequesters[index + 1]
                     }
@@ -763,46 +1001,135 @@ private fun LightCommentItem(
 }
 
 @Composable
-private fun CommentMessageText(comment: Comment) {
-    val renderData = remember(comment.rpid, comment.messageParts, comment.message) {
-        buildMessageRenderData(comment)
+private fun VideoLinkInlineItem(
+    token: VideoLinkToken,
+    enableFocus: Boolean,
+    focusRequester: FocusRequester?,
+    upRequester: FocusRequester?,
+    downRequester: FocusRequester?,
+    fontSize: TextUnit,
+    onVideoLinkClick: ((ResolvedVideoLink) -> Unit)?
+) {
+    var resolved by remember(token.cleanedUrl) { mutableStateOf<ResolvedVideoLink?>(null) }
+    var loaded by remember(token.cleanedUrl) { mutableStateOf(false) }
+    var focused by remember(token.cleanedUrl) { mutableStateOf(false) }
+
+    LaunchedEffect(token.cleanedUrl) {
+        if (loaded) return@LaunchedEffect
+        loaded = true
+        resolved = resolveVideoLink(token)
     }
 
-    BasicText(
-        text = renderData.text,
-        inlineContent = renderData.inlineContent,
-        style = TextStyle(
-            color = CommentsText,
-            fontSize = 24.sp,
-            lineHeight = 28.sp
+    val title = resolved?.title ?: token.videoId
+
+    if (!enableFocus) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            androidx.tv.material3.Icon(
+                imageVector = Icons.Rounded.PlayCircleOutline,
+                contentDescription = null,
+                tint = MentionColor
+            )
+            Text(
+                text = title,
+                color = MentionColor,
+                fontSize = fontSize,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        return
+    }
+
+    Surface(
+        modifier = Modifier
+            .focusRequester(focusRequester ?: Default)
+            .focusProperties {
+                upRequester?.let { up = it }
+                downRequester?.let { down = it }
+            }
+            .onFocusChanged { focused = it.hasFocus }
+            .border(
+                width = if (focused) 3.dp else 0.dp,
+                color = if (focused) MentionColor else Color.Transparent,
+                shape = MaterialTheme.shapes.small
+            ),
+        shape = ClickableSurfaceDefaults.shape(MaterialTheme.shapes.small),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.Transparent,
+            pressedContainerColor = Color.Transparent
         ),
-        overflow = TextOverflow.Ellipsis
-    )
+        scale = ClickableSurfaceDefaults.scale(
+            focusedScale = 1f,
+            pressedScale = 1f
+        ),
+        enabled = true,
+        onClick = {
+            resolved?.let { onVideoLinkClick?.invoke(it) }
+        }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            androidx.tv.material3.Icon(
+                imageVector = Icons.Rounded.PlayCircleOutline,
+                contentDescription = null,
+                tint = MentionColor
+            )
+            Text(
+                text = title,
+                color = MentionColor,
+                fontSize = fontSize,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
 }
 
-private fun buildMessageRenderData(comment: Comment): MessageRenderData {
-    val parts = comment.messageParts.ifEmpty {
-        listOf(Comment.MessagePart.Text(comment.message))
+@Composable
+private fun CommentMessageText(
+    modifier: Modifier = Modifier,
+    comment: Comment,
+    maxLines: Int,
+    enableLinkFocus: Boolean,
+    bodyFocusRequester: FocusRequester?,
+    linkFocusRequesters: List<FocusRequester>,
+    firstPictureFocusRequester: FocusRequester?,
+    nextBodyFocusRequester: FocusRequester?,
+    onVideoLinkClick: ((ResolvedVideoLink) -> Unit)?
+) {
+    val tokens = remember(comment.rpid, comment.messageParts, comment.message) {
+        buildMessageTokens(comment)
     }
 
     val inlineContent = linkedMapOf<String, InlineTextContent>()
     var emoteIndex = 0
+    var linkIndex = 0
+
+    val basicFontSize = 24.sp
+
     val text = buildAnnotatedString {
-        parts.forEach { part ->
-            when (part) {
-                is Comment.MessagePart.Text -> {
-                    if (part.isMention) {
+        tokens.forEach { token ->
+            when (token) {
+                is MessageToken.Text -> {
+                    if (token.isMention) {
                         withStyle(SpanStyle(color = MentionColor, fontWeight = FontWeight.Medium)) {
-                            append(part.text)
+                            append(token.text)
                         }
                     } else {
-                        append(part.text)
+                        append(token.text)
                     }
                 }
 
-                is Comment.MessagePart.Emote -> {
+                is MessageToken.Emote -> {
                     val id = "comment_emote_$emoteIndex"
-                    appendInlineContent(id, part.alt.ifBlank { part.code })
+                    appendInlineContent(id, token.alt.ifBlank { token.code })
                     inlineContent[id] = InlineTextContent(
                         Placeholder(
                             width = 1.1.em,
@@ -812,17 +1139,65 @@ private fun buildMessageRenderData(comment: Comment): MessageRenderData {
                     ) {
                         AsyncImage(
                             modifier = Modifier.fillMaxSize(),
-                            model = part.url,
-                            contentDescription = part.alt,
+                            model = token.url,
+                            contentDescription = token.alt,
                             contentScale = ContentScale.Fit
                         )
                     }
                     emoteIndex += 1
                 }
+
+                is MessageToken.VideoLink -> {
+                    val id = "comment_video_link_$linkIndex"
+                    val currentLinkIndex = linkIndex
+                    val currentFr = linkFocusRequesters.getOrNull(currentLinkIndex)
+                    val downFr = when {
+                        currentLinkIndex < linkFocusRequesters.lastIndex ->
+                            linkFocusRequesters[currentLinkIndex + 1]
+                        firstPictureFocusRequester != null -> firstPictureFocusRequester
+                        nextBodyFocusRequester != null -> nextBodyFocusRequester
+                        else -> null
+                    }
+
+                    append(" ")
+                    appendInlineContent(id, token.data.videoId)
+                    append(" ")
+
+                    inlineContent[id] = InlineTextContent(
+                        Placeholder(
+                            width = 20.em,
+                            height = 1.6.em,
+                            placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter
+                        )
+                    ) {
+                        VideoLinkInlineItem(
+                            token = token.data,
+                            enableFocus = enableLinkFocus,
+                            focusRequester = currentFr,
+                            upRequester = bodyFocusRequester,
+                            downRequester = downFr,
+                            fontSize = basicFontSize,
+                            onVideoLinkClick = onVideoLinkClick
+                        )
+                    }
+
+                    linkIndex += 1
+                }
             }
         }
     }
-    return MessageRenderData(text = text, inlineContent = inlineContent)
+
+    BasicText(
+        modifier = modifier,
+        text = text,
+        inlineContent = inlineContent,
+        style = TextStyle(
+            color = CommentsText,
+            fontSize = basicFontSize,
+            lineHeight = 29.sp
+        ),
+        maxLines = maxLines
+    )
 }
 
 @Composable
