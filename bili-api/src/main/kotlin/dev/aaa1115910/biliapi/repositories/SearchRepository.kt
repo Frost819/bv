@@ -345,7 +345,8 @@ data class SearchTypeResult(
                     mid = video.av.mid,
                     duration = convertStringTimeToSeconds(video.av.duration),
                     play = video.av.play,
-                    danmaku = video.av.danmaku
+                    danmaku = video.av.danmaku,
+                    pubTime = video.av.showCardDesc2.ifEmpty { null }
                 )
         }
     }

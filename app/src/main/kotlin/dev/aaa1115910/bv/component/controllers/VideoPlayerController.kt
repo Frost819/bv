@@ -128,16 +128,8 @@ fun VideoPlayerController(
 
     fun startSeekCountdown() {
         seekCountdown?.cancel()
-        seekCountdown = scope.launch {
-            delay(1000)
-
-            onGoTime(goTime)
-            if (!videoPlayer.isPlaying) onPlay()
-
-            isSeeking = false
-            showInfoSeekController = false
-            hideInfoSeekControllerCountdown?.cancel()
-        }
+        onGoTime(goTime)
+        isSeeking = false
     }
 
     fun onDirectionLeft() {
@@ -202,15 +194,37 @@ fun VideoPlayerController(
                 return true
             }
             Key.MediaPlayPause -> {
+                val wasPlaying = videoPlayer.isPlaying
                 onPlayPause()
+                if (wasPlaying) {
+                    showInfoSeekController = true
+                    hideInfoSeekControllerCountdown?.cancel()
+                } else {
+                    hideInfoSeekControllerCountdown?.cancel()
+                    hideInfoSeekControllerCountdown = scope.launch {
+                        delay(5000)
+                        showInfoSeekController = false
+                    }
+                }
                 return true
             }
             Key.MediaPlay -> {
-                if (!videoPlayer.isPlaying) onPlay()
+                if (!videoPlayer.isPlaying) {
+                    onPlay()
+                    hideInfoSeekControllerCountdown?.cancel()
+                    hideInfoSeekControllerCountdown = scope.launch {
+                        delay(5000)
+                        showInfoSeekController = false
+                    }
+                }
                 return true
             }
             Key.MediaPause -> {
-                if (videoPlayer.isPlaying) onPause()
+                if (videoPlayer.isPlaying) {
+                    onPause()
+                    showInfoSeekController = true
+                    hideInfoSeekControllerCountdown?.cancel()
+                }
                 return true
             }
         }
@@ -229,7 +243,20 @@ fun VideoPlayerController(
                         if (uiState.showBackToStart) {
                             onBackToStart()
                         } else {
+                            val wasPlaying = videoPlayer.isPlaying
                             onPlayPause()
+                            if (wasPlaying) {
+                                // just paused — show control bar and keep it visible
+                                showInfoSeekController = true
+                                hideInfoSeekControllerCountdown?.cancel()
+                            } else {
+                                // just resumed — start auto-hide countdown
+                                hideInfoSeekControllerCountdown?.cancel()
+                                hideInfoSeekControllerCountdown = scope.launch {
+                                    delay(5000)
+                                    showInfoSeekController = false
+                                }
+                            }
                         }
                         return true
                     }
@@ -264,8 +291,8 @@ fun VideoPlayerController(
             .background(Color.Black)
             .focusable()
             .onPreviewKeyEvent { event ->
-                // 重置 info 控制器的隐藏倒计时 (只要有按键活动就重置)
-                if (showInfoSeekController) {
+                // 重置 info 控制器的隐藏倒计时 (只要有按键活动就重置，暂停时保持显示)
+                if (showInfoSeekController && videoPlayer.isPlaying) {
                     hideInfoSeekControllerCountdown?.cancel()
                     hideInfoSeekControllerCountdown = scope.launch {
                         delay(5000)

@@ -38,7 +38,8 @@ data class HistoryItem(
     val mid: Long?,
     val duration: Int,
     val progress: Int,
-    val type: HistoryItemType
+    val type: HistoryItemType,
+    val viewAt: Long = 0
 ) {
     companion object {
         fun fromHistoryItem(item: dev.aaa1115910.biliapi.http.entity.history.HistoryItem) =
@@ -59,7 +60,8 @@ data class HistoryItem(
                     "archive" -> HistoryItemType.Archive
                     "pgc" -> HistoryItemType.Pgc
                     else -> HistoryItemType.Unknown
-                }
+                },
+                viewAt = item.viewAt.toLong()
             )
 
         @Suppress("RemoveRedundantQualifierName")
@@ -111,7 +113,8 @@ data class HistoryItem(
                 CursorItem.CardItemCase.CARD_UGC -> HistoryItemType.Archive
                 CursorItem.CardItemCase.CARD_OGV -> HistoryItemType.Pgc
                 else -> HistoryItemType.Unknown
-            }
+            },
+            viewAt = item.viewAt
         )
     }
 }

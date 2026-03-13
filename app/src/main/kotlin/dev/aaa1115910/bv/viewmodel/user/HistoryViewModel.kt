@@ -16,6 +16,7 @@ import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.repository.UserRepository
 import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.addWithMainContext
+import dev.aaa1115910.biliapi.http.util.toSmartDate
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.fWarn
 import dev.aaa1115910.bv.util.formatHourMinSec
@@ -82,7 +83,8 @@ class HistoryViewModel(
                             R.string.play_time_history,
                             (historyItem.progress * 1000L).formatHourMinSec(),
                             (historyItem.duration * 1000L).formatHourMinSec()
-                        )
+                        ),
+                        pubTime = historyItem.viewAt.toSmartDate()
                     )
                 )
             }
