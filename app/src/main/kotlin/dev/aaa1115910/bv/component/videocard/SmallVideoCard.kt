@@ -93,9 +93,10 @@ fun SmallVideoCard(
                     if (!focusState.hasFocus) showActions = false
                 },
             shape = CardDefaults.shape(MaterialTheme.shapes.large),
+            scale = CardDefaults.scale(focusedScale = 1f, pressedScale = 1f),
             border = CardDefaults.border(
                 focusedBorder = Border(
-                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.border),
+                    border = BorderStroke(3.dp, Color(0xFFFF69B4)),
                     shape = MaterialTheme.shapes.large
                 )
             )

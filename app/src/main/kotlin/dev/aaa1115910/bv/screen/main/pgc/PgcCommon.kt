@@ -395,6 +395,7 @@ fun PgcFeatureButton(
             focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
             pressedContainerColor = MaterialTheme.colorScheme.inverseSurface
         ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 1f),
         shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.large),
         onClick = onClick
     ) {
@@ -430,6 +431,7 @@ fun PgcFeatureButton(
             focusedContainerColor = MaterialTheme.colorScheme.inverseSurface,
             pressedContainerColor = MaterialTheme.colorScheme.inverseSurface
         ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 1f),
         shape = ClickableSurfaceDefaults.shape(shape = MaterialTheme.shapes.large),
         onClick = onClick
     ) {

@@ -49,7 +49,7 @@ fun PersonalContent(
 ) {
     val scope = rememberCoroutineScope()
 
-    var selectedTab by remember { mutableStateOf(PersonalTopNavItem.ToView) }
+    var selectedTab by remember { mutableStateOf(PersonalTopNavItem.History) }
     var focusOnContent by remember { mutableStateOf(false) }
 
     fun refreshPageData(nav: PersonalTopNavItem) {

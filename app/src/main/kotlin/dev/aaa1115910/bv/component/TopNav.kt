@@ -164,9 +164,9 @@ enum class PgcTopNavItem(private val pgcType: PgcType) : TopNavItem {
 }
 
 enum class PersonalTopNavItem : TopNavItem {
-    ToView,
     History,
     Favorite,
+    ToView,
     FollowingSeason;
 
     override fun getDisplayName(context: Context): String {

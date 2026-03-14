@@ -506,19 +506,13 @@ fun SeasonCover(
         modifier = modifier.onFocusChanged { hasFocus = it.hasFocus },
         onClick = onClick,
         shape = CardDefaults.shape(shape = MaterialTheme.shapes.large),
-        glow = CardDefaults.glow(
-            focusedGlow = Glow(
-                elevationColor = MaterialTheme.colorScheme.inverseSurface,
-                elevation = 16.dp
+        scale = CardDefaults.scale(focusedScale = 1f, pressedScale = 1f),
+        border = CardDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(3.dp, Color(0xFFFF69B4)),
+                shape = MaterialTheme.shapes.large
             )
-        ),
-        border = if (Build.VERSION.SDK_INT < 31) {
-            CardDefaults.border()
-        } else {
-            CardDefaults.border(
-                focusedBorder = Border(BorderStroke(0.dp, Color.Transparent))
-            )
-        }
+        )
     ) {
         Box {
             AsyncImage(
@@ -1110,19 +1104,13 @@ private fun SeasonSelectorContent(
                                     season.seasonId == currentSeasonId,
                                     Modifier.bringIntoViewRequester(bringIntoViewRequester)
                                 ),
-                            glow = CardDefaults.glow(
-                                focusedGlow = Glow(
-                                    elevationColor = MaterialTheme.colorScheme.inverseSurface,
-                                    elevation = 16.dp
+                            scale = CardDefaults.scale(focusedScale = 1f, pressedScale = 1f),
+                            border = CardDefaults.border(
+                                focusedBorder = Border(
+                                    border = BorderStroke(3.dp, Color(0xFFFF69B4)),
+                                    shape = MaterialTheme.shapes.large
                                 )
                             ),
-                            border = if (Build.VERSION.SDK_INT < 31) {
-                                CardDefaults.border()
-                            } else {
-                                CardDefaults.border(
-                                    focusedBorder = Border(BorderStroke(0.dp, Color.Transparent))
-                                )
-                            },
                             onClick = {
                                 onClickSeason(season.seasonId)
                             }

@@ -1,6 +1,5 @@
 package dev.aaa1115910.bv.component.videocard
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +22,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -52,10 +50,6 @@ fun LargeVideoCard(
     val view = LocalView.current
 
     var hasFocus by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (hasFocus) 1f else 0.95f,
-        label = "large video card scale"
-    )
 
     val height = 160.dp
     val reasonColor = Color.Red
@@ -67,7 +61,6 @@ fun LargeVideoCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .scale(scale)
             .onFocusChanged { hasFocus = it.isFocused }
             .focusedBorder(MaterialTheme.shapes.medium)
             .clickable { onClick() },

@@ -5,7 +5,6 @@ import android.graphics.Canvas
 import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -18,7 +17,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -46,17 +44,19 @@ fun Modifier.focusedBorder(
     val infiniteTransition = rememberInfiniteTransition(label = "infinite border color transition")
     var hasFocus by remember { mutableStateOf(false) }
 
+    val pink = Color(0xFFFF69B4)
     val animateColor by infiniteTransition.animateColor(
-        initialValue = Color.White.copy(alpha = 1f),
-        targetValue = Color.White.copy(alpha = 0.1f),
+        initialValue = pink.copy(alpha = 1f),
+        targetValue = pink.copy(alpha = 0.1f),
         animationSpec = infiniteRepeatable(
             animation = tween(1000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "focused border animate color"
     )
+    val focusColor = Color(0xFFFF69B4)
     val borderColor = if (hasFocus) {
-        if (animate) animateColor else Color.White
+        if (animate) animateColor else focusColor
     } else Color.Transparent
 
     onFocusChanged { hasFocus = it.hasFocus }
@@ -68,20 +68,12 @@ fun Modifier.focusedBorder(
 }
 
 /**
- * 在没有获取到焦点的时候缩小，以便在获取到焦点的时候“放大”
+ * 在没有获取到焦点的时候缩小，以便在获取到焦点的时候”放大”
+ * 已禁用缩放动画以提升性能，仅保留接口兼容
  */
 fun Modifier.focusedScale(
     scale: Float = 0.9f
-): Modifier = composed {
-    var hasFocus by remember { mutableStateOf(false) }
-    val scaleValue by animateFloatAsState(
-        targetValue = if (hasFocus) 1f else scale,
-        label = "focused scale"
-    )
-
-    onFocusChanged { hasFocus = it.hasFocus }
-        .scale(scaleValue)
-}
+): Modifier = this
 
 fun Modifier.bitmapMask(
     bitmap: Bitmap,
