@@ -1,6 +1,5 @@
 package dev.aaa1115910.bv.component.videocard
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -80,13 +80,19 @@ fun SmallVideoCard(
     }
 
     var cardFocused by remember { mutableStateOf(false) }
-    val pink = Color(0xFFFF69B4)
+    val pinkBg = remember { Color(0xFFFF69B4).copy(alpha = 0.35f) }
+    val shape = MaterialTheme.shapes.large
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
-            .background(if (cardFocused) pink.copy(alpha = 0.15f) else Color.Transparent)
+            .clip(shape)
+            .drawBehind {
+                if (cardFocused) {
+                    drawRect(pinkBg)
+                }
+            }
+            .padding(6.dp)
     ) {
         Card(
             onClick = { if (!showActions) onClick() },
@@ -104,11 +110,9 @@ fun SmallVideoCard(
             shape = CardDefaults.shape(MaterialTheme.shapes.large),
             scale = CardDefaults.scale(focusedScale = 1f, pressedScale = 1f),
             border = CardDefaults.border(
-                focusedBorder = Border(
-                    border = BorderStroke(2.dp, pink),
-                    shape = MaterialTheme.shapes.large
-                )
-            )
+                focusedBorder = Border.None,
+                pressedBorder = Border.None
+            ),
         ) {
             if (showActions) {
                 Row(
@@ -276,6 +280,7 @@ fun CardInfo(
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
+            minLines = 2,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.fillMaxWidth()

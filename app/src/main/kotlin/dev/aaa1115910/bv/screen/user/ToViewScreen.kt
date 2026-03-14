@@ -51,7 +51,7 @@ fun ToViewScreen(
         columns = GridCells.Fixed(4),
         contentPadding = PaddingValues(24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
-        horizontalArrangement = Arrangement.spacedBy(24.dp)
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         // 未看完标题
         item(span = { GridItemSpan(maxLineSpan) }) {

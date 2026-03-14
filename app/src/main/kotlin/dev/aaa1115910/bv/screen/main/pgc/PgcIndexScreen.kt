@@ -140,7 +140,7 @@ fun PgcIndexScreen(
             columns = GridCells.Fixed(6),
             contentPadding = PaddingValues(24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
-            horizontalArrangement = Arrangement.spacedBy(24.dp)
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             itemsIndexed(items = pgcItems) { index, pgcItem ->
                 SeasonCard(

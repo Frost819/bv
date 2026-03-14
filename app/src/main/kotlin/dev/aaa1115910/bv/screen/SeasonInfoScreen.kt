@@ -610,7 +610,7 @@ fun SeasonInfoPart(
     Row(
         modifier = modifier
             .padding(horizontal = 50.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         SeasonCover(
@@ -892,7 +892,7 @@ fun SeasonEpisodeRow(
                 .padding(top = 15.dp)
                 .focusRestorer(focusRequester),
             contentPadding = PaddingValues(horizontal = 50.dp),
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item {
                 Surface(
@@ -1103,7 +1103,7 @@ private fun SeasonSelectorContent(
                     modifier = Modifier.padding(bottom = 48.dp),
                     state = rowState,
                     contentPadding = PaddingValues(horizontal = 48.dp),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     itemsIndexed(items = seasons) { index, season ->
                         Card(

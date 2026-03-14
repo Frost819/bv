@@ -102,7 +102,7 @@ fun FollowingSeasonScreen(
             columns = GridCells.Fixed(6),
             contentPadding = PaddingValues(24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
-            horizontalArrangement = Arrangement.spacedBy(24.dp)
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             if (followingSeasons.isNotEmpty()) {
                 itemsIndexed(items = followingSeasons) { index, followingSeason ->

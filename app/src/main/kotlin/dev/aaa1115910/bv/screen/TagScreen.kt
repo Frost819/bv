@@ -102,7 +102,7 @@ fun TagScreen(
                         fontSize = 24.sp
                     )
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
                             text = stringResource(
@@ -128,7 +128,7 @@ fun TagScreen(
             state = gridState,
             contentPadding = PaddingValues(24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
-            horizontalArrangement = Arrangement.spacedBy(24.dp)
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             items(
                 items = uiState.value.videoList,

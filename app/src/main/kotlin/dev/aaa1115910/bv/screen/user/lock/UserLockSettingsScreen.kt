@@ -210,7 +210,7 @@ private fun UserLockSettingsContent(
 
             LazyRow(
                 modifier = Modifier.focusRequester(focusRequester),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp)
             ) {
                 item {

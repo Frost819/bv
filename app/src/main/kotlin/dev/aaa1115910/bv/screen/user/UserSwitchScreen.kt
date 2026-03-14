@@ -240,7 +240,7 @@ private fun UserSwitchContent(
 
             LazyRow(
                 modifier = Modifier.focusRequester(focusRequester),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp)
             ) {
                 items(items = userList) { user ->
@@ -275,7 +275,7 @@ private fun UserSwitchContent(
             ) {
                 if (isInManagerMode) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -286,7 +286,7 @@ private fun UserSwitchContent(
                     }
                 } else {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(imageVector = Icons.Default.Settings, contentDescription = null)

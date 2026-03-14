@@ -96,7 +96,7 @@ fun UpSpaceScreen(
                         fontSize = 24.sp
                     )
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
                             text = stringResource(
@@ -122,7 +122,7 @@ fun UpSpaceScreen(
             state = gridState,
             contentPadding = PaddingValues(24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
-            horizontalArrangement = Arrangement.spacedBy(24.dp)
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             if (upInfoViewModel.spaceVideos.isNotEmpty()) {
                 itemsIndexed(

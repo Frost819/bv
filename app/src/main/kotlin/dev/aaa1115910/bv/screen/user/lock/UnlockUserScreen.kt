@@ -185,7 +185,7 @@ private fun UnlockUserContent(
 
             LazyRow(
                 modifier = Modifier.focusRequester(defaultFocusRequester),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp)
             ) {
                 items(items = userList) { user ->

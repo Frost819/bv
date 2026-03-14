@@ -164,7 +164,7 @@ fun PgcFeedVideoRow(
     LazyRow(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(24.dp)
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         data.forEachIndexed { index, feedItem ->
             val cardModifier = if (index == data.lastIndex) {
@@ -405,7 +405,7 @@ fun PgcFeatureButton(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Icon(imageVector = icon, contentDescription = null)
                 Text(
@@ -441,7 +441,7 @@ fun PgcFeatureButton(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Icon(
                     modifier = Modifier.size(24.dp),

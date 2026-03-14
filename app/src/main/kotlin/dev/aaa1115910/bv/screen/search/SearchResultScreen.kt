@@ -269,7 +269,7 @@ fun SearchResultScreen(
                 columns = GridCells.Fixed(rowSize),
                 contentPadding = PaddingValues(24.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
-                horizontalArrangement = Arrangement.spacedBy(24.dp)
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 itemsIndexed(
                     items = when (searchResult.type) {
