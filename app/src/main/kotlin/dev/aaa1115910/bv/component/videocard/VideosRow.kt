@@ -1,6 +1,5 @@
 package dev.aaa1115910.bv.component.videocard
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -53,10 +52,7 @@ fun VideosRow(
     val density = LocalDensity.current
     var hasFocus by remember { mutableStateOf(false) }
     val titleColor = if (hasFocus) Color.White else Color.White.copy(alpha = 0.6f)
-    val titleFontSize by animateFloatAsState(
-        targetValue = if (hasFocus) 30f else 14f,
-        label = "title font size"
-    )
+    val titleFontSize = if (hasFocus) 30f else 14f
     var rowHeight by remember { mutableStateOf(0.dp) }
 
     Column(

@@ -84,10 +84,13 @@ import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.LocalTextStyle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.SuggestionChip
+import androidx.tv.material3.SuggestionChipDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Tab
+import androidx.tv.material3.TabDefaults
 import androidx.tv.material3.TabRow
+import androidx.tv.material3.TabRowDefaults
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import dev.aaa1115910.biliapi.entity.ApiType
@@ -852,6 +855,7 @@ fun VideoInfoData(
             shape = ClickableSurfaceDefaults.shape(
                 shape = MaterialTheme.shapes.large,
             ),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f, pressedScale = 1f),
             border = ClickableSurfaceDefaults.border(
                 focusedBorder = Border(
                     border = BorderStroke(width = 3.dp, color = MaterialTheme.colorScheme.border),
@@ -946,10 +950,18 @@ fun VideoInfoData(
                     contentPadding = PaddingValues(horizontal = 5.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    val pink = Color(0xFFFF69B4)
                     items(items = tags) { tag ->
-                        SuggestionChip(onClick = {
-                            onClickTip(tag)
-                        }) {
+                        SuggestionChip(
+                            onClick = { onClickTip(tag) },
+                            scale = SuggestionChipDefaults.scale(focusedScale = 1f, pressedScale = 1f),
+                            colors = SuggestionChipDefaults.colors(
+                                focusedContainerColor = pink,
+                                focusedContentColor = Color.Black,
+                                pressedContainerColor = pink,
+                                pressedContentColor = Color.Black
+                            )
+                        ) {
                             Text(text = tag.name)
                         }
                     }
@@ -1401,6 +1413,15 @@ private fun VideoPartListDialog(
                             },
                         selectedTabIndex = selectedTabIndex,
                         separator = { Spacer(modifier = Modifier.width(12.dp)) },
+                        indicator = { tabPositions, doesTabRowHaveFocus ->
+                            val pink = Color(0xFFFF69B4)
+                            TabRowDefaults.PillIndicator(
+                                currentTabPosition = tabPositions[selectedTabIndex],
+                                doesTabRowHaveFocus = doesTabRowHaveFocus,
+                                activeColor = pink,
+                                inactiveColor = pink.copy(alpha = 0.4f)
+                            )
+                        }
                     ) {
                         for (i in 0 until tabCount) {
                             Tab(
@@ -1409,6 +1430,11 @@ private fun VideoPartListDialog(
                                 ) else Modifier,
                                 selected = i == selectedTabIndex,
                                 onFocus = { selectedTabIndex = i },
+                                colors = TabDefaults.pillIndicatorTabColors(
+                                    focusedContentColor = Color.Black,
+                                    selectedContentColor = Color.White,
+                                    focusedSelectedContentColor = Color.Black
+                                )
                             ) {
                                 Text(
                                     text = "P${i * 20 + 1}-${(i + 1) * 20}",
@@ -1508,6 +1534,15 @@ private fun VideoUgcListDialog(
                             },
                         selectedTabIndex = selectedTabIndex,
                         separator = { Spacer(modifier = Modifier.width(12.dp)) },
+                        indicator = { tabPositions, doesTabRowHaveFocus ->
+                            val pink = Color(0xFFFF69B4)
+                            TabRowDefaults.PillIndicator(
+                                currentTabPosition = tabPositions[selectedTabIndex],
+                                doesTabRowHaveFocus = doesTabRowHaveFocus,
+                                activeColor = pink,
+                                inactiveColor = pink.copy(alpha = 0.4f)
+                            )
+                        }
                     ) {
                         for (i in 0 until tabCount) {
                             Tab(
@@ -1516,6 +1551,11 @@ private fun VideoUgcListDialog(
                                 ) else Modifier,
                                 selected = i == selectedTabIndex,
                                 onFocus = { selectedTabIndex = i },
+                                colors = TabDefaults.pillIndicatorTabColors(
+                                    focusedContentColor = Color.Black,
+                                    selectedContentColor = Color.White,
+                                    focusedSelectedContentColor = Color.Black
+                                )
                             ) {
                                 Text(
                                     text = "P${i * 20 + 1}-${(i + 1) * 20}",

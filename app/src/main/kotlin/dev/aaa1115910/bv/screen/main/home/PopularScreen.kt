@@ -85,7 +85,7 @@ fun PopularScreen(
     ) {
         itemsIndexed(
             items = popularViewModel.popularVideoList,
-            key = { index, _ -> index }
+            key = { _, item -> item.aid }
         ) { _, item ->
             SmallVideoCard(
                 data = remember(item) {         // `VideoCardData` 只在 item 变动时重建

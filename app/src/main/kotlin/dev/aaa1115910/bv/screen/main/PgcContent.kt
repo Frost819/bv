@@ -1,11 +1,6 @@
 package dev.aaa1115910.bv.screen.main
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -130,19 +125,9 @@ fun PgcContent(
                     return@onPreviewKeyEvent false
                 }
         ) {
-            AnimatedContent(
+            Crossfade(
                 targetState = selectedTab,
-                label = "pgc animated content",
-                transitionSpec = {
-                    val coefficient = 10
-                    if (targetState.ordinal < initialState.ordinal) {
-                        fadeIn() + slideInHorizontally { -it / coefficient } togetherWith
-                                fadeOut() + slideOutHorizontally { it / coefficient }
-                    } else {
-                        fadeIn() + slideInHorizontally { it / coefficient } togetherWith
-                                fadeOut() + slideOutHorizontally { -it / coefficient }
-                    }
-                }
+                label = "pgc crossfade"
             ) { screen ->
                 when (screen) {
                     PgcTopNavItem.Anime -> AnimeContent(lazyListState = animeState)

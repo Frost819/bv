@@ -33,8 +33,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
+import androidx.compose.ui.graphics.Color
 import androidx.tv.material3.Tab
+import androidx.tv.material3.TabDefaults
 import androidx.tv.material3.TabRow
+import androidx.tv.material3.TabRowDefaults
 import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.FavoriteFolderMetadata
 import dev.aaa1115910.bv.activities.video.UpInfoActivity
@@ -116,6 +119,15 @@ fun FavoriteScreen(
                 .focusRestorer(focusRequester),
             selectedTabIndex = currentTabIndex,
             separator = { Spacer(modifier = Modifier.width(12.dp)) },
+            indicator = { tabPositions, doesTabRowHaveFocus ->
+                val pink = Color(0xFFFF69B4)
+                TabRowDefaults.PillIndicator(
+                    currentTabPosition = tabPositions[currentTabIndex],
+                    doesTabRowHaveFocus = doesTabRowHaveFocus,
+                    activeColor = pink,
+                    inactiveColor = pink.copy(alpha = 0.4f)
+                )
+            }
         ) {
             favoriteViewModel.favoriteFolderMetadataList.forEachIndexed { index, folderMetadata ->
                 Tab(
@@ -127,7 +139,12 @@ fun FavoriteScreen(
                             updateCurrentFavoriteFolder(folderMetadata)
                         }
                     },
-                    onClick = { updateCurrentFavoriteFolder(folderMetadata) }
+                    onClick = { updateCurrentFavoriteFolder(folderMetadata) },
+                    colors = TabDefaults.pillIndicatorTabColors(
+                        focusedContentColor = Color.Black,
+                        selectedContentColor = Color.White,
+                        focusedSelectedContentColor = Color.Black
+                    )
                 ) {
                     Box(
                         modifier = Modifier.height(32.dp),

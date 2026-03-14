@@ -84,7 +84,9 @@ import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Tab
+import androidx.tv.material3.TabDefaults
 import androidx.tv.material3.TabRow
+import androidx.tv.material3.TabRowDefaults
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import dev.aaa1115910.biliapi.entity.ApiType
@@ -771,6 +773,14 @@ fun SeasonEpisodesDialog(
                                 },
                             selectedTabIndex = selectedTabIndex,
                             separator = { Spacer(modifier = Modifier.width(12.dp)) },
+                            indicator = { tabPositions, doesTabRowHaveFocus ->
+                                TabRowDefaults.PillIndicator(
+                                    currentTabPosition = tabPositions[selectedTabIndex],
+                                    doesTabRowHaveFocus = doesTabRowHaveFocus,
+                                    activeColor = Color(0xFFFF69B4),
+                                    inactiveColor = Color(0xFFFF69B4).copy(alpha = 0.4f)
+                                )
+                            }
                         ) {
                             for (i in 0 until tabCount) {
                                 Tab(
@@ -779,6 +789,11 @@ fun SeasonEpisodesDialog(
                                     ) else Modifier,
                                     selected = i == selectedTabIndex,
                                     onFocus = { selectedTabIndex = i },
+                                    colors = TabDefaults.pillIndicatorTabColors(
+                                        focusedContentColor = Color.Black,
+                                        selectedContentColor = Color.White,
+                                        focusedSelectedContentColor = Color.Black
+                                    )
                                 ) {
                                     Text(
                                         text = "P${i * 20 + 1}-${(i + 1) * 20}",

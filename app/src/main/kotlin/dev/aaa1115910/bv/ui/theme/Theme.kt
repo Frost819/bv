@@ -38,8 +38,11 @@ fun BVTheme(
     val fontScale = LocalDensity.current.fontScale
     val view = LocalView.current
 
+    val pink = Color(0xFFFF69B4)
     val colorSchemeTv = darkColorScheme(
-        border = Color(0xFFFF69B4)
+        border = pink,
+        inverseSurface = pink,
+        inverseOnSurface = Color.Black
     )
     val colorSchemeCommon = androidx.compose.material3.darkColorScheme()
     val typographyTv =

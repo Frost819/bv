@@ -21,10 +21,13 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Tab
+import androidx.tv.material3.TabDefaults
 import androidx.tv.material3.TabRow
+import androidx.tv.material3.TabRowDefaults
 import androidx.tv.material3.TabRowScope
 import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.pgc.PgcType
@@ -55,11 +58,20 @@ fun TopNav(
             .padding(12.dp, verticalPadding),
         horizontalArrangement = Arrangement.Center
     ) {
+        val pink = Color(0xFFFF69B4)
         TabRow(
             modifier = Modifier
                 .focusRestorer(focusRequester),
             selectedTabIndex = selectedTabIndex,
             separator = { Spacer(modifier = Modifier.width(12.dp)) },
+            indicator = { tabPositions, doesTabRowHaveFocus ->
+                TabRowDefaults.PillIndicator(
+                    currentTabPosition = tabPositions[selectedTabIndex],
+                    doesTabRowHaveFocus = doesTabRowHaveFocus,
+                    activeColor = pink,
+                    inactiveColor = pink.copy(alpha = 0.4f)
+                )
+            }
         ) {
             items.forEachIndexed { index, tab ->
                 NavItemTab(
@@ -89,11 +101,17 @@ private fun TabRowScope.NavItemTab(
 ) {
     val context = LocalContext.current
 
+    val pink = Color(0xFFFF69B4)
     Tab(
         modifier = modifier,
         selected = selected,
         onFocus = onFocus,
-        onClick = onClick
+        onClick = onClick,
+        colors = TabDefaults.pillIndicatorTabColors(
+            focusedContentColor = Color.Black,
+            selectedContentColor = Color.White,
+            focusedSelectedContentColor = Color.Black
+        )
     ) {
         Text(
             modifier = Modifier
