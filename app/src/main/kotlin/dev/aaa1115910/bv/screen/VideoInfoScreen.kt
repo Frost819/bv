@@ -956,10 +956,22 @@ fun VideoInfoData(
                             onClick = { onClickTip(tag) },
                             scale = SuggestionChipDefaults.scale(focusedScale = 1f, pressedScale = 1f),
                             colors = SuggestionChipDefaults.colors(
+                                containerColor = Color.Transparent,
+                                contentColor = Color.White,
                                 focusedContainerColor = pink,
                                 focusedContentColor = Color.Black,
                                 pressedContainerColor = pink,
                                 pressedContentColor = Color.Black
+                            ),
+                            border = SuggestionChipDefaults.border(
+                                border = Border(
+                                    border = BorderStroke(1.dp, Color.White),
+                                    shape = MaterialTheme.shapes.small
+                                ),
+                                focusedBorder = Border(
+                                    border = BorderStroke(1.dp, pink),
+                                    shape = MaterialTheme.shapes.small
+                                )
                             )
                         ) {
                             Text(text = tag.name)
