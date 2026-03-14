@@ -125,7 +125,7 @@ class VideoPlayRepository(
         return when (preferApiType) {
             ApiType.Web -> {
                 val playUrlData = if (enableProxy) {
-                    BiliHttpProxyApi.getPgcVideoPlayUrl(
+                    BiliHttpProxyApi.getPgcVideoPlayUrlV2(
                         av = aid,
                         cid = cid,
                         epid = epid,
@@ -133,23 +133,24 @@ class VideoPlayRepository(
                         qn = 127,
                         fnver = 0,
                         fourk = 1,
-                        sessData = authRepository.sessionData,
-                        dedeUserID = authRepository.mid
+                        sessData = authRepository.sessionData
+//                        buvid3 = authRepository.buvid3
                     )
                 } else {
-                    BiliHttpApi.getPgcVideoPlayUrl(
+                    BiliHttpApi.getPgcVideoPlayUrlV2(
                         av = aid,
                         cid = cid,
+                        epid = epid,
                         fnval = 4048,
                         qn = 127,
                         fnver = 0,
                         fourk = 1,
-                        sessData = authRepository.sessionData,
-                        dedeUserID = authRepository.mid
+                        sessData = authRepository.sessionData
+//                        buvid3 = authRepository.buvid3
                     )
                 }.getResponseData()
 
-                PlayData.fromPlayUrlData(playUrlData)
+                PlayData.fromPlayUrlV2Data(playUrlData)
             }
 
             ApiType.App -> {

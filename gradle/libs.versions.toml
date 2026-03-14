@@ -17,16 +17,16 @@ kotlinx-serialization = "1.10.0"
 #noinspection NewerVersionAvailable 3.2 新的缓存机制导致部分响应无法正常获取
 ktor = "3.1.3"
 ktor-jsoup = "2.3.0"
-logging = "7.0.14"
+logging = "8.0.01"
 lottie = "6.7.1"
 material = "1.13.0"
 material-symbols-compose = "1.0.1"
-protobuf = "4.33.5"
+protobuf = "4.34.0"
 qrcode = "4.5.0"
 rememberPreference = "1.1.1"
 slf4j-android-mvysny = "2.0.13"
 slf4j-simple = "2.0.17"
-vlc = "3.6.5"
+#vlc = "3.6.5"
 zxing = "3.5.4"
 
 [libraries]
@@ -125,7 +125,7 @@ slf4j-android-mvysny = { module = "com.gitlab.mvysny.slf4j:slf4j-handroid", vers
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j-simple" }
 
 # https://code.videolan.org/videolan/vlc-android
-vlc-android-all = { module = "org.videolan.android:libvlc-all", version.ref = "vlc" }
+#vlc-android-all = { module = "org.videolan.android:libvlc-all", version.ref = "vlc" }
 
 # https://github.com/zxing/zxing
 zxing = { module = "com.google.zxing:core", version.ref = "zxing" }

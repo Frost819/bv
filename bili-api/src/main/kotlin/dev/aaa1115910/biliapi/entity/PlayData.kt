@@ -128,6 +128,10 @@ data class PlayData(
             )
         }
 
+        fun fromPlayUrlV2Data(playUrlV2Data: dev.aaa1115910.biliapi.http.entity.video.PlayUrlV2Data): PlayData {
+            return fromPlayUrlData(playUrlV2Data.videoInfo)
+        }
+
         fun fromPlayUrlData(playUrlData: dev.aaa1115910.biliapi.http.entity.video.PlayUrlData): PlayData {
             val videos = playUrlData.dash?.video ?: emptyList()
             val audios = playUrlData.dash?.audio

@@ -11,6 +11,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.webkit.WebViewCompat
 import coil.Coil
 import de.schnettler.datastore.manager.DataStoreManager
+import dev.aaa1115910.biliapi.http.BiliHttpApi
 import dev.aaa1115910.biliapi.http.BiliHttpProxyApi
 import dev.aaa1115910.biliapi.http.util.BiliAppConf
 import dev.aaa1115910.biliapi.http.util.BiliWebConf
@@ -97,6 +98,9 @@ class BVApp : Application() {
     private fun initApiConfig() {
         BiliAppConf.osVersion = Build.VERSION.RELEASE
         BiliAppConf.model = Build.MODEL
+        // 设置 sessData 提供者，用于更新 WBI keys 时携带登录凭证
+        BiliHttpApi.sessDataProvider = { Prefs.sessData }
+        BiliHttpApi.buvid3Provider = { Prefs.buvid3 }
         BiliWebConf.webViewVersion = runCatching {
             WebViewCompat.getCurrentLoadedWebViewPackage()!!.versionName!!
                 .substringBefore(".").toInt()

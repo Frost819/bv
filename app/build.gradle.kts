@@ -126,13 +126,13 @@ android {
             excludes += "**/*.version"
         }
 
-        if (gradle.startParameter.taskNames.find { it.startsWith("assembleLite") } != null) {
-            jniLibs {
-                val vlcLibs = listOf("libvlc", "libc++_shared", "libvlcjni")
-                val abis = listOf("x86_64", "x86", "arm64-v8a", "armeabi-v7a")
-                vlcLibs.forEach { vlcLibName -> abis.forEach { abi -> excludes.add("lib/$abi/$vlcLibName.so") } }
-            }
-        }
+//        if (gradle.startParameter.taskNames.find { it.startsWith("assembleLite") } != null) {
+//            jniLibs {
+//                val vlcLibs = listOf("libvlc", "libc++_shared", "libvlcjni")
+//                val abis = listOf("x86_64", "x86", "arm64-v8a", "armeabi-v7a")
+//                vlcLibs.forEach { vlcLibName -> abis.forEach { abi -> excludes.add("lib/$abi/$vlcLibName.so") } }
+//            }
+//        }
     }
 
     /*splits {

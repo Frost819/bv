@@ -17,6 +17,7 @@
         android:roundIcon="@drawable/ic_launcher_round"
         android:largeHeap="true"
         android:allowBackup="false"
+        tools:replace="android:icon"
         tools:ignore="DataExtractionRules">
         <activity
             android:name="dev.aaa1115910.bv.activities.LauncherActivity"

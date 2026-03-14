@@ -257,8 +257,9 @@ fun BvPlayer(
     // 独立弹幕层句柄（Stable），父级重组频率降低
     val danmakuLayerHandle = remember { DanmakuLayerHandle() }
 
-    val initDanmakuConfig: () -> Unit = {
+    val syncDanmakuConfig: () -> Unit = {
         val danmakuTypes = videoPlayerConfigData.currentDanmakuEnabledList
+        typeFilter.clear()
         if (!danmakuTypes.contains(DanmakuType.All)) {
             val types = DanmakuType.entries.toMutableList()
             types.remove(DanmakuType.All)
@@ -280,8 +281,9 @@ fun BvPlayer(
             visibility = videoPlayerConfigData.showDanmaku,
             rollingDurationFactor = videoPlayerConfigData.currentDanmakuRollingDurationFactor
         )
+        danmakuConfig.updateVisibility()
         danmakuConfig.updateFilter()
-        logger.info { "Init danmaku config: $danmakuConfig" }
+        logger.info { "Sync danmaku config: $danmakuConfig" }
         mDanmakuPlayer?.updateConfig(danmakuConfig)
     }
 
@@ -391,7 +393,7 @@ fun BvPlayer(
             scope.launch(Dispatchers.Main) {
                 isError = false
                 exception = null
-                initDanmakuConfig()
+                syncDanmakuConfig()
                 updateVideoAspectRatio()
 
                 //reset default play speed
@@ -455,7 +457,7 @@ fun BvPlayer(
             mDanmakuPlayer?.pause()
             scope.launch(Dispatchers.Main) {
                 isPlaying = false
-                if (!videoPlayerConfigData.incognitoMode) sendHeartbeat()
+                if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) sendHeartbeat()
                 // 当控制信息面板显示时不自动播放下一集
                 if (!showInfoProvider()) {
                     onLoadNextVideo(false)
@@ -549,6 +551,10 @@ fun BvPlayer(
         logger.debug { "update mDanmakuPlayer" }
         mDanmakuPlayer = danmakuPlayer
         danmakuLayerHandle.updateDanmakuPlayer(danmakuPlayer)
+        if (danmakuPlayer != null) {
+            syncDanmakuConfig()
+            danmakuPlayer.updatePlaySpeed(currentPlaySpeed)
+        }
     }
 
     LaunchedEffect(videoPlayerLoadStateData.loadState) {
@@ -566,7 +572,7 @@ fun BvPlayer(
 
     DisposableEffect(Unit) {
         var sendHeartbeatTimer: Timer? = null
-        if (!videoPlayerConfigData.incognitoMode) {
+        if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) {
             sendHeartbeatTimer = timeTask(
                 delay = 5000,
                 period = 15000,
@@ -578,7 +584,7 @@ fun BvPlayer(
             }
         }
         onDispose {
-            if (!videoPlayerConfigData.incognitoMode) {
+            if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) {
                 sendHeartbeat()
                 sendHeartbeatTimer?.cancel()
             }
@@ -665,11 +671,11 @@ fun BvPlayer(
             onPlay = { videoPlayer.start() },
             onPause = {
                 videoPlayer.pause()
-                if (!videoPlayerConfigData.incognitoMode) sendHeartbeat()
+                if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) sendHeartbeat()
             },
             onExit = {
                 videoPlayer.pause()
-                if (!videoPlayerConfigData.incognitoMode) sendHeartbeat()
+                if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) sendHeartbeat()
                 onExit()
             },
             onGoTime = {
@@ -696,7 +702,7 @@ fun BvPlayer(
                 hideBackToHistoryTimer = null
             },
             onPlayNewVideo = {
-                if (!videoPlayerConfigData.incognitoMode) sendHeartbeat()
+                if (!videoPlayerConfigData.incognitoMode && !videoPlayerConfigData.isLive) sendHeartbeat()
                 //playerViewModel.partTitle = it.title
                 //playerViewModel.loadPlayUrl(
                 //    avid = it.aid,

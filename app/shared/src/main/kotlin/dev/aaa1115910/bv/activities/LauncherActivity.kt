@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import dev.aaa1115910.bv.entity.InterfaceMode
 import dev.aaa1115910.bv.util.DeviceUtil
+import dev.aaa1115910.bv.util.Prefs
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 /**
@@ -24,33 +26,39 @@ class LauncherActivity : ComponentActivity() {
      * 根据设备类型路由到正确的活动
      */
     private fun routeToCorrectActivity() {
-        // 检测设备类型
-        val isTvDevice = DeviceUtil.isTvDevice(this)
-        
-        val intent = if (isTvDevice) {
-            logger.info { "Detected TV device, launching TV MainActivity" }
+        val interfaceMode = Prefs.interfaceMode
+        val shouldLaunchTv = when (interfaceMode) {
+            InterfaceMode.Auto -> DeviceUtil.isTvDevice(this)
+            InterfaceMode.TV -> true
+            InterfaceMode.Mobile -> false
+        }
+
+        val intent = if (shouldLaunchTv) {
+            logger.info { "Launching TV MainActivity, interfaceMode=$interfaceMode" }
             Intent(this, Class.forName("dev.aaa1115910.bv.tv.activities.MainActivity"))
         } else {
-            logger.info { "Detected mobile device, launching Mobile MainActivity" }
+            logger.info { "Launching Mobile MainActivity, interfaceMode=$interfaceMode" }
             Intent(this, Class.forName("dev.aaa1115910.bv.mobile.activities.MainActivity"))
         }
-        
+
         // 传递原始Intent中的所有数据
         intent.putExtras(getIntent())
-        
+
         // 启动相应的MainActivity
         startActivity(intent)
-        
+
         // 关闭当前Activity
         finish()
     }
-    
+
     companion object {
         /**
-         * 启动LauncherActivity
+         * 清空当前任务栈并重新走启动路由，用于界面模式切换后立即生效
          */
-        fun actionStart(context: Context) {
-            val intent = Intent(context, LauncherActivity::class.java)
+        fun actionRestart(context: Context) {
+            val intent = Intent(context, LauncherActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            }
             context.startActivity(intent)
         }
     }

@@ -241,6 +241,8 @@
     <string name="settings_ui_density_title">界面缩放</string>
     <string name="settings_ui_default_home_tab_text">设置打开应用时首页默认选中的标签</string>
     <string name="settings_ui_default_home_tab_title">首页默认标签</string>
+    <string name="settings_ui_interface_mode_text">设置启动时自动检测、强制使用 TV，或强制使用 Mobile 界面</string>
+    <string name="settings_ui_interface_mode_title">界面模式</string>
     <string name="settings_ui_theme_type_text">更改主题样式</string>
     <string name="settings_ui_theme_type_title">主题</string>
     <string name="settings_ui_ugc_video_info_history_count_title">UGC 视频详情页面的历史记录数量</string>
@@ -276,6 +278,9 @@
     <string name="theme_type_auto">跟随系统</string>
     <string name="theme_type_dark">深色</string>
     <string name="theme_type_light">浅色</string>
+    <string name="interface_mode_auto">自动</string>
+    <string name="interface_mode_tv">TV</string>
+    <string name="interface_mode_mobile">Mobile</string>
 
     <string name="title_activity_anime_timeline">番剧放送时间表</string>
     <string name="title_activity_favorite">个人收藏</string>

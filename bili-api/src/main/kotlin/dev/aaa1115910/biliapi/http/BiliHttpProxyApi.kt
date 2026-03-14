@@ -4,6 +4,7 @@ import dev.aaa1115910.biliapi.BiliApiConstants
 import dev.aaa1115910.biliapi.http.entity.BiliResponse
 import dev.aaa1115910.biliapi.http.entity.search.SearchResultData
 import dev.aaa1115910.biliapi.http.entity.video.PlayUrlData
+import dev.aaa1115910.biliapi.http.entity.video.PlayUrlV2Data
 import dev.aaa1115910.biliapi.http.plugins.BiliUserAgent
 import dev.aaa1115910.biliapi.http.util.encApiSign
 import io.ktor.client.HttpClient
@@ -79,7 +80,8 @@ object BiliHttpProxyApi {
         drmTechType: Int? = null,
         fromClient: String? = null,
         sessData: String? = null,
-        dedeUserID: Long? = null
+        dedeUserID: Long? = null,
+        buvid3: String? = null
     ): BiliResponse<PlayUrlData> = client?.get("/pgc/player/web/playurl") {
         require(av != null || bv != null) { "av and bv cannot be null at the same time" }
         require(epid != null || cid != null) { "epid and cid cannot be null at the same time" }
@@ -95,7 +97,49 @@ object BiliHttpProxyApi {
         supportMultiAudio?.let { parameter("support_multi_audio", it) }
         drmTechType?.let { parameter("drm_tech_type", it) }
         fromClient?.let { parameter("from_client", it) }
-        sessData?.let { header("Cookie", "SESSDATA=$sessData;DedeUserID=$dedeUserID") }
+        val cookieParts = mutableListOf<String>()
+        sessData?.let { cookieParts.add("SESSDATA=$it") }
+        dedeUserID?.let { cookieParts.add("DedeUserID=$it") }
+        buvid3?.let { cookieParts.add("buvid3=$it") }
+        if (cookieParts.isNotEmpty()) header("Cookie", cookieParts.joinToString(";"))
+        //必须得加上 referer 才能通过账号身份验证
+        header("referer", "https://www.bilibili.com")
+    }?.body() ?: throw IllegalStateException("no proxy server")
+
+    suspend fun getPgcVideoPlayUrlV2(
+        av: Long? = null,
+        bv: String? = null,
+        epid: Int? = null,
+        cid: Long? = null,
+        qn: Int? = null,
+        fnval: Int? = null,
+        fnver: Int? = null,
+        fourk: Int? = null,
+        session: String? = null,
+        supportMultiAudio: Boolean? = null,
+        drmTechType: Int? = null,
+        fromClient: String? = null,
+        sessData: String? = null,
+        buvid3: String? = null
+    ): BiliResponse<PlayUrlV2Data> = client?.get("/pgc/player/web/v2/playurl") {
+        require(av != null || bv != null) { "av and bv cannot be null at the same time" }
+        require(epid != null || cid != null) { "epid and cid cannot be null at the same time" }
+        av?.let { parameter("avid", it) }
+        bv?.let { parameter("bvid", it) }
+        epid?.let { parameter("ep_id", it) }
+        cid?.let { parameter("cid", it) }
+        qn?.let { parameter("qn", it) }
+        fnval?.let { parameter("fnval", it) }
+        fnver?.let { parameter("fnver", it) }
+        fourk?.let { parameter("fourk", it) }
+        session?.let { parameter("session", it) }
+        supportMultiAudio?.let { parameter("support_multi_audio", it) }
+        drmTechType?.let { parameter("drm_tech_type", it) }
+        fromClient?.let { parameter("from_client", it) }
+        val cookieParts = mutableListOf<String>()
+        sessData?.let { cookieParts.add("SESSDATA=$it") }
+        buvid3?.let { cookieParts.add("buvid3=$it") }
+        if (cookieParts.isNotEmpty()) header("Cookie", cookieParts.joinToString(";"))
         //必须得加上 referer 才能通过账号身份验证
         header("referer", "https://www.bilibili.com")
     }?.body() ?: throw IllegalStateException("no proxy server")

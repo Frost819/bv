@@ -696,6 +696,8 @@ fun ControllerVideoInfoBottom(
                             style = MaterialTheme.typography.bodyLarge,
                             color = button.tint,
                             fontWeight = button.fontWeight,
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
                             modifier = Modifier
                                 .padding(top = 2.dp)
                                 .ifElse(

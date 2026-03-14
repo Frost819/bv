@@ -53,6 +53,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.RadioButton
 import androidx.tv.material3.Text
 import dev.aaa1115910.bv.R
+import dev.aaa1115910.bv.activities.LauncherActivity
+import dev.aaa1115910.bv.entity.InterfaceMode
 import dev.aaa1115910.bv.entity.ThemeType
 import dev.aaa1115910.bv.tv.component.PgcTopNavItem
 import dev.aaa1115910.bv.tv.component.TvAlertDialog
@@ -78,12 +80,14 @@ fun UISetting(
 
     var showDensityDialog by remember { mutableStateOf(false) }
     var showThemeTypeDialog by remember { mutableStateOf(false) }
+    var showInterfaceModeDialog by remember { mutableStateOf(false) }
     var showDefaultHomeTabDialog by remember { mutableStateOf(false) }
     var showHomeNavItemsDialog by remember { mutableStateOf(false) }
     var showUgcNavItemsDialog by remember { mutableStateOf(false) }
     var showPgcNavItemsDialog by remember { mutableStateOf(false) }
     val density by Prefs.densityFlow.collectAsState(context.resources.displayMetrics.widthPixels / 960f)
     val themeType by Prefs.themeTypeFlow.collectAsState(Prefs.themeType)
+    val interfaceMode = Prefs.interfaceMode
     var defaultHomeTab by remember { mutableStateOf(HomeTopNavItem.entries.getOrElse(Prefs.defaultHomeTab) { HomeTopNavItem.Recommend }) }
     var showUGCVideoInfo by remember { mutableStateOf(Prefs.showUGCVideoInfo) }
     var videoInfoHistoryIncludeFromPlayer by remember { mutableStateOf(Prefs.videoInfoHistoryIncludeFromPlayer) }
@@ -106,6 +110,14 @@ fun UISetting(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                item {
+                    SettingListItem(
+                        title = stringResource(R.string.settings_ui_interface_mode_title),
+                        supportText = stringResource(R.string.settings_ui_interface_mode_text),
+                        valueText = interfaceMode.getDisplayName(context),
+                        onClick = { showInterfaceModeDialog = true }
+                    )
+                }
                 item {
                     SettingListItem(
                         title = stringResource(R.string.settings_ui_density_title),
@@ -223,6 +235,18 @@ fun UISetting(
         onHideDialog = { showThemeTypeDialog = false },
         themeType = themeType,
         onThemeTypeChange = { Prefs.themeType = it }
+    )
+
+    InterfaceModeDialog(
+        show = showInterfaceModeDialog,
+        onHideDialog = { showInterfaceModeDialog = false },
+        interfaceMode = interfaceMode,
+        onInterfaceModeChange = {
+            if (it != interfaceMode) {
+                Prefs.interfaceMode = it
+                LauncherActivity.actionRestart(context)
+            }
+        }
     )
 
     DefaultHomeTabDialog(
@@ -345,6 +369,43 @@ fun ThemeTypeDialog(
                             trailingContent = {
                                 RadioButton(
                                     selected = themeType == it,
+                                    onClick = null
+                                )
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+}
+
+@Composable
+fun InterfaceModeDialog(
+    modifier: Modifier = Modifier,
+    show: Boolean,
+    onHideDialog: () -> Unit,
+    interfaceMode: InterfaceMode,
+    onInterfaceModeChange: (InterfaceMode) -> Unit
+) {
+    if (show) {
+        TvAlertDialog(
+            modifier = modifier,
+            onDismissRequest = { onHideDialog() },
+            title = { Text(text = stringResource(R.string.settings_ui_interface_mode_title)) },
+            text = {
+                Column {
+                    InterfaceMode.entries.forEach {
+                        ListItem(
+                            selected = interfaceMode == it,
+                            onClick = { onInterfaceModeChange(it) },
+                            headlineContent = {
+                                Text(text = it.getDisplayName(LocalContext.current))
+                            },
+                            trailingContent = {
+                                RadioButton(
+                                    selected = interfaceMode == it,
                                     onClick = null
                                 )
                             }

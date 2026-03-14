@@ -214,7 +214,6 @@ class VideoPlayerV3Activity : ComponentActivity() {
     }
 
     override fun onPause() {
-        super.onPause()
         playerViewModel.videoPlayer?.pause()
         playerViewModel.danmakuPlayer?.pause()
         
@@ -222,6 +221,8 @@ class VideoPlayerV3Activity : ComponentActivity() {
         if (playerViewModel.isLive) {
             playerViewModel.stopLiveDanmaku()
         }
+
+        super.onPause()
     }
 
     private fun initVideoPlayer() {

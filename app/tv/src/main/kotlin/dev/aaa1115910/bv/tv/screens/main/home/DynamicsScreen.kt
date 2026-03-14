@@ -41,6 +41,7 @@ import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
 import dev.aaa1115910.bv.tv.R
 import dev.aaa1115910.bv.tv.activities.user.FollowActivity
+import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
 import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
@@ -70,11 +71,23 @@ fun DynamicsScreen(
     }
 
     val onClickVideo: (DynamicVideo) -> Unit = { dynamic ->
-        VideoInfoActivity.actionStart(
-            context = context,
-            aid = dynamic.aid,
-            proxyArea = ProxyArea.checkProxyArea(dynamic.title)
-        )
+        val proxyArea = ProxyArea.checkProxyArea(dynamic.title)
+        val hasSeasonHint = dynamic.seasonId != null || dynamic.epid != null
+
+        if (hasSeasonHint) {
+            SeasonInfoActivity.actionStart(
+                context = context,
+                epId = dynamic.epid,
+                seasonId = dynamic.seasonId,
+                proxyArea = proxyArea
+            )
+        } else {
+            VideoInfoActivity.actionStart(
+                context = context,
+                aid = dynamic.aid,
+                proxyArea = proxyArea
+            )
+        }
     }
 
     val onLongClickVideo: (DynamicVideo) -> Unit = { dynamic ->

@@ -4,6 +4,8 @@ import android.content.Context
 import okhttp3.OkHttpClient
 import java.security.KeyStore
 import java.security.cert.CertificateFactory
+import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
@@ -47,6 +49,18 @@ object OkHttpUtil {
                 sslContext.socketFactory,
                 trustManagerFactory.trustManagers[0] as X509TrustManager
             )
+            .hostnameVerifier { hostname, session ->
+                // 允许 bilivideo.com 和 bilivideo.cn 域名证书互通
+                val biliDomains = listOf("bilivideo.com", "bilivideo.cn")
+                val isBiliDomain = biliDomains.any { domain ->
+                    hostname == domain || hostname.endsWith(".$domain")
+                }
+                if (isBiliDomain) {
+                    true
+                } else {
+                    HttpsURLConnection.getDefaultHostnameVerifier().verify(hostname, session)
+                }
+            }
             .build()
     }
 }

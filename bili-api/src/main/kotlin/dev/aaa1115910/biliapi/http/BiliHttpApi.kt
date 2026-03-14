@@ -110,6 +110,11 @@ object BiliHttpApi {
     private var endPoint: String = "api.bilibili.com"
     private lateinit var client: HttpClient
 
+    // 用于获取 sessData 的提供者，由应用层设置
+    var sessDataProvider: () -> String = { "" }
+    // 用于获取 buvid3 的提供者，由应用层设置
+    var buvid3Provider: () -> String? = { null }
+
     private val json = Json {
         coerceInputValues = true
         ignoreUnknownKeys = true
@@ -206,10 +211,10 @@ object BiliHttpApi {
         av: Long? = null,
         bv: String? = null,
         cid: Long,
-        qn: Int? = null,
-        fnval: Int? = null,
-        fnver: Int? = null,
-        fourk: Int? = 0,
+        qn: Int? = 80,
+        fnval: Int? = 1,
+        fnver: Int? = 0,
+        fourk: Int? = 1,
         session: String? = null,
         otype: String = "json",
         type: String = "",
@@ -229,6 +234,13 @@ object BiliHttpApi {
         parameter("otype", otype)
         parameter("type", type)
         parameter("platform", platform)
+        if (sessData.isNullOrEmpty()) {
+            // parameter("voice_balance", 1)
+            parameter("web_location", "1315873")
+            parameter("gaia_source", "pre-load")
+            parameter("isGaiaAvoided", "true")
+            parameter("try_look", "1")
+        }
         sessData?.let { header("Cookie", "SESSDATA=$sessData;DedeUserID=$dedeUserID") }
     }.body()
 
@@ -249,7 +261,8 @@ object BiliHttpApi {
         drmTechType: Int? = null,
         fromClient: String? = null,
         sessData: String? = null,
-        dedeUserID: Long? = null
+        dedeUserID: Long? = null,
+        buvid3: String? = null
     ): BiliResponse<PlayUrlData> = client.get("/pgc/player/web/playurl") {
         require(av != null || bv != null) { "av and bv cannot be null at the same time" }
         require(epid != null || cid != null) { "epid and cid cannot be null at the same time" }
@@ -265,7 +278,11 @@ object BiliHttpApi {
         supportMultiAudio?.let { parameter("support_multi_audio", it) }
         drmTechType?.let { parameter("drm_tech_type", it) }
         fromClient?.let { parameter("from_client", it) }
-        sessData?.let { header("Cookie", "SESSDATA=$sessData;DedeUserID=$dedeUserID") }
+        val cookieParts = mutableListOf<String>()
+        sessData?.let { cookieParts.add("SESSDATA=$it") }
+        dedeUserID?.let { cookieParts.add("DedeUserID=$it") }
+        buvid3?.let { cookieParts.add("buvid3=$it") }
+        if (cookieParts.isNotEmpty()) header("Cookie", cookieParts.joinToString(";"))
         //必须得加上 referer 才能通过账号身份验证
         header("referer", "https://www.bilibili.com")
     }.body()
@@ -286,7 +303,8 @@ object BiliHttpApi {
         supportMultiAudio: Boolean? = null,
         drmTechType: Int? = null,
         fromClient: String? = null,
-        sessData: String? = null
+        sessData: String? = null,
+        buvid3: String? = null
     ): BiliResponse<PlayUrlV2Data> = client.get("/pgc/player/web/v2/playurl") {
         av?.let { parameter("avid", it) }
         bv?.let { parameter("bvid", it) }
@@ -300,7 +318,16 @@ object BiliHttpApi {
         supportMultiAudio?.let { parameter("support_multi_audio", it) }
         drmTechType?.let { parameter("drm_tech_type", it) }
         fromClient?.let { parameter("from_client", it) }
-        sessData?.let { header("Cookie", "SESSDATA=$sessData;") }
+        val cookieParts = mutableListOf<String>()
+        sessData?.let { cookieParts.add("SESSDATA=$it") }
+        buvid3?.let { cookieParts.add("buvid3=$it") }
+        if (cookieParts.isNotEmpty()) {
+            val cookieString = cookieParts.joinToString(";")
+            println("PGC v2 Cookie: $cookieString")
+            header("Cookie", cookieString)
+        } else {
+            println("PGC v2 Cookie is empty! sessData=$sessData, buvid3=$buvid3")
+        }
         //必须得加上 referer 才能通过账号身份验证
         header("referer", "https://www.bilibili.com")
     }.body()
@@ -425,9 +452,14 @@ object BiliHttpApi {
      * 通过[sessData]获取用户个人信息
      */
     suspend fun getUserSelfInfo(
+        buvid3: String? = null,
         sessData: String = ""
     ): BiliResponse<MyInfoData> = client.get("/x/space/myinfo") {
-        header("Cookie", "SESSDATA=$sessData;")
+        if (buvid3 != null && sessData.isNotEmpty()) {
+            header("Cookie", "buvid3=$buvid3; SESSDATA=$sessData;")
+        } else {
+            header("Cookie", "SESSDATA=$sessData;")
+        }
     }.body()
 
     /**
@@ -1503,13 +1535,27 @@ object BiliHttpApi {
      *
      * 内含 wbi keys
      */
-    suspend fun getWebInterfaceNav(): BiliResponse<NavResponseData> =
-        client.get("/x/web-interface/nav").body()
+    suspend fun getWebInterfaceNav(
+        buvid3: String? = null,
+        sessData: String = ""
+    ): BiliResponse<NavResponseData> =
+        client.get("/x/web-interface/nav") {
+            if (buvid3 != null && sessData.isNotEmpty()) {
+                header("Cookie", "buvid3=$buvid3; SESSDATA=$sessData;")
+            } else if (sessData.isNotEmpty()) {
+                header("Cookie", "SESSDATA=$sessData;")
+            }
+        }.body()
 
     /**
      * 更新 wbi keys
+     * @param sessData 用户登录凭证，默认使用 sessDataProvider 获取
+     * @param buvid3 设备标识，默认使用 buvid3Provider 获取
      */
-    suspend fun updateWbi() {
+    suspend fun updateWbi(
+        sessData: String = sessDataProvider(),
+        buvid3: String? = buvid3Provider()
+    ) {
         val needToUpdate =
             wbiImgKey == null || wbiSubKey == null || System.currentTimeMillis() - wbiLastRefreshDate < 2 * 60 * 60 * 1000L
         if (!needToUpdate) {
@@ -1519,7 +1565,7 @@ object BiliHttpApi {
 
         println("Updating wbi keys...")
         runCatching {
-            val wbiData = getWebInterfaceNav().data!!.wbiImg
+            val wbiData = getWebInterfaceNav(buvid3 = buvid3, sessData = sessData).data!!.wbiImg
             wbiImgKey = wbiData.getImgKey()
             wbiSubKey = wbiData.getSubKey()
             wbiLastRefreshDate = System.currentTimeMillis()
@@ -1537,13 +1583,18 @@ object BiliHttpApi {
         freshType: Int = 4,
         pageSize: Int = 30,
         idx: Int = 1,
+        buvid3: String? = null,
         sessData: String? = null
     ): BiliResponse<RcmdTopData> = client.get("/x/web-interface/wbi/index/top/feed/rcmd") {
         parameter("fresh_type", freshType)
         parameter("ps", pageSize)
         parameter("fresh_idx", idx)
         parameter("fresh_idx_1h", idx)
-        sessData?.let { header("Cookie", "SESSDATA=$it;") }
+        if (sessData != null && buvid3 != null) {
+            header("Cookie", "buvid3=$buvid3; SESSDATA=$sessData;")
+        } else {
+            sessData?.let { header("Cookie", "SESSDATA=$it;") }
+        }
     }.body()
 
     /**

@@ -386,10 +386,10 @@ class VideoPlayerV3ViewModel(
 
             //确认最终所选音质
             val existDefaultAudio = availableAudio.contains(Prefs.defaultAudio)
-            if (!existDefaultAudio) {
+            if (!existDefaultAudio && availableAudio.isNotEmpty()) {
                 val currentAudio = when {
-                    Prefs.defaultAudio == Audio.ADolbyAtoms && availableAudio.contains(Audio.AHiRes) -> Audio.AHiRes
-                    Prefs.defaultAudio == Audio.AHiRes && availableAudio.contains(Audio.ADolbyAtoms) -> Audio.ADolbyAtoms
+                    Prefs.defaultAudio == Audio.ADolbyAtoms && availableAudio.contains(Audio.ADolbyAtoms) -> Audio.ADolbyAtoms
+                    (Prefs.defaultAudio == Audio.ADolbyAtoms || Prefs.defaultAudio == Audio.AHiRes) && availableAudio.contains(Audio.AHiRes) -> Audio.AHiRes
                     availableAudio.contains(Audio.A192K) -> Audio.A192K
                     availableAudio.contains(Audio.A132K) -> Audio.A132K
                     availableAudio.contains(Audio.A64K) -> Audio.A64K
@@ -494,32 +494,34 @@ class VideoPlayerV3ViewModel(
         videoUrls.add(videoItem?.baseUrl)
         videoUrls.addAll(videoItem?.backUrl ?: emptyList())
 
-        val audioItem = playData!!.dashAudios.find { it.codecId == audio.code }
-            ?: playData!!.dolby.takeIf { it?.codecId == audio.code }
-            ?: playData!!.flac.takeIf { it?.codecId == audio.code }
-            ?: playData!!.dashAudios.minByOrNull { it.codecId }
-        var audioUrl = audioItem?.baseUrl ?: playData!!.dashAudios.firstOrNull()?.baseUrl
-        if (audioUrl == null) {
-            logger.fError { "Failed to get audio URL" }
-            errorMessage = "获取音频地址失败" 
-            loadState = RequestState.Failed
-            return
-        }
-        val audioUrls = mutableListOf<String?>()
-        audioUrls.add(audioItem?.baseUrl)
+        val audioItem = listOfNotNull(
+            playData!!.dashAudios.find { it.codecId == audio.code },
+            playData!!.dolby.takeIf { it?.codecId == audio.code },
+            playData!!.flac.takeIf { it?.codecId == audio.code },
+            playData!!.dashAudios.minByOrNull { it.codecId },
+            playData!!.dolby,
+            playData!!.flac
+        ).firstOrNull()
+        var audioUrl = audioItem?.baseUrl
+        val audioUrls = mutableListOf<String>()
+        audioItem?.baseUrl?.let(audioUrls::add)
         audioUrls.addAll(audioItem?.backUrl ?: emptyList())
 
-        logger.fInfo { "all video hosts: ${videoUrls.map { with(URI(it)) { "$scheme://$authority" } }}" }
+        logger.fInfo { "all video hosts: ${videoUrls.filterNotNull().map { with(URI(it)) { "$scheme://$authority" } }}" }
         logger.fInfo { "all audio hosts: ${audioUrls.map { with(URI(it)) { "$scheme://$authority" } }}" }
 
         //replace cdn
         if (Prefs.enableProxy && proxyArea != ProxyArea.MainLand) {
             videoUrl = videoUrl.replaceUrlDomainWithAliCdn()
-            audioUrl = audioUrl.replaceUrlDomainWithAliCdn()
+            audioUrl = audioUrl?.replaceUrlDomainWithAliCdn()
         } else {
             // 如果未通过网络代理获得播放地址，才判断是否应该替换为官方 cdn
             videoUrl = selectOfficialCdnUrl(videoUrls.filterNotNull())
-            audioUrl = selectOfficialCdnUrl(audioUrls.filterNotNull())
+            audioUrl = audioUrls.takeIf { it.isNotEmpty() }?.let(::selectOfficialCdnUrl)
+        }
+
+        if (audioUrl == null) {
+            logger.fWarn { "Failed to get audio URL, fallback to video-only playback" }
         }
 
         addLogs(
@@ -528,7 +530,10 @@ class VideoPlayerV3ViewModel(
                     "音频编码：${(Audio.fromCode(audioItem?.codecId ?: 0))?.getDisplayName(BVApp.context) ?: "未知"}"
         )
         addLogs("video host: ${with(URI(videoUrl)) { "$scheme://$authority" }}")
-        addLogs("audio host: ${with(URI(audioUrl)) { "$scheme://$authority" }}")
+        addLogs(
+            audioUrl?.let { "audio host: ${with(URI(it)) { "$scheme://$authority" }}" }
+                ?: "audio host: 无音频流，使用纯视频播放"
+        )
 
         logger.fInfo { "Select audio: $audioItem" }
 
@@ -769,7 +774,7 @@ class VideoPlayerV3ViewModel(
             // 当用户不偏好官方 CDN 时，使用加权随机：官方权重 0.8，非官方权重 1.2（基准为 1）
             logger.fInfo { "doesn't need to filter official cdn url, select a weighted random url (favor non-official)" }
 
-            val weights = urls.map { url -> if (isOfficialCdn(url)) 0.8 else 1.2 }
+            val weights = urls.map { url -> if (isOfficialCdn(url)) 1 else 1 }
             val total = weights.sum()
             // 如果权重计算异常，退回随机
             if (total <= 0.0) return urls.randomOrNull() ?: ""

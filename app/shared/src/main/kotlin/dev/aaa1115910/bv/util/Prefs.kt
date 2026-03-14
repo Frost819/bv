@@ -16,6 +16,7 @@ import dev.aaa1115910.biliapi.entity.ApiType
 import dev.aaa1115910.biliapi.http.util.generateBuvid
 import dev.aaa1115910.bv.BVApp
 import dev.aaa1115910.bv.BuildConfig
+import dev.aaa1115910.bv.entity.InterfaceMode
 import dev.aaa1115910.bv.entity.PlayerType
 import dev.aaa1115910.bv.entity.ThemeType
 import dev.aaa1115910.bv.player.entity.Audio
@@ -341,6 +342,12 @@ object Prefs {
         get() = dsm.getPreferenceFlow(PrefKeys.prefThemeTypeRequest)
             .transform { ordinal -> emit(ThemeType.entries[ordinal]) }
 
+    var interfaceMode: InterfaceMode
+        get() = runBlocking {
+            InterfaceMode.entries[dsm.getPreferenceFlow(PrefKeys.prefInterfaceModeRequest).first()]
+        }
+        set(value) = runBlocking { dsm.editPreference(PrefKeys.prefInterfaceModeKey, value.ordinal) }
+
     var defaultPlayMode: PlayMode
         get() = runBlocking {
             PlayMode.entries[dsm.getPreferenceFlow(PrefKeys.prefPlayModeRequest).first()]
@@ -521,6 +528,7 @@ object PrefKeys {
     val prefEnableFfmpegAudioRenderer = booleanPreferencesKey("enable_ffmpeg_audio_renderer")
     val prefBlacklistUserKey = booleanPreferencesKey("blacklist_user")
     val prefThemeTypeKey = intPreferencesKey("theme_type")
+    val prefInterfaceModeKey = intPreferencesKey("interface_mode")
     val prefPlayModeKey = intPreferencesKey("play_mode")
     val prefDefaultHomeTabKey = intPreferencesKey("default_home_tab")
     val prefPortraitVideoFixModeKey = intPreferencesKey("portrait_video_fix_mode")
@@ -608,6 +616,7 @@ object PrefKeys {
     val prefEnableFfmpegEndererRequest = PreferenceRequest(prefEnableFfmpegAudioRenderer, true)
     val prefBlacklistUserRequest = PreferenceRequest(prefBlacklistUserKey, false)
     val prefThemeTypeRequest = PreferenceRequest(prefThemeTypeKey, ThemeType.Auto.ordinal)
+    val prefInterfaceModeRequest = PreferenceRequest(prefInterfaceModeKey, InterfaceMode.Auto.ordinal)
     val prefPlayModeRequest = PreferenceRequest(prefPlayModeKey, PlayMode.Sequential.ordinal)
     val prefDefaultHomeTabRequest = PreferenceRequest(prefDefaultHomeTabKey, 0)
     val prefPortraitVideoFixModeRequest = PreferenceRequest(prefPortraitVideoFixModeKey, 0)
