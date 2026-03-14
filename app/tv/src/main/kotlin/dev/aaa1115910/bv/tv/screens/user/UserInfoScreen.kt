@@ -741,7 +741,10 @@ private fun FollowingAnimeVideosRow(
             verticalAlignment = Alignment.CenterVertically,
             contentPadding = PaddingValues(horizontal = 62.dp)
         ) {
-            items(items = videos) { seasonCardData ->
+            items(
+                items = videos,
+                key = { seasonCardData -> seasonCardData.seasonId }
+            ) { seasonCardData ->
                 SeasonCard(
                     modifier = Modifier.width(150.dp),
                     data = seasonCardData,

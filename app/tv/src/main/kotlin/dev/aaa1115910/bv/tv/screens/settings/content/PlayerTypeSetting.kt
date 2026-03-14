@@ -52,7 +52,10 @@ fun PlayerTypeSetting(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(items = PlayerType.entries) { playerType ->
+                items(
+                    items = PlayerType.entries,
+                    key = { playerType -> playerType.name }
+                ) { playerType ->
                     SettingsMenuSelectItem(
                         text = playerType.name,
                         selected = selectedPlayerType == playerType,

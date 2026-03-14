@@ -61,6 +61,7 @@ import coil.compose.AsyncImage
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.tv.component.LoadingTip
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
+import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.ui.theme.BVTheme
 import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.viewmodel.user.FollowViewModel
@@ -74,6 +75,7 @@ fun FollowScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val defaultFocusRequester = remember { FocusRequester() }
+    val gridFocusRestorer = rememberTvLazyListFocusRestorer(defaultFocusRequester)
 
     var currentIndex by remember { mutableIntStateOf(0) }
     val showLargeTitle by remember { derivedStateOf { currentIndex < 3 } }
@@ -166,16 +168,18 @@ fun FollowScreen(
         }
     ) { innerPadding ->
         LazyVerticalGrid(
-            modifier = Modifier.padding(innerPadding),
+            modifier = gridFocusRestorer.containerModifier(Modifier.padding(innerPadding)),
             columns = GridCells.Fixed(3),
             contentPadding = PaddingValues(24.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
             horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             if (!followViewModel.updating) {
-                itemsIndexed(items = filteredUsers) { index, up ->
-                    val upCardModifier =
-                        if (index == 0) Modifier.focusRequester(defaultFocusRequester) else Modifier
+                itemsIndexed(
+                    items = filteredUsers,
+                    key = { _, up -> up.mid }
+                ) { index, up ->
+                    val upCardModifier = gridFocusRestorer.firstItemModifier(index)
                     UpCard(
                         modifier = upCardModifier,
                         face = up.avatar,

@@ -237,7 +237,10 @@ private fun UserSwitchContent(
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp)
             ) {
-                items(items = userList) { user ->
+                items(
+                    items = userList,
+                    key = { user -> user.uid }
+                ) { user ->
                     UserItem(
                         avatar = user.avatar,
                         username = user.username,

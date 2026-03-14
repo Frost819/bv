@@ -32,7 +32,10 @@ import dev.aaa1115910.bv.entity.proxy.ProxyArea
 import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
+import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
+import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
+import dev.aaa1115910.bv.tv.util.stableItemKey
 import dev.aaa1115910.bv.viewmodel.user.HistoryViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -43,6 +46,7 @@ fun HistoryScreen(
     showPageTitle: Boolean = true
 ) {
     val context = LocalContext.current
+    val listFocusRestorer = rememberTvLazyListFocusRestorer()
     var currentIndex by remember { mutableIntStateOf(0) }
     val showLargeTitle by remember { derivedStateOf { currentIndex < 4 } }
     val titleFontSize by animateFloatAsState(
@@ -102,17 +106,29 @@ fun HistoryScreen(
     ) { innerPadding ->
         ProvideListBringIntoViewSpec(padding = 26.dp) {
             LazyVerticalGrid(
-                modifier = Modifier.padding(innerPadding),
+                modifier = listFocusRestorer.containerModifier(
+                    Modifier
+                        .padding(innerPadding)
+                        .blockDownFocusExitAtGridEnd(
+                            currentIndex = currentIndex,
+                            itemCount = historyViewModel.histories.size,
+                            columnCount = 4
+                        )
+                ),
                 columns = GridCells.Fixed(4),
                 contentPadding = PaddingValues(24.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                itemsIndexed(historyViewModel.histories) { index, history ->
+                itemsIndexed(
+                    items = historyViewModel.histories,
+                    key = { _, history -> history.stableItemKey() }
+                ) { index, history ->
                     Box(
                         contentAlignment = Alignment.Center
                     ) {
                         SmallVideoCard(
+                            modifier = listFocusRestorer.firstItemModifier(index),
                             data = history,
                             onClick = {
                                 if (history.jumpToSeason) {

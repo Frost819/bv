@@ -35,6 +35,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
+import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
+import dev.aaa1115910.bv.tv.util.stableItemKey
 import dev.aaa1115910.bv.util.ifElse
 
 @Composable
@@ -52,6 +54,7 @@ fun VideosRow(
     val density = LocalDensity.current
     val internalFocusRequester = remember { FocusRequester() }
     val activeFocusRequester = focusRequester ?: internalFocusRequester
+    val listFocusRestorer = rememberTvLazyListFocusRestorer(activeFocusRequester)
     var hasFocus by remember { mutableStateOf(false) }
     val titleFontSize by animateFloatAsState(
         targetValue = if (focusRequester != null) 24f else if (hasFocus) 30f else 14f,
@@ -90,22 +93,25 @@ fun VideosRow(
             fontSize = titleFontSize.sp
         )
         LazyRow(
-            modifier = Modifier
-                .padding(vertical = 15.dp)
-                .onGloballyPositioned {
-                    rowHeight = with(density) {
-                        it.size.height.toDp()
+            modifier = listFocusRestorer.containerModifier(
+                Modifier
+                    .padding(vertical = 15.dp)
+                    .onGloballyPositioned {
+                        rowHeight = with(density) {
+                            it.size.height.toDp()
+                        }
                     }
-                },
+            ),
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically,
             contentPadding = PaddingValues(horizontal = 36.dp)
         ) {
-            itemsIndexed(items = videos) { index, videoData ->
+            itemsIndexed(
+                items = videos,
+                key = { _, videoData -> videoData.stableItemKey() }
+            ) { index, videoData ->
                 SmallVideoCard(
-                    modifier = Modifier
-                        .width(200.dp)
-                        .ifElse(index == 0, Modifier.focusRequester(activeFocusRequester)),
+                    modifier = listFocusRestorer.firstItemModifier(index, Modifier.width(200.dp)),
                     data = videoData,
                     onClick = {
                         if (videoData.jumpToSeason) {

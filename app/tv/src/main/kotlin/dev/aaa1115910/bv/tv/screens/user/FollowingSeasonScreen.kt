@@ -38,7 +38,9 @@ import dev.aaa1115910.bv.tv.component.videocard.SeasonCard
 import dev.aaa1115910.bv.entity.carddata.SeasonCardData
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
 import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
+import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
+import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.util.ImageSize
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.getDisplayName
@@ -55,6 +57,7 @@ fun FollowingSeasonScreen(
 ) {
     val context = LocalContext.current
     val logger = KotlinLogging.logger { }
+    val gridFocusRestorer = rememberTvLazyListFocusRestorer()
 
     var currentIndex by remember { mutableIntStateOf(0) }
     val showLargeTitle by remember { derivedStateOf { currentIndex < 6 } }
@@ -181,14 +184,26 @@ fun FollowingSeasonScreen(
     ) { innerPadding ->
         ProvideListBringIntoViewSpec {
             LazyVerticalGrid(
-                modifier = Modifier.padding(innerPadding),
+                modifier = gridFocusRestorer.containerModifier(
+                    Modifier
+                        .padding(innerPadding)
+                        .blockDownFocusExitAtGridEnd(
+                            currentIndex = currentIndex,
+                            itemCount = followingSeasons.size,
+                            columnCount = 6
+                        )
+                ),
                 columns = GridCells.Fixed(6),
                 contentPadding = PaddingValues(24.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                itemsIndexed(items = followingSeasons) { index, followingSeason ->
+                itemsIndexed(
+                    items = followingSeasons,
+                    key = { _, followingSeason -> followingSeason.seasonId }
+                ) { index, followingSeason ->
                     SeasonCard(
+                        modifier = gridFocusRestorer.firstItemModifier(index),
                         data = SeasonCardData(
                             seasonId = followingSeason.seasonId,
                             title = followingSeason.title,

@@ -32,6 +32,8 @@ import dev.aaa1115910.bv.entity.proxy.ProxyArea
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
+import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
+import dev.aaa1115910.bv.tv.util.stableItemKey
 import dev.aaa1115910.bv.viewmodel.user.ToViewViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -42,6 +44,7 @@ fun ToViewScreen(
     showPageTitle: Boolean = true
 ) {
     val context = LocalContext.current
+    val listFocusRestorer = rememberTvLazyListFocusRestorer()
     var currentIndex by remember { mutableIntStateOf(0) }
     val showLargeTitle by remember { derivedStateOf { currentIndex < 4 } }
     val titleFontSize by animateFloatAsState(
@@ -101,17 +104,21 @@ fun ToViewScreen(
     ) { innerPadding ->
         ProvideListBringIntoViewSpec(padding = 26.dp) {
             LazyVerticalGrid(
-                modifier = Modifier.padding(innerPadding),
+                modifier = listFocusRestorer.containerModifier(Modifier.padding(innerPadding)),
                 columns = GridCells.Fixed(4),
                 contentPadding = PaddingValues(24.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                itemsIndexed(ToViewViewModel.histories) { index, item ->
+                itemsIndexed(
+                    items = ToViewViewModel.histories,
+                    key = { _, item -> item.stableItemKey() }
+                ) { index, item ->
                     Box(
                         contentAlignment = Alignment.Center
                     ) {
                         SmallVideoCard(
+                            modifier = listFocusRestorer.firstItemModifier(index),
                             data = item,
                             onClick = {
                                 VideoInfoActivity.actionStart(

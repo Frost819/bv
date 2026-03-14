@@ -294,7 +294,10 @@ private fun <T> IndexFilterChipRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
         ) {
-            items(items = filters) { filter ->
+            items(
+                items = filters,
+                key = { filter -> (filter as PgcIndexParam).getDisplayName(context) }
+            ) { filter ->
                 IndexFilterChip(
                     modifier = Modifier
                         .ifElse(

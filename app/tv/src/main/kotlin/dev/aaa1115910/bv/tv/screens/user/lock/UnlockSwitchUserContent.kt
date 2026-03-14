@@ -130,7 +130,10 @@ fun UnlockSwitchUserContent(
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp)
             ) {
-                items(items = userList) { user ->
+                items(
+                    items = userList,
+                    key = { user -> user.uid }
+                ) { user ->
                     UserItem(
                         modifier = Modifier
                             .ifElse({ user != unlockUser }, Modifier.alpha(unselectedUserAlpha)),

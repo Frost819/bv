@@ -917,7 +917,10 @@ fun VideoInfoScreen(
                             )
                         }
                     } else {
-                        itemsIndexed(items = videoDetailViewModel.videoDetail?.ugcSeason!!.sections) { index, section ->
+                        itemsIndexed(
+                            items = videoDetailViewModel.videoDetail?.ugcSeason!!.sections,
+                            key = { index, section -> "section-${section.title}-${section.episodes.firstOrNull()?.aid ?: index}-${section.episodes.firstOrNull()?.cid ?: 0}" }
+                        ) { index, section ->
                             VideoUgcSeasonRow(
                                 title = section.title,
                                 episodes = section.episodes,
@@ -1382,7 +1385,10 @@ fun VideoInfoData(
                 contentPadding = PaddingValues(horizontal = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                items(items = tags) { tag ->
+                items(
+                    items = tags,
+                    key = { tag -> tag.name }
+                ) { tag ->
                     SuggestionChip(onClick = {
                         onClickTip(tag)
                     }) {
@@ -1828,7 +1834,10 @@ fun VideoUgcSeasonRow(
             contentPadding = PaddingValues(12.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            itemsIndexed(items = episodes) { index, episode ->
+            itemsIndexed(
+                items = episodes,
+                key = { _, episode -> "episode-${episode.aid}-${episode.cid}" }
+            ) { index, episode ->
                 VideoPartButton(
                     modifier = Modifier
                         .ifElse(index == 0, Modifier.focusRequester(focusRequester))

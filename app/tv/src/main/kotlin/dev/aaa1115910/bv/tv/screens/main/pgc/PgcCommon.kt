@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,7 +41,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -62,7 +62,9 @@ import dev.aaa1115910.bv.tv.component.videocard.SeasonCard
 import dev.aaa1115910.bv.entity.carddata.SeasonCardData
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
 import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
+import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
+import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.ui.theme.BVTheme
 import dev.aaa1115910.bv.util.ImageSize
 import dev.aaa1115910.bv.util.resizedImageUrl
@@ -80,14 +82,23 @@ fun PgcScaffold(
 ) {
     val context = LocalContext.current
     val carouselFocusRequester = remember { FocusRequester() }
+    val carouselFocusRestorer = rememberTvLazyListFocusRestorer(carouselFocusRequester)
+    val currentFeedIndex = remember { mutableIntStateOf(0) }
 
     val carouselItems = pgcViewModel.carouselItems
     val pgcFeeds = pgcViewModel.feedItems
 
     ProvideListBringIntoViewSpec {
         LazyColumn(
-            modifier = modifier
-                    .fillMaxSize(),
+            modifier = carouselFocusRestorer.containerModifier(
+                modifier
+                    .fillMaxSize()
+                    .blockDownFocusExitAtGridEnd(
+                        currentIndex = currentFeedIndex.intValue,
+                        itemCount = pgcFeeds.size,
+                        columnCount = 1
+                    )
+            ),
             state = lazyListState
         ) {
             item {
@@ -127,13 +138,22 @@ fun PgcScaffold(
                     )
                 }
             }
-            itemsIndexed(items = pgcFeeds) { index, feedListItem ->
+            itemsIndexed(
+                items = pgcFeeds,
+                key = { index, feedListItem ->
+                    when (feedListItem.type) {
+                        FeedListType.Ep -> "ep-${feedListItem.items?.firstOrNull()?.seasonId ?: index}-${feedListItem.items?.size ?: 0}"
+                        FeedListType.Rank -> "rank-${feedListItem.rank?.title ?: index}"
+                    }
+                }
+            ) { index, feedListItem ->
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 12.dp)
                         .onFocusChanged {
                             if (it.hasFocus) {
+                                currentFeedIndex.intValue = index
                                 if (index + 10 > pgcFeeds.size) {
                                     pgcViewModel.loadMore()
                                 }
@@ -162,16 +182,20 @@ fun PgcFeedVideoRow(
     data: List<PgcItem>
 ) {
     val context = LocalContext.current
+    val listFocusRestorer = rememberTvLazyListFocusRestorer()
     LazyRow(
-        modifier = modifier,
+        modifier = listFocusRestorer.containerModifier(modifier),
         contentPadding = PaddingValues(horizontal = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(32.dp)
     ) {
-        data.forEachIndexed { index, feedItem ->
+        itemsIndexed(
+            items = data,
+            key = { _, feedItem -> feedItem.seasonId }
+        ) { index, feedItem ->
             val cardModifier = if (index == data.lastIndex) {
-                Modifier.onPreviewKeyEvent {
-                    when (it.key) {
-                        Key.DirectionRight -> return@onPreviewKeyEvent true
+                Modifier.onPreviewKeyEvent { keyEvent ->
+                    when (keyEvent.nativeKeyEvent.keyCode) {
+                        KeyEvent.KEYCODE_DPAD_RIGHT -> return@onPreviewKeyEvent true
                     }
                     false
                 }
@@ -179,26 +203,24 @@ fun PgcFeedVideoRow(
                 Modifier
             }
 
-            item {
-                SeasonCard(
-                    modifier = cardModifier,
-                    coverHeight = 180.dp,
-                    data = SeasonCardData(
+            SeasonCard(
+                modifier = listFocusRestorer.firstItemModifier(index, cardModifier),
+                coverHeight = 180.dp,
+                data = SeasonCardData(
+                    seasonId = feedItem.seasonId,
+                    title = feedItem.title,
+                    subTitle = feedItem.subTitle,
+                    cover = feedItem.cover.resizedImageUrl(ImageSize.SeasonCoverThumbnail),
+                    rating = feedItem.rating
+                ),
+                onClick = {
+                    SeasonInfoActivity.actionStart(
+                        context = context,
                         seasonId = feedItem.seasonId,
-                        title = feedItem.title,
-                        subTitle = feedItem.subTitle,
-                        cover = feedItem.cover.resizedImageUrl(ImageSize.SeasonCoverThumbnail),
-                        rating = feedItem.rating
-                    ),
-                    onClick = {
-                        SeasonInfoActivity.actionStart(
-                            context = context,
-                            seasonId = feedItem.seasonId,
-                            proxyArea = ProxyArea.checkProxyArea(feedItem.title)
-                        )
-                    }
-                )
-            }
+                        proxyArea = ProxyArea.checkProxyArea(feedItem.title)
+                    )
+                }
+            )
         }
     }
 }
@@ -209,6 +231,7 @@ fun PgcFeedRankRow(
     data: PgcFeedData.FeedRank
 ) {
     val context = LocalContext.current
+    val listFocusRestorer = rememberTvLazyListFocusRestorer()
     Box(
         modifier = modifier
             .height(300.dp)
@@ -279,11 +302,14 @@ fun PgcFeedRankRow(
             }
 
             LazyRow(
-                modifier = modifier,
+                modifier = listFocusRestorer.containerModifier(modifier),
                 contentPadding = PaddingValues(horizontal = 32.dp),
                 horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                data.items.forEachIndexed { index, feedItem ->
+                itemsIndexed(
+                    items = data.items,
+                    key = { _, feedItem -> feedItem.seasonId }
+                ) { index, feedItem ->
                     val cardModifier = if (index == data.items.lastIndex) {
                         Modifier.onPreviewKeyEvent {
                             when (it.nativeKeyEvent.keyCode) {
@@ -295,26 +321,24 @@ fun PgcFeedRankRow(
                         Modifier
                     }
 
-                    item {
-                        SeasonCard(
-                            modifier = cardModifier,
-                            coverHeight = 180.dp,
-                            data = SeasonCardData(
+                    SeasonCard(
+                        modifier = listFocusRestorer.firstItemModifier(index, cardModifier),
+                        coverHeight = 180.dp,
+                        data = SeasonCardData(
+                            seasonId = feedItem.seasonId,
+                            title = feedItem.title,
+                            subTitle = feedItem.subTitle,
+                            cover = feedItem.cover.resizedImageUrl(ImageSize.SeasonCoverThumbnail),
+                            rating = feedItem.rating
+                        ),
+                        onClick = {
+                            SeasonInfoActivity.actionStart(
+                                context = context,
                                 seasonId = feedItem.seasonId,
-                                title = feedItem.title,
-                                subTitle = feedItem.subTitle,
-                                cover = feedItem.cover.resizedImageUrl(ImageSize.SeasonCoverThumbnail),
-                                rating = feedItem.rating
-                            ),
-                            onClick = {
-                                SeasonInfoActivity.actionStart(
-                                    context = context,
-                                    seasonId = feedItem.seasonId,
-                                    proxyArea = ProxyArea.checkProxyArea(feedItem.title)
-                                )
-                            }
-                        )
-                    }
+                                proxyArea = ProxyArea.checkProxyArea(feedItem.title)
+                            )
+                        }
+                    )
                 }
             }
         }
@@ -359,7 +383,10 @@ fun PgcFeatureButtons(
         horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
         contentPadding = PaddingValues(horizontal = 32.dp)
     ) {
-        items(items = buttons) { (title, icon, onClick) ->
+        itemsIndexed(
+            items = buttons,
+            key = { index, (title, _, _) -> "feature-$index-$title" }
+        ) { _, (title, icon, onClick) ->
             when (icon) {
                 is ImageVector -> PgcFeatureButton(
                     modifier = Modifier.width(buttonWidth),

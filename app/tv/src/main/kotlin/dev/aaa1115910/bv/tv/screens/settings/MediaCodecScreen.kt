@@ -158,7 +158,10 @@ fun MediaCodecListItems(
         contentPadding = PaddingValues(24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(items = codecInfoDataList) { codecInfoData ->
+        items(
+            items = codecInfoDataList,
+            key = { codecInfoData -> codecInfoData.toString() }
+        ) { codecInfoData ->
             val buttonModifier = if (currentCodecInfoData == codecInfoData) Modifier
                 .focusRequester(focusRequester)
                 .fillMaxWidth()

@@ -41,6 +41,7 @@ import dev.aaa1115910.bv.tv.component.LoadingTip
 import dev.aaa1115910.bv.tv.component.TopNav
 import dev.aaa1115910.bv.tv.component.TopNavItem
 import dev.aaa1115910.bv.tv.component.live.LiveRoomCard
+import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.util.toast
 import dev.aaa1115910.bv.viewmodel.live.LiveMode
@@ -50,6 +51,7 @@ import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import dev.aaa1115910.biliapi.entity.live.LiveAreaGroup
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
+import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 
 // 固定 TopNavItem：推荐
 private object RecommendNavItem : TopNavItem {
@@ -85,6 +87,7 @@ fun LiveContent(
     // 使用 MainScreen 传入的 FocusRequester 作为默认入口焦点（从侧边栏按右进入内容区）
     val parentNavFocusRequester = navFocusRequester
     val subNavFocusRequester = remember { FocusRequester() }
+    val roomListFocusRestorer = rememberTvLazyListFocusRestorer()
     var focusOnContent by remember { mutableStateOf(false) }
     var parentNavHasFocus by remember { mutableStateOf(false) }
     var subNavHasFocus by remember { mutableStateOf(false) }
@@ -247,7 +250,15 @@ fun LiveContent(
             } else {
                 ProvideListBringIntoViewSpec(topPadding = 12.dp, bottomPadding = 28.dp) {
                     LazyVerticalGrid(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = roomListFocusRestorer.containerModifier(
+                            Modifier
+                                .fillMaxSize()
+                                .blockDownFocusExitAtGridEnd(
+                                    currentIndex = focusedIndex,
+                                    itemCount = totalItems,
+                                    columnCount = 4
+                                )
+                        ),
                         state = gridState,
                         columns = GridCells.Fixed(4),
                         contentPadding = PaddingValues(20.dp, 0.dp, 20.dp, 20.dp),
@@ -258,12 +269,7 @@ fun LiveContent(
                             items = liveViewModel.roomList,
                             key = { _, room -> room.roomId }
                         ) { index, room ->
-                            val entryCardModifier =
-                                if (index == 0 && liveViewModel.parentAreaGroups.isEmpty()) {
-                                    Modifier.focusRequester(navFocusRequester)
-                                } else {
-                                    Modifier
-                                }
+                            val entryCardModifier = roomListFocusRestorer.firstItemModifier(index)
 
                             LiveRoomCard(
                                 modifier = entryCardModifier,

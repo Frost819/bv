@@ -46,7 +46,10 @@ import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
+import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
+import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
+import dev.aaa1115910.bv.tv.util.stableItemKey
 import dev.aaa1115910.bv.util.ifElse
 import dev.aaa1115910.bv.util.onDelayFocusChanged
 import dev.aaa1115910.bv.viewmodel.user.FavoriteViewModel
@@ -71,6 +74,7 @@ fun FavoriteScreen(
     )
     val focusRequester = remember { FocusRequester() }
     val defaultFocusRequester = remember { FocusRequester() }
+    val gridFocusRestorer = rememberTvLazyListFocusRestorer(defaultFocusRequester)
     var focusOnTabs by remember { mutableStateOf(true) }
     var focusOnGrid by remember { mutableStateOf(false) }
     val lazyGridState = rememberLazyGridState()
@@ -147,7 +151,15 @@ fun FavoriteScreen(
     ) { innerPadding ->
         ProvideListBringIntoViewSpec(padding = 24.dp) {
             LazyVerticalGrid(
-                modifier = Modifier.padding(innerPadding),
+                modifier = gridFocusRestorer.containerModifier(
+                    Modifier
+                        .padding(innerPadding)
+                        .blockDownFocusExitAtGridEnd(
+                            currentIndex = currentIndex,
+                            itemCount = favoriteViewModel.favorites.size,
+                            columnCount = 4
+                        )
+                ),
                 state = lazyGridState,
                 columns = GridCells.Fixed(4),
                 contentPadding = PaddingValues(
@@ -206,8 +218,12 @@ fun FavoriteScreen(
                         }
                     }
                 }
-                itemsIndexed(favoriteViewModel.favorites) { index, history ->
+                itemsIndexed(
+                    items = favoriteViewModel.favorites,
+                    key = { _, history -> history.stableItemKey() }
+                ) { index, history ->
                     SmallVideoCard(
+                        modifier = gridFocusRestorer.firstItemModifier(index),
                         data = history,
                         onClick = { VideoInfoActivity.actionStart(context, history.avid) },
                         onLongClick = {

@@ -40,7 +40,9 @@ import dev.aaa1115910.bv.tv.component.videocard.SeasonCard
 import dev.aaa1115910.bv.entity.carddata.SeasonCardData
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
 import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
+import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
+import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.getDisplayName
 import dev.aaa1115910.bv.viewmodel.index.PgcIndexViewModel
@@ -57,6 +59,7 @@ fun PgcIndexScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger { }
+    val gridFocusRestorer = rememberTvLazyListFocusRestorer()
 
     var currentSeasonIndex by remember { mutableIntStateOf(0) }
     val showLargeTitle by remember {
@@ -140,14 +143,26 @@ fun PgcIndexScreen(
     ) { innerPadding ->
         ProvideListBringIntoViewSpec {
             LazyVerticalGrid(
-                modifier = Modifier.padding(innerPadding),
+                modifier = gridFocusRestorer.containerModifier(
+                    Modifier
+                        .padding(innerPadding)
+                        .blockDownFocusExitAtGridEnd(
+                            currentIndex = currentSeasonIndex,
+                            itemCount = pgcItems.size,
+                            columnCount = 6
+                        )
+                ),
                 columns = GridCells.Fixed(6),
                 contentPadding = PaddingValues(24.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                itemsIndexed(items = pgcItems) { index, pgcItem ->
+                itemsIndexed(
+                    items = pgcItems,
+                    key = { _, pgcItem -> pgcItem.seasonId }
+                ) { index, pgcItem ->
                     SeasonCard(
+                        modifier = gridFocusRestorer.firstItemModifier(index),
                         data = SeasonCardData.fromPgcItem(pgcItem),
                         onFocus = {
                             currentSeasonIndex = index

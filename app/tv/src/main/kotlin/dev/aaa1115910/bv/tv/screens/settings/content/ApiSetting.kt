@@ -50,7 +50,10 @@ fun ApiSetting(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(items = ApiType.entries) { apiType ->
+                items(
+                    items = ApiType.entries,
+                    key = { apiType -> apiType.name }
+                ) { apiType ->
                     SettingsMenuSelectItem(
                         text = apiType.name,
                         selected = selectedApiType == apiType,

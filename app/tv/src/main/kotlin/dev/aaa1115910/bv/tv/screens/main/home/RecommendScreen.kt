@@ -31,7 +31,9 @@ import dev.aaa1115910.bv.tv.R
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
 import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
+import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
+import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.viewmodel.home.RecommendViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -45,6 +47,7 @@ fun RecommendScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val listFocusRestorer = rememberTvLazyListFocusRestorer()
     var currentFocusedIndex by remember { mutableIntStateOf(0) }
     val shouldLoadMore by remember {
         derivedStateOf { recommendViewModel.recommendVideoList.isNotEmpty() && currentFocusedIndex + 12 > recommendViewModel.recommendVideoList.size }
@@ -76,15 +79,27 @@ fun RecommendScreen(
     val spacedBy = dimensionResource(R.dimen.grid_spacedBy)
     ProvideListBringIntoViewSpec {
         LazyVerticalGrid(
-            modifier = modifier.fillMaxSize(),
+            modifier = listFocusRestorer.containerModifier(
+                modifier
+                    .fillMaxSize()
+                    .blockDownFocusExitAtGridEnd(
+                        currentIndex = currentFocusedIndex,
+                        itemCount = recommendViewModel.recommendVideoList.size,
+                        columnCount = 4
+                    )
+            ),
             columns = GridCells.Fixed(4),
             state = lazyGridState,
             contentPadding = PaddingValues(padding),
             verticalArrangement = Arrangement.spacedBy(spacedBy),
             horizontalArrangement = Arrangement.spacedBy(spacedBy)
         ) {
-            itemsIndexed(recommendViewModel.recommendVideoList) { index, item ->
+            itemsIndexed(
+                items = recommendViewModel.recommendVideoList,
+                key = { _, item -> item.aid }
+            ) { index, item ->
                 SmallVideoCard(
+                    modifier = listFocusRestorer.firstItemModifier(index),
                     data = remember(item.aid) {
                         VideoCardData(
                             avid = item.aid,

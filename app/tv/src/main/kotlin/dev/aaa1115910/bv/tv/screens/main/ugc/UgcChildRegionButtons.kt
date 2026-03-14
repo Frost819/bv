@@ -64,7 +64,10 @@ fun UgcChildRegionButtonsContent(
         contentPadding = PaddingValues(horizontal = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
     ) {
-        itemsIndexed(items = childUgcTypes) { index, ugcType ->
+        itemsIndexed(
+            items = childUgcTypes,
+            key = { _, ugcType -> ugcType.name }
+        ) { index, ugcType ->
             SuggestionChip(
                 modifier = Modifier.ifElse(index == 0, Modifier.focusRequester(focusRequester)),
                 onClick = { onClickChildRegion(ugcType) }

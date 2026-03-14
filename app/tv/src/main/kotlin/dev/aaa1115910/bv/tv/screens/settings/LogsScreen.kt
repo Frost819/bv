@@ -197,7 +197,10 @@ fun LogsScreenContent(
                             onClick = onClickCreateLog
                         )
                     }
-                    items(items = logs) { logFile ->
+                    items(
+                        items = logs,
+                        key = { logFile -> logFile.absolutePath }
+                    ) { logFile ->
                         LogItem(
                             filename = logFile.name,
                             size = logFile.length(),

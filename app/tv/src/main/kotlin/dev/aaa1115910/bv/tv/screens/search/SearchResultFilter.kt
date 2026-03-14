@@ -98,7 +98,10 @@ fun SearchResultVideoFilter(
                         },
                         horizontalArrangement = Arrangement.spacedBy(filterRowSpace)
                     ) {
-                        items(items = SearchFilterOrderType.webFilters) { orderType ->
+                        items(
+                            items = SearchFilterOrderType.webFilters,
+                            key = { orderType -> orderType.name }
+                        ) { orderType ->
                             FilterDialogFilterChip(
                                 focusRequester = defaultFocusRequester,
                                 selected = orderType == selectedOrder,
@@ -128,7 +131,10 @@ fun SearchResultVideoFilter(
                         },
                         horizontalArrangement = Arrangement.spacedBy(filterRowSpace)
                     ) {
-                        items(items = SearchFilterDuration.entries) { duration ->
+                        items(
+                            items = SearchFilterDuration.entries,
+                            key = { duration -> duration.name }
+                        ) { duration ->
                             FilterDialogFilterChip(
                                 focusRequester = durationFocusRequester,
                                 selected = duration == selectedDuration,
@@ -171,7 +177,10 @@ fun SearchResultVideoFilter(
                                 enabled = !isDialogJustOpened
                             )
                         }
-                        items(items = partitions) { partition ->
+                        items(
+                            items = partitions,
+                            key = { partition -> partition.tid }
+                        ) { partition ->
                             FilterDialogFilterChip(
                                 focusRequester = partitionFocusRequester,
                                 selected = partition == selectedPartition,
@@ -198,7 +207,10 @@ fun SearchResultVideoFilter(
                             },
                             horizontalArrangement = Arrangement.spacedBy(filterRowSpace)
                         ) {
-                            items(items = selectedPartition?.children ?: emptyList()) { partition ->
+                            items(
+                                items = selectedPartition?.children ?: emptyList(),
+                                key = { partition -> partition.tid }
+                            ) { partition ->
                                 FilterDialogFilterChip(
                                     focusRequester = partitionChildFocusRequester,
                                     selected = partition == selectedChildPartition,

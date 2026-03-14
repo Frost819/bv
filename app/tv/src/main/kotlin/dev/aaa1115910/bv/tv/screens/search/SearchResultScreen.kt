@@ -63,7 +63,9 @@ import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoPlayerV3Activity
 import dev.aaa1115910.bv.tv.component.live.LiveRoomCard
 import dev.aaa1115910.bv.tv.screens.user.UpCard
+import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
+import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.fInfo
 import dev.aaa1115910.bv.util.focusedScale
@@ -83,6 +85,7 @@ fun SearchResultScreen(
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger { }
     val tabRowFocusRequester = remember { FocusRequester() }
+    val listFocusRestorer = rememberTvLazyListFocusRestorer()
 
     var rowSize by remember { mutableIntStateOf(4) }
     var currentIndex by remember { mutableIntStateOf(0) }
@@ -278,15 +281,23 @@ fun SearchResultScreen(
             }
             ProvideListBringIntoViewSpec(padding = 26.dp) {
                 LazyVerticalGrid(
-                    modifier = Modifier.onPreviewKeyEvent {
-                        when (it.key) {
-                            Key.Back -> {
-                                if (it.type == KeyEventType.KeyUp) backToTabRow()
-                                return@onPreviewKeyEvent true
+                    modifier = listFocusRestorer.containerModifier(
+                        Modifier
+                            .blockDownFocusExitAtGridEnd(
+                                currentIndex = currentIndex,
+                                itemCount = searchResult.count,
+                                columnCount = rowSize
+                            )
+                            .onPreviewKeyEvent {
+                                when (it.key) {
+                                    Key.Back -> {
+                                        if (it.type == KeyEventType.KeyUp) backToTabRow()
+                                        return@onPreviewKeyEvent true
+                                    }
+                                }
+                                false
                             }
-                        }
-                        false
-                    },
+                    ),
                     columns = GridCells.Fixed(rowSize),
                     contentPadding = PaddingValues(24.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp),
@@ -299,9 +310,11 @@ fun SearchResultScreen(
                             SearchType.MediaFt -> searchResult.mediaFts
                             SearchType.BiliUser -> searchResult.biliUsers
                             SearchType.LiveRoom -> searchResult.liveRooms
-                        }
+                        },
+                        key = { _, item -> searchResultItemKey(item) }
                     ) { index, searchResultItem ->
                         SearchResultListItem(
+                            modifier = listFocusRestorer.firstItemModifier(index),
                             searchResult = searchResultItem,
                             onClick = { onClickResult(searchResultItem) },
                             onLongClick = onLongClickSearchResultItem,
@@ -325,6 +338,16 @@ fun SearchResultScreen(
         onSelectedPartitionChange = { searchResultViewModel.selectedPartition = it },
         onSelectedChildPartitionChange = { searchResultViewModel.selectedChildPartition = it }
     )
+}
+
+private fun searchResultItemKey(item: SearchTypeResult.SearchTypeResultItem): Any {
+    return when (item) {
+        is SearchTypeResult.Video -> "video-${item.aid}"
+        is SearchTypeResult.Pgc -> "pgc-${item.seasonId}"
+        is SearchTypeResult.User -> "user-${item.mid}"
+        is SearchTypeResult.LiveRoom -> "live-${item.roomId}"
+        else -> item.hashCode()
+    }
 }
 
 @Composable

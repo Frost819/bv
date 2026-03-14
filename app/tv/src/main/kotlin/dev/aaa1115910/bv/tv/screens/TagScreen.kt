@@ -32,7 +32,10 @@ import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
+import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
+import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
+import dev.aaa1115910.bv.tv.util.stableItemKey
 import dev.aaa1115910.bv.viewmodel.TagViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -42,6 +45,7 @@ fun TagScreen(
     tagViewModel: TagViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
+    val listFocusRestorer = rememberTvLazyListFocusRestorer()
     var currentIndex by remember { mutableIntStateOf(0) }
     val showLargeTitle by remember { derivedStateOf { currentIndex < 4 } }
     val titleFontSize by animateFloatAsState(
@@ -100,7 +104,15 @@ fun TagScreen(
     ) { innerPadding ->
         ProvideListBringIntoViewSpec(padding = 26.dp) {
             LazyVerticalGrid(
-                modifier = Modifier.padding(innerPadding),
+                modifier = listFocusRestorer.containerModifier(
+                    Modifier
+                        .padding(innerPadding)
+                        .blockDownFocusExitAtGridEnd(
+                            currentIndex = currentIndex,
+                            itemCount = tagViewModel.topVideos.size,
+                            columnCount = 4
+                        )
+                ),
                 columns = GridCells.Fixed(4),
                 contentPadding = PaddingValues(24.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
@@ -108,12 +120,13 @@ fun TagScreen(
             ) {
                 itemsIndexed(
                     items = tagViewModel.topVideos,
-                    key = { index, _ -> index }
+                    key = { _, video -> video.stableItemKey() }
                 ) { index, video ->
                     Box(
                         contentAlignment = Alignment.Center
                     ) {
                         SmallVideoCard(
+                            modifier = listFocusRestorer.firstItemModifier(index),
                             data = video,
                             onClick = { VideoInfoActivity.actionStart(context, video.avid) },
                             onLongClick = { UpInfoActivity.actionStart( context, mid = video.upId, name = video.upName, face = video.upFace ) },

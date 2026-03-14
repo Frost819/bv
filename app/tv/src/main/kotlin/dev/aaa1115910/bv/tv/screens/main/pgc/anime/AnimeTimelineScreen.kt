@@ -41,6 +41,7 @@ import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.tv.component.videocard.SeasonCard
 import dev.aaa1115910.bv.entity.carddata.SeasonCardData
 import dev.aaa1115910.bv.tv.activities.video.SeasonInfoActivity
+import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.util.ImageSize
 import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.util.addAllWithMainContext
@@ -64,6 +65,8 @@ fun AnimeTimelineScreen(
     val scope = rememberCoroutineScope()
     val logger = KotlinLogging.logger { }
     val listState = rememberLazyListState()
+    val defaultFocusRequester = remember { FocusRequester() }
+    val listFocusRestorer = rememberTvLazyListFocusRestorer(defaultFocusRequester)
 
     var currentTimelineIndex by remember { mutableIntStateOf(0) }
     var currentEpisodeIndex by remember { mutableIntStateOf(0) }
@@ -77,7 +80,6 @@ fun AnimeTimelineScreen(
         label = "title font size"
     )
 
-    val defaultFocusRequester = remember { FocusRequester() }
     val timelines = remember { mutableStateListOf<Timeline>() }
 
     LaunchedEffect(Unit) {
@@ -126,10 +128,13 @@ fun AnimeTimelineScreen(
     ) { innerPadding ->
         LazyColumn(
             state = listState,
-            modifier = Modifier.padding(innerPadding),
+            modifier = listFocusRestorer.containerModifier(Modifier.padding(innerPadding)),
             contentPadding = PaddingValues(bottom = 48.dp, start = 48.dp, end = 48.dp)
         ) {
-            itemsIndexed(items = timelines) { index, timeline ->
+            itemsIndexed(
+                items = timelines,
+                key = { _, timeline -> timeline.date.time }
+            ) { index, timeline ->
                 val defaultModifier = if (timeline.isToday) {
                     Modifier.focusRequester(defaultFocusRequester)
                 } else {

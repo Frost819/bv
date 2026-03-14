@@ -1,6 +1,7 @@
 package dev.aaa1115910.bv.tv.screens.main.home
 
 import android.content.Intent
+import android.view.KeyEvent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,11 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
@@ -47,7 +44,9 @@ import dev.aaa1115910.bv.tv.activities.user.FollowActivity
 import dev.aaa1115910.bv.tv.activities.video.UpInfoActivity
 import dev.aaa1115910.bv.tv.activities.video.VideoInfoActivity
 import dev.aaa1115910.bv.tv.component.videocard.SmallVideoCard
+import dev.aaa1115910.bv.tv.util.blockDownFocusExitAtGridEnd
 import dev.aaa1115910.bv.tv.util.ProvideListBringIntoViewSpec
+import dev.aaa1115910.bv.tv.util.rememberTvLazyListFocusRestorer
 import dev.aaa1115910.bv.viewmodel.home.DynamicViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -61,6 +60,7 @@ fun DynamicsScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val listFocusRestorer = rememberTvLazyListFocusRestorer()
     var currentFocusedIndex by remember { mutableIntStateOf(-1) }
     val shouldLoadMore by remember {
         derivedStateOf { dynamicViewModel.dynamicVideoList.isNotEmpty() && currentFocusedIndex + 12 > dynamicViewModel.dynamicVideoList.size }
@@ -109,15 +109,22 @@ fun DynamicsScreen(
         }
         ProvideListBringIntoViewSpec {
             LazyVerticalGrid(
-                modifier = modifier
-                    .fillMaxSize()
+                modifier = listFocusRestorer.containerModifier(modifier.fillMaxSize())
+                    .blockDownFocusExitAtGridEnd(
+                        currentIndex = currentFocusedIndex,
+                        itemCount = dynamicViewModel.dynamicVideoList.size,
+                        columnCount = 4
+                    )
                     .onFocusChanged{
                         if (!it.isFocused) {
                             currentFocusedIndex = -1
                         }
                     }
-                    .onPreviewKeyEvent {
-                        if(it.type == KeyEventType.KeyUp && it.key == Key.Menu) {
+                    .onPreviewKeyEvent { keyEvent ->
+                        if (
+                            keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_UP &&
+                            keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_MENU
+                        ) {
                             context.startActivity(Intent(context, FollowActivity::class.java))
                             return@onPreviewKeyEvent true
                         }
@@ -129,8 +136,12 @@ fun DynamicsScreen(
                 verticalArrangement = Arrangement.spacedBy(spacedBy),
                 horizontalArrangement = Arrangement.spacedBy(spacedBy)
             ) {
-                itemsIndexed(dynamicViewModel.dynamicVideoList) { index, item ->
+                itemsIndexed(
+                    items = dynamicViewModel.dynamicVideoList,
+                    key = { _, item -> item.aid }
+                ) { index, item ->
                     SmallVideoCard(
+                        modifier = listFocusRestorer.firstItemModifier(index),
                         data = remember(item.aid) {
                             VideoCardData(
                                 avid = item.aid,

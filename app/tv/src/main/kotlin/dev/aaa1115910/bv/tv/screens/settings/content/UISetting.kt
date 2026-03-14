@@ -699,7 +699,10 @@ private fun UgcNavItemsEditDialog(
                     state = listState,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    itemsIndexed(navConfigs) { index, config ->
+                    itemsIndexed(
+                        items = navConfigs,
+                        key = { _, config -> config.ordinal }
+                    ) { index, config ->
                         val navItem = UgcTopNavItem.entries.getOrNull(config.ordinal) ?: return@itemsIndexed
                         NavItemEditRow(
                             title = navItem.getDisplayName(LocalContext.current),
