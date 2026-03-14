@@ -79,7 +79,15 @@ fun SmallVideoCard(
         }
     }
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    var cardFocused by remember { mutableStateOf(false) }
+    val pink = Color(0xFFFF69B4)
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.large)
+            .background(if (cardFocused) pink.copy(alpha = 0.15f) else Color.Transparent)
+    ) {
         Card(
             onClick = { if (!showActions) onClick() },
             onLongClick = {
@@ -90,13 +98,14 @@ fun SmallVideoCard(
                 .fillMaxWidth()
                 .aspectRatio(1.6f)
                 .onFocusChanged { focusState ->
+                    cardFocused = focusState.hasFocus
                     if (!focusState.hasFocus) showActions = false
                 },
             shape = CardDefaults.shape(MaterialTheme.shapes.large),
             scale = CardDefaults.scale(focusedScale = 1f, pressedScale = 1f),
             border = CardDefaults.border(
                 focusedBorder = Border(
-                    border = BorderStroke(3.dp, Color(0xFFFF69B4)),
+                    border = BorderStroke(2.dp, pink),
                     shape = MaterialTheme.shapes.large
                 )
             )

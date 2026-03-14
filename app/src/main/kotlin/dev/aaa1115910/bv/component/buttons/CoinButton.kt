@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Icon
 
 @Composable
@@ -18,6 +19,7 @@ fun CoinButton(
     Button(
         modifier = modifier,
         onClick = onClick,
+        scale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 1f),
     ) {
         Icon(
             imageVector = if (isCoined) Icons.Rounded.Paid else Icons.Outlined.Paid,

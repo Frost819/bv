@@ -56,6 +56,7 @@ fun LikeButton(
         )
     )
     Button(
+        scale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 1f),
         modifier = modifier.onPreviewKeyEvent {
             when (it.key) {
                 Key.DirectionCenter, Key.Enter, Key.Spacebar -> {
