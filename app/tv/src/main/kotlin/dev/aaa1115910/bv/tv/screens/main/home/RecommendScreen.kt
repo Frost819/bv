@@ -96,7 +96,7 @@ fun RecommendScreen(
         ) {
             itemsIndexed(
                 items = recommendViewModel.recommendVideoList,
-                key = { _, item -> item.aid }
+                key = { index, item -> "$index-av-${item.aid}" }
             ) { index, item ->
                 SmallVideoCard(
                     modifier = listFocusRestorer.firstItemModifier(index),

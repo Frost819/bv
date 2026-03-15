@@ -762,7 +762,7 @@ private fun UgcNavItemsEditDialog(
                 ) {
                     itemsIndexed(
                         items = navConfigs,
-                        key = { _, config -> config.ordinal }
+                        key = { index, config -> "$index-nav-${config.ordinal}" }
                     ) { index, config ->
                         val navItem = UgcTopNavItem.entries.getOrNull(config.ordinal) ?: return@itemsIndexed
                         NavItemEditRow(

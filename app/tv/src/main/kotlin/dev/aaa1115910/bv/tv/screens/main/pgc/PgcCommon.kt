@@ -142,8 +142,8 @@ fun PgcScaffold(
                 items = pgcFeeds,
                 key = { index, feedListItem ->
                     when (feedListItem.type) {
-                        FeedListType.Ep -> "ep-${feedListItem.items?.firstOrNull()?.seasonId ?: index}-${feedListItem.items?.size ?: 0}"
-                        FeedListType.Rank -> "rank-${feedListItem.rank?.title ?: index}"
+                        FeedListType.Ep -> "$index-ep-${feedListItem.items?.firstOrNull()?.seasonId ?: index}-${feedListItem.items?.size ?: 0}"
+                        FeedListType.Rank -> "$index-rank-${feedListItem.rank?.title ?: index}"
                     }
                 }
             ) { index, feedListItem ->
@@ -190,7 +190,7 @@ fun PgcFeedVideoRow(
     ) {
         itemsIndexed(
             items = data,
-            key = { _, feedItem -> feedItem.seasonId }
+            key = { index, feedItem -> "$index-season-${feedItem.seasonId}" }
         ) { index, feedItem ->
             val cardModifier = if (index == data.lastIndex) {
                 Modifier.onPreviewKeyEvent { keyEvent ->
@@ -308,7 +308,7 @@ fun PgcFeedRankRow(
             ) {
                 itemsIndexed(
                     items = data.items,
-                    key = { _, feedItem -> feedItem.seasonId }
+                    key = { index, feedItem -> "$index-season-${feedItem.seasonId}" }
                 ) { index, feedItem ->
                     val cardModifier = if (index == data.items.lastIndex) {
                         Modifier.onPreviewKeyEvent {
@@ -385,7 +385,7 @@ fun PgcFeatureButtons(
     ) {
         itemsIndexed(
             items = buttons,
-            key = { index, (title, _, _) -> "feature-$index-$title" }
+            key = { index, (title, _, _) -> "$index-feature-$title" }
         ) { _, (title, icon, onClick) ->
             when (icon) {
                 is ImageVector -> PgcFeatureButton(

@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -130,10 +130,10 @@ fun UnlockSwitchUserContent(
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp)
             ) {
-                items(
+                itemsIndexed(
                     items = userList,
-                    key = { user -> user.uid }
-                ) { user ->
+                    key = { index, user -> "$index-user-${user.uid}" }
+                ) { _, user ->
                     UserItem(
                         modifier = Modifier
                             .ifElse({ user != unlockUser }, Modifier.alpha(unselectedUserAlpha)),

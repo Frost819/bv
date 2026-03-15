@@ -108,7 +108,7 @@ fun VideosRow(
         ) {
             itemsIndexed(
                 items = videos,
-                key = { _, videoData -> videoData.stableItemKey() }
+                key = { index, videoData -> "$index-${videoData.stableItemKey()}" }
             ) { index, videoData ->
                 SmallVideoCard(
                     modifier = listFocusRestorer.firstItemModifier(index, Modifier.width(200.dp)),

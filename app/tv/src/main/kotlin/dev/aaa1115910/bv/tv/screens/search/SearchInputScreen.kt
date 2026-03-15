@@ -268,7 +268,7 @@ private fun SearchHotwords(
         ) {
             itemsIndexed(
                 items = hotwords,
-                key = { _, hotword -> hotword.showName }
+                key = { index, hotword -> "$index-hotword-${hotword.showName}" }
             ) { _, hotword ->
                 SearchKeyword(
                     modifier = Modifier,
@@ -305,7 +305,7 @@ private fun SearchSuggestion(
         ) {
             itemsIndexed(
                 items = suggests,
-                key = { _, suggest -> suggest }
+                key = { index, suggest -> "$index-suggest-$suggest" }
             ) { _, suggest ->
                 SearchKeyword(
                     modifier = Modifier,
@@ -379,7 +379,7 @@ private fun SearchHistory(
         ) {
             itemsIndexed(
                 items = histories,
-                key = { index, searchHistory -> searchHistory.id ?: "history-${searchHistory.keyword}-$index" }
+                key = { index, searchHistory -> "$index-history-${searchHistory.id ?: searchHistory.keyword}" }
             ) { index, searchHistory ->
                 SearchKeyword(
                     modifier = Modifier,

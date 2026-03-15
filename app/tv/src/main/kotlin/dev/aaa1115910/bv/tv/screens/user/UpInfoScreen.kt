@@ -396,7 +396,7 @@ fun UpSpaceScreen(
             ) {
                 itemsIndexed(
                     items = userSpaceViewModel.tvSpaceVideos,
-                    key = { _, video -> video.stableItemKey() }
+                    key = { index, video -> "$index-${video.stableItemKey()}" }
                 ) { index, video ->
                     SmallVideoCard(
                         modifier = listFocusRestorer.firstItemModifier(index),

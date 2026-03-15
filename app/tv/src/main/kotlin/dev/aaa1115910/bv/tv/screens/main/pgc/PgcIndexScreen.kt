@@ -159,7 +159,7 @@ fun PgcIndexScreen(
             ) {
                 itemsIndexed(
                     items = pgcItems,
-                    key = { _, pgcItem -> pgcItem.seasonId }
+                    key = { index, pgcItem -> "$index-season-${pgcItem.seasonId}" }
                 ) { index, pgcItem ->
                     SeasonCard(
                         modifier = gridFocusRestorer.firstItemModifier(index),

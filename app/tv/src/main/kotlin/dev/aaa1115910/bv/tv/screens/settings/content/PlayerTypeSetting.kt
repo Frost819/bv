@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,10 +52,10 @@ fun PlayerTypeSetting(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(
+                itemsIndexed(
                     items = PlayerType.entries,
-                    key = { playerType -> playerType.name }
-                ) { playerType ->
+                    key = { index, playerType -> "$index-player-${playerType.name}" }
+                ) { _, playerType ->
                     SettingsMenuSelectItem(
                         text = playerType.name,
                         selected = selectedPlayerType == playerType,

@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Done
 import androidx.compose.runtime.Composable
@@ -62,10 +62,10 @@ fun FollowingSeasonFilter(
                         horizontalArrangement = Arrangement.spacedBy(filterRowSpace),
                         contentPadding = PaddingValues(horizontal = filterRowSpace)
                     ) {
-                        items(
+                        itemsIndexed(
                             items = FollowingSeasonType.entries,
-                            key = { type -> type.name }
-                        ) { type ->
+                            key = { index, type -> "$index-type-${type.name}" }
+                        ) { _, type ->
                             FilterDialogFilterChip(
                                 modifier = Modifier
                                     .ifElse(
@@ -84,10 +84,10 @@ fun FollowingSeasonFilter(
                         horizontalArrangement = Arrangement.spacedBy(filterRowSpace),
                         contentPadding = PaddingValues(horizontal = filterRowSpace)
                     ) {
-                        items(
+                        itemsIndexed(
                             items = FollowingSeasonStatus.entries,
-                            key = { status -> status.name }
-                        ) { status ->
+                            key = { index, status -> "$index-status-${status.name}" }
+                        ) { _, status ->
                             FilterDialogFilterChip(
                                 modifier = Modifier
                                     .ifElse(

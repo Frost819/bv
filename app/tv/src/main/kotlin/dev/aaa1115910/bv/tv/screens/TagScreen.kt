@@ -120,7 +120,7 @@ fun TagScreen(
             ) {
                 itemsIndexed(
                     items = tagViewModel.topVideos,
-                    key = { _, video -> video.stableItemKey() }
+                    key = { index, video -> "$index-${video.stableItemKey()}" }
                 ) { index, video ->
                     Box(
                         contentAlignment = Alignment.Center

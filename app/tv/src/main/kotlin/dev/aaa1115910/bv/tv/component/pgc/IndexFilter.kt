@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.HorizontalDivider
@@ -294,10 +294,10 @@ private fun <T> IndexFilterChipRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
         ) {
-            items(
+            itemsIndexed(
                 items = filters,
-                key = { filter -> (filter as PgcIndexParam).getDisplayName(context) }
-            ) { filter ->
+                key = { index, filter -> "$index-${(filter as PgcIndexParam).getDisplayName(context)}" }
+            ) { _, filter ->
                 IndexFilterChip(
                     modifier = Modifier
                         .ifElse(

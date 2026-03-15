@@ -919,7 +919,7 @@ fun VideoInfoScreen(
                     } else {
                         itemsIndexed(
                             items = videoDetailViewModel.videoDetail?.ugcSeason!!.sections,
-                            key = { index, section -> "section-${section.title}-${section.episodes.firstOrNull()?.aid ?: index}-${section.episodes.firstOrNull()?.cid ?: 0}" }
+                            key = { index, section -> "$index-section-${section.title}-${section.episodes.firstOrNull()?.aid ?: index}-${section.episodes.firstOrNull()?.cid ?: 0}" }
                         ) { index, section ->
                             VideoUgcSeasonRow(
                                 title = section.title,
@@ -1385,10 +1385,10 @@ fun VideoInfoData(
                 contentPadding = PaddingValues(horizontal = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                items(
+                itemsIndexed(
                     items = tags,
-                    key = { tag -> tag.name }
-                ) { tag ->
+                    key = { index, tag -> "$index-tag-${tag.name}" }
+                ) { _, tag ->
                     SuggestionChip(onClick = {
                         onClickTip(tag)
                     }) {
@@ -1733,7 +1733,7 @@ fun VideoPartRow(
             contentPadding = PaddingValues(12.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            itemsIndexed(items = pages, key = { _, page -> page.cid }) { index, page ->
+            itemsIndexed(items = pages, key = { index, page -> "$index-page-${page.cid}" }) { index, page ->
                 VideoPartButton(
                     modifier = Modifier
                         .ifElse(index == 0, Modifier.focusRequester(focusRequester)),
@@ -1836,7 +1836,7 @@ fun VideoUgcSeasonRow(
         ) {
             itemsIndexed(
                 items = episodes,
-                key = { _, episode -> "episode-${episode.aid}-${episode.cid}" }
+                key = { index, episode -> "$index-episode-${episode.aid}-${episode.cid}" }
             ) { index, episode ->
                 VideoPartButton(
                     modifier = Modifier
@@ -1976,7 +1976,7 @@ private fun VideoPartListDialog(
                     ) {
                         itemsIndexed(
                             items = selectedVideoPart,
-                            key = { _, video -> video.cid }
+                            key = { index, video -> "$index-video-${video.cid}" }
                         ) { index, page ->
                             val buttonModifier =
                                 if (index == 0) Modifier.focusRequester(videoListFocusRequester) else Modifier
@@ -2095,7 +2095,7 @@ private fun VideoUgcListDialog(
                     ) {
                         itemsIndexed(
                             items = selectedVideoPart,
-                            key = { _, video -> video.cid }
+                            key = { index, video -> "$index-video-${video.cid}" }
                         ) { index, episode ->
                             val buttonModifier =
                                 if (index == 0) Modifier.focusRequester(videoListFocusRequester) else Modifier

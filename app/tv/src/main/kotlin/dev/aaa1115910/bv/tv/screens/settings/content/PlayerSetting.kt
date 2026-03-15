@@ -591,7 +591,7 @@ private fun PlayerControllerButtonDialog(
                 ) {
                     itemsIndexed(
                         items = buttonConfigs,
-                        key = { _, config -> config.id }
+                        key = { index, config -> "$index-button-${config.id}" }
                     ) { index, config ->
                         ControllerButtonEditRow(
                             title = getControllerButtonDisplayName(config.id),

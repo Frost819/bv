@@ -157,8 +157,9 @@ class VideoPlayerActivity : ComponentActivity() {
     }
 
     override fun onPause() {
-        super.onPause()
+        playerViewModel.videoPlayer?.isInBackground = true
         playerViewModel.videoPlayer?.pause()
         playerViewModel.danmakuPlayer?.pause()
+        super.onPause()
     }
 }

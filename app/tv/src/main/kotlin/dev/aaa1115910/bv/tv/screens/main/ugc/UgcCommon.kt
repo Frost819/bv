@@ -147,7 +147,7 @@ fun UgcRegionScaffold(
 
             itemsIndexed(
                 items = ugcViewModel.ugcItems,
-                key = { _, item -> item.aid }
+                key = { index, item -> "$index-av-${item.aid}" }
             ) { index, item ->
                 SmallVideoCard(
                     modifier = cardFocusRestorer.firstItemModifier(index),

@@ -66,7 +66,7 @@ fun UgcChildRegionButtonsContent(
     ) {
         itemsIndexed(
             items = childUgcTypes,
-            key = { _, ugcType -> ugcType.name }
+            key = { index, ugcType -> "$index-ugc-${ugcType.name}" }
         ) { index, ugcType ->
             SuggestionChip(
                 modifier = Modifier.ifElse(index == 0, Modifier.focusRequester(focusRequester)),

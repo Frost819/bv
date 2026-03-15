@@ -311,7 +311,7 @@ fun SearchResultScreen(
                             SearchType.BiliUser -> searchResult.biliUsers
                             SearchType.LiveRoom -> searchResult.liveRooms
                         },
-                        key = { _, item -> searchResultItemKey(item) }
+                        key = { index, item -> "$index-${searchResultItemKey(item)}" }
                     ) { index, searchResultItem ->
                         SearchResultListItem(
                             modifier = listFocusRestorer.firstItemModifier(index),

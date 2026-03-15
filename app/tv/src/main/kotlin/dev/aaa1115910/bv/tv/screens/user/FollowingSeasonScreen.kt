@@ -200,7 +200,7 @@ fun FollowingSeasonScreen(
             ) {
                 itemsIndexed(
                     items = followingSeasons,
-                    key = { _, followingSeason -> followingSeason.seasonId }
+                    key = { index, followingSeason -> "$index-season-${followingSeason.seasonId}" }
                 ) { index, followingSeason ->
                     SeasonCard(
                         modifier = gridFocusRestorer.firstItemModifier(index),

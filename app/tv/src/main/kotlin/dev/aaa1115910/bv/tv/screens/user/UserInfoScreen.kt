@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
@@ -741,10 +741,10 @@ private fun FollowingAnimeVideosRow(
             verticalAlignment = Alignment.CenterVertically,
             contentPadding = PaddingValues(horizontal = 62.dp)
         ) {
-            items(
+            itemsIndexed(
                 items = videos,
-                key = { seasonCardData -> seasonCardData.seasonId }
-            ) { seasonCardData ->
+                key = { index, seasonCardData -> "$index-season-${seasonCardData.seasonId}" }
+            ) { _, seasonCardData ->
                 SeasonCard(
                     modifier = Modifier.width(150.dp),
                     data = seasonCardData,

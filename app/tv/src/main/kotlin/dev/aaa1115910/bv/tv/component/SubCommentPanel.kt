@@ -253,7 +253,7 @@ fun SubCommentPanel(
                         ) {
                             itemsIndexed(
                                 items = replies,
-                                key = { _, it -> it.rpid }
+                                key = { index, it -> "$index-reply-${it.rpid}" }
                             ) { index, reply ->
                                 SubCommentItem(
                                     comment = reply,

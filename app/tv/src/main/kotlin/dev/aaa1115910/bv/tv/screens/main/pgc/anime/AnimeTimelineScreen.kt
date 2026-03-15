@@ -133,7 +133,7 @@ fun AnimeTimelineScreen(
         ) {
             itemsIndexed(
                 items = timelines,
-                key = { _, timeline -> timeline.date.time }
+                key = { index, timeline -> "$index-timeline-${timeline.date.time}" }
             ) { index, timeline ->
                 val defaultModifier = if (timeline.isToday) {
                     Modifier.focusRequester(defaultFocusRequester)

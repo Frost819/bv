@@ -267,7 +267,7 @@ fun LiveContent(
                     ) {
                         itemsIndexed(
                             items = liveViewModel.roomList,
-                            key = { _, room -> room.roomId }
+                            key = { index, room -> "$index-room-${room.roomId}" }
                         ) { index, room ->
                             val entryCardModifier = roomListFocusRestorer.firstItemModifier(index)
 

@@ -177,7 +177,7 @@ fun FollowScreen(
             if (!followViewModel.updating) {
                 itemsIndexed(
                     items = filteredUsers,
-                    key = { _, up -> up.mid }
+                    key = { index, up -> "$index-up-${up.mid}" }
                 ) { index, up ->
                     val upCardModifier = gridFocusRestorer.firstItemModifier(index)
                     UpCard(

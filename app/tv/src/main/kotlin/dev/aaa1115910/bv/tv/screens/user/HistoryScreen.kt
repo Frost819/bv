@@ -122,7 +122,7 @@ fun HistoryScreen(
             ) {
                 itemsIndexed(
                     items = historyViewModel.histories,
-                    key = { _, history -> history.stableItemKey() }
+                    key = { index, history -> "$index-${history.stableItemKey()}" }
                 ) { index, history ->
                     Box(
                         contentAlignment = Alignment.Center

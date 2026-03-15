@@ -481,7 +481,7 @@ fun CommentPanel(
                         ) {
                             itemsIndexed(
                                 items = comments,
-                                key = { _, it -> it.rpid }
+                                key = { index, it -> "$index-comment-${it.rpid}" }
                             ) { index, comment ->
                                 CommentItem(
                                     comment = comment,

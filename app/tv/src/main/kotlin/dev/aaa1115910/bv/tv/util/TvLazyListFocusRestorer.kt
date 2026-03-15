@@ -39,9 +39,9 @@ fun rememberTvLazyListFocusRestorer(
 
 fun VideoCardData.stableItemKey(): Any {
     return when {
-        seasonId != null -> "season-$seasonId-${epId ?: 0}"
-        avid > 0 -> "av-$avid"
-        else -> "$title|$cover|$upId"
+        seasonId != null -> "season-$seasonId-${epId ?: 0}-$upId"
+        avid > 0 -> "av-$avid-$upId"
+        else -> "$title|$upId"
     }
 }
 

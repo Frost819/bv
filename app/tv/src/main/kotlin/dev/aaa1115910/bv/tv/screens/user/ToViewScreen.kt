@@ -112,7 +112,7 @@ fun ToViewScreen(
             ) {
                 itemsIndexed(
                     items = ToViewViewModel.histories,
-                    key = { _, item -> item.stableItemKey() }
+                    key = { index, item -> "$index-${item.stableItemKey()}" }
                 ) { index, item ->
                     Box(
                         contentAlignment = Alignment.Center

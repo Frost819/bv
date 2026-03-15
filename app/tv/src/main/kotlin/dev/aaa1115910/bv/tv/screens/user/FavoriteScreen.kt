@@ -220,7 +220,7 @@ fun FavoriteScreen(
                 }
                 itemsIndexed(
                     items = favoriteViewModel.favorites,
-                    key = { _, history -> history.stableItemKey() }
+                    key = { index, history -> "$index-${history.stableItemKey()}" }
                 ) { index, history ->
                     SmallVideoCard(
                         modifier = gridFocusRestorer.firstItemModifier(index),

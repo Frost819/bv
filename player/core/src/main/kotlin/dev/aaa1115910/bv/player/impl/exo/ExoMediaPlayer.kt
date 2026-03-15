@@ -154,6 +154,10 @@ class ExoMediaPlayer(
     }
 
     override fun start() {
+        if (isInBackground) {
+            isInBackground = false
+            recoverIfNeeded()
+        }
         mPlayer?.play()
     }
 
@@ -270,7 +274,21 @@ class ExoMediaPlayer(
     }
 
     override fun onPlayerError(error: PlaybackException) {
+        if (isInBackground) return
         mPlayerEventListener?.onError(error)
+    }
+
+    /**
+     * 从后台恢复时检查播放器状态，若处于错误态则重新 prepare 恢复播放
+     */
+    fun recoverIfNeeded() {
+        val player = mPlayer ?: return
+        if (player.playerError != null) {
+            val pos = player.currentPosition
+            player.prepare()
+            if (pos > 0) player.seekTo(pos)
+            player.play()
+        }
     }
 
     /**
