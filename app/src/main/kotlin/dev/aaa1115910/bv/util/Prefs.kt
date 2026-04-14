@@ -14,6 +14,7 @@ import dev.aaa1115910.biliapi.entity.ApiType
 import dev.aaa1115910.biliapi.http.util.generateBuvid
 import dev.aaa1115910.bv.BVApp
 import dev.aaa1115910.bv.component.HomeTopNavItem
+import dev.aaa1115910.bv.component.PersonalTopNavItem
 import dev.aaa1115910.bv.component.controllers.DanmakuType
 import dev.aaa1115910.bv.component.controllers.playermenu.PlaySpeedItem
 import dev.aaa1115910.bv.entity.Audio
@@ -224,6 +225,12 @@ object Prefs {
         save = { it.code },
         restore = { HomeTopNavItem.fromCode(it) }
     )
+    var firstPersonalTopNavItem by pref(
+        PrefKeys.prefFirstPersonalTopNavItemKey,
+        PersonalTopNavItem.ToView,
+        save = { it.ordinal },
+        restore = { PersonalTopNavItem.entries.getOrElse(it) { PersonalTopNavItem.ToView } }
+    )
     var showHotword by pref(PrefKeys.prefShowHotwordKey, true)
 
     // =========================================================================
@@ -370,6 +377,7 @@ private object PrefKeys {
     val prefDensityKey = floatPreferencesKey("density")
     val prefHomeLeftNavItem = intPreferencesKey("home_left_nav")
     val prefFirstHomeTopNavItemKey = intPreferencesKey("first_home_top_nav")
+    val prefFirstPersonalTopNavItemKey = intPreferencesKey("first_personal_top_nav")
     val prefShowHotwordKey = booleanPreferencesKey("shw")
 
     // 隐身模式

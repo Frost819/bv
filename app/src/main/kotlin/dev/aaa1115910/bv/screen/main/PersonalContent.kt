@@ -31,6 +31,7 @@ import dev.aaa1115910.bv.screen.user.FavoriteScreen
 import dev.aaa1115910.bv.screen.user.FollowingSeasonScreen
 import dev.aaa1115910.bv.screen.user.HistoryScreen
 import dev.aaa1115910.bv.screen.user.ToViewScreen
+import dev.aaa1115910.bv.util.Prefs
 import dev.aaa1115910.bv.viewmodel.user.FavoriteViewModel
 import dev.aaa1115910.bv.viewmodel.user.FollowingSeasonViewModel
 import dev.aaa1115910.bv.viewmodel.user.HistoryViewModel
@@ -49,8 +50,20 @@ fun PersonalContent(
 ) {
     val scope = rememberCoroutineScope()
 
-    var selectedTab by remember { mutableStateOf(PersonalTopNavItem.ToView) }
     var focusOnContent by remember { mutableStateOf(false) }
+
+    val firstTab = remember { Prefs.firstPersonalTopNavItem }
+    var selectedTab by remember { mutableStateOf(firstTab) }
+
+    val getReorderedItems: (PersonalTopNavItem) -> List<PersonalTopNavItem> = { item ->
+        val allItems = PersonalTopNavItem.entries
+        val startIndex = allItems.indexOf(item)
+        if (startIndex == -1) emptyList()
+        else allItems.drop(startIndex) + allItems.take(startIndex)
+    }
+    val reorderedItems = remember {
+        getReorderedItems(firstTab)
+    }
 
     fun refreshPageData(nav: PersonalTopNavItem) {
         when (nav) {
@@ -99,7 +112,7 @@ fun PersonalContent(
             TopNav(
                 modifier = Modifier
                     .focusRequester(navFocusRequester),
-                items = PersonalTopNavItem.entries,
+                items = reorderedItems,
                 isLargePadding = !focusOnContent,
                 onSelectedChanged = { nav ->
                     selectedTab = nav as PersonalTopNavItem
@@ -129,7 +142,7 @@ fun PersonalContent(
                 label = "personal animated content",
                 transitionSpec = {
                     val coefficient = 10
-                    if (targetState.ordinal < initialState.ordinal) {
+                    if (reorderedItems.indexOf(targetState) < reorderedItems.indexOf(initialState)) {
                         fadeIn() + slideInHorizontally { -it / coefficient } togetherWith
                                 fadeOut() + slideOutHorizontally { it / coefficient }
                     } else {

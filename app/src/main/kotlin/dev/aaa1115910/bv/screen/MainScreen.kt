@@ -93,7 +93,7 @@ fun MainScreen(
 
     LaunchedEffect(Unit) {
         runCatching {
-            mainFocusRequester.requestFocus()
+            onFocusToContent()
         }.onFailure {
             logger.fException(it) { "request default focus requester failed" }
         }

@@ -279,7 +279,9 @@
     <string name="settings_ui_show_persistent_seek_title">显示迷你进度条</string>
     <string name="settings_ui_startup_page_title">更改启动页</string>
     <string name="settings_ui_homepage_text">动态/推荐/热门，需重启应用生效</string>
-    <string name="settings_ui_homepage_title">更改主页置顶页</string>
+    <string name="settings_ui_homepage_title">更改主页置顶</string>
+    <string name="settings_ui_personal_page_text">稍后再看/历史/收藏/追番，需重启应用生效</string>
+    <string name="settings_ui_personal_page_title">更改个人页置顶</string>
     <string name="settings_version_check_update_button">爷要更新</string>
     <string name="settings_version_current_version">当前版本: %1$s</string>
     <string name="settings_version_latest_version">最新版本: %1$s</string>

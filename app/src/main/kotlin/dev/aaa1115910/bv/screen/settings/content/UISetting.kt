@@ -44,6 +44,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.component.HomeTopNavItem
+import dev.aaa1115910.bv.component.PersonalTopNavItem
 import dev.aaa1115910.bv.component.settings.SettingListItem
 import dev.aaa1115910.bv.component.settings.SettingSwitchListItem
 import dev.aaa1115910.bv.screen.main.LeftNaviItem
@@ -62,6 +63,7 @@ fun UISetting(
     var showDensityDialog by remember { mutableStateOf(false) }
     var showStartupPageDialog by remember { mutableStateOf(false) }
     var showHomepageDialog by remember { mutableStateOf(false) }
+    var showPersonalPageDialog by remember { mutableStateOf(false) }
 
     var showVideoInfo by remember { mutableStateOf(Prefs.showVideoInfo) }
     var showPersistentSeek by remember { mutableStateOf(Prefs.showPersistentSeek) }
@@ -69,6 +71,7 @@ fun UISetting(
     val density by Prefs.densityFlow.collectAsState(context.resources.displayMetrics.widthPixels / 960f)
     var selectedLeftNavItem by remember { mutableStateOf(Prefs.homeLeftNaviItem) }
     var selectedFirstHomeTopNavItem by remember { mutableStateOf(Prefs.firstHomeTopNavItem) }
+    var selectedFirstPersonalTopNavItem by remember { mutableStateOf(Prefs.firstPersonalTopNavItem) }
 
     Box(modifier = modifier) {
         Column(
@@ -98,6 +101,13 @@ fun UISetting(
                         title = stringResource(R.string.settings_ui_homepage_title),
                         supportText = stringResource(R.string.settings_ui_homepage_text),
                         onClick = { showHomepageDialog = true }
+                    )
+                }
+                item {
+                    SettingListItem(
+                        title = stringResource(R.string.settings_ui_personal_page_title),
+                        supportText = stringResource(R.string.settings_ui_personal_page_text),
+                        onClick = { showPersonalPageDialog = true }
                     )
                 }
                 item {
@@ -161,6 +171,19 @@ fun UISetting(
             onSelect = {
                 Prefs.firstHomeTopNavItem = it
                 selectedFirstHomeTopNavItem = it
+            },
+            getDisplayName = { it.getDisplayName(context) }
+        )
+    }
+
+    if (showPersonalPageDialog) {
+        OptionDialog(
+            options = PersonalTopNavItem.entries.toTypedArray(),
+            selectedOption = selectedFirstPersonalTopNavItem,
+            onDismiss = { showPersonalPageDialog = false },
+            onSelect = {
+                Prefs.firstPersonalTopNavItem = it
+                selectedFirstPersonalTopNavItem = it
             },
             getDisplayName = { it.getDisplayName(context) }
         )
