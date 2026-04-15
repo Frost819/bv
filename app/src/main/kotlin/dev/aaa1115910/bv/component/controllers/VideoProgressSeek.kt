@@ -3,10 +3,12 @@ package dev.aaa1115910.bv.component.controllers
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.SliderColors
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.tooling.preview.Preview
@@ -30,13 +32,14 @@ fun VideoProgressSeek(
         modifier = modifier
             .fillMaxWidth()
             .height(trackWidthDp)
+            .clip(RoundedCornerShape(50))
     ) {
         val trackWidthPx = trackWidthDp.toPx()
 
         drawLine(
             color = colors.inactiveTrackColor,
-            start = Offset(trackWidthPx / 2, center.y),
-            end = Offset(size.width - trackWidthPx / 2, center.y),
+            start = Offset(0f, center.y),
+            end = Offset(size.width, center.y),
             strokeWidth = trackWidthPx,
             cap = StrokeCap.Round
         )

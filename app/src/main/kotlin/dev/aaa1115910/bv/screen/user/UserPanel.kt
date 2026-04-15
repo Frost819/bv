@@ -179,7 +179,7 @@ private fun UserPanelMyItem(
             .height(lineHeight),
         shape = MaterialTheme.shapes.medium,
         colors = SurfaceDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            containerColor = MaterialTheme.colorScheme.surface,
         )
     ) {
         Row(

@@ -3,6 +3,7 @@ package dev.aaa1115910.bv.screen.user
 import android.app.Activity
 import android.content.Intent
 import android.graphics.BitmapFactory
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -33,7 +34,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -55,13 +55,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.viewModelScope
+import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Glow
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
@@ -69,12 +67,10 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
-import dev.aaa1115910.bv.BVApp
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.activities.user.LoginActivity
 import dev.aaa1115910.bv.activities.user.UserLockSettingsActivity
 import dev.aaa1115910.bv.component.ifElse
-import dev.aaa1115910.bv.dao.AppDatabase
 import dev.aaa1115910.bv.entity.db.UserDB
 import dev.aaa1115910.bv.repository.UserRepository
 import dev.aaa1115910.bv.screen.user.lock.UnlockSwitchUserContent
@@ -540,10 +536,10 @@ fun UserItem(
                     shape = ClickableSurfaceDefaults.shape(
                         shape = CircleShape
                     ),
-                    glow = ClickableSurfaceDefaults.glow(
-                        focusedGlow = Glow(
-                            elevationColor = MaterialTheme.colorScheme.inverseSurface,
-                            elevation = 16.dp
+                    border = ClickableSurfaceDefaults.border(
+                        focusedBorder = Border(
+                            border = BorderStroke(width = 3.dp, color = MaterialTheme.colorScheme.border),
+                            shape = CircleShape
                         )
                     ),
                     onClick = onClick
@@ -615,10 +611,10 @@ private fun AddUserItem(
             shape = ClickableSurfaceDefaults.shape(
                 shape = CircleShape
             ),
-            glow = ClickableSurfaceDefaults.glow(
-                focusedGlow = Glow(
-                    elevationColor = MaterialTheme.colorScheme.inverseSurface,
-                    elevation = 16.dp
+            border = ClickableSurfaceDefaults.border(
+                focusedBorder = Border(
+                    border = BorderStroke(width = 3.dp, color = MaterialTheme.colorScheme.border),
+                    shape = CircleShape
                 )
             ),
             onClick = onClick
