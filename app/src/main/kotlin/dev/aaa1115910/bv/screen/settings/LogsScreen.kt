@@ -317,61 +317,42 @@ fun LogsScreenContent(
                     .fillMaxSize(),
                 contentAlignment = Alignment.TopCenter
             ) {
-                if (isCreateFocused) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        modifier = Modifier
+                            .padding(bottom = 16.dp)
+                            .padding(16.dp),
+                        text = "浏览器打开 $serverAddress\n或扫码进入日志管理",
+                        fontSize = 20.sp,
+                        style = TextStyle(lineBreak = LineBreak.Paragraph),
+                        textAlign = TextAlign.Center
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(240.dp)
+                            .clip(MaterialTheme.shapes.large)
+                            .background(Color.White),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            modifier = Modifier
-                                .padding(bottom = 16.dp)
-                                .padding(16.dp),
-                            text = "浏览器打开 $serverAddress\n或扫码进入日志管理",
-                            fontSize = 20.sp,
-                            style = TextStyle(lineBreak = LineBreak.Paragraph),
-                            textAlign = TextAlign.Center
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(240.dp)
-                                .clip(MaterialTheme.shapes.large)
-                                .background(Color.White),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (serverQrImage != null) {
-                                Image(
-                                    modifier = Modifier.size(200.dp),
-                                    bitmap = serverQrImage,
-                                    contentDescription = null
-                                )
-                            } else {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Text(text = "正在获取端口……")
-                                    CircularProgressIndicator()
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    if (fileQrImage != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(240.dp)
-                                .clip(MaterialTheme.shapes.large)
-                                .background(Color.White),
-                            contentAlignment = Alignment.Center,
-                        ) {
+                        val qrImage = if (isCreateFocused) serverQrImage else fileQrImage
+                        if (qrImage != null) {
                             Image(
                                 modifier = Modifier.size(200.dp),
-                                bitmap = fileQrImage,
+                                bitmap = qrImage,
                                 contentDescription = null
                             )
+                        } else {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (isCreateFocused) Text(text = "正在获取端口……")
+                                CircularProgressIndicator()
+                            }
                         }
-                    } else {
-                        CircularProgressIndicator()
                     }
                 }
             }
