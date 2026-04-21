@@ -30,9 +30,10 @@ BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三�
 - 删除进入播放器左下角信息
 - 优化视频grid卡片标题显示（标题改为2行且宽度增加）
 - 账户页弹窗简化
-![账户页弹窗](https://github.com/Frost819/picx-images-hosting/raw/master/20250724-133838.13m2rumw6b.webp)
-- 重构并简化设置页，增加播放完成动作设置、首页设置、是否显示视频详情页等设置
-![设置页](https://github.com/Frost819/picx-images-hosting/raw/master/Screenshot_20250804_101355.1vyyp3mcpc.webp)
+![账户页弹窗](https://github.com/Frost819/picx-images-hosting/raw/master/Profile.41ynmebb0h.webp)
+- 重构并简化设置页，增加播放完成动作设置、首页/置顶页设置、是否显示视频详情页等设置
+![播放设置页](https://github.com/Frost819/picx-images-hosting/raw/master/PlaybackSettings.9o0e08ylxh.webp)
+![UI设置页](https://github.com/Frost819/picx-images-hosting/raw/master/UISettings.7axrj1kh67.webp)
 
 ### 功能优化：
 - 你懂的
@@ -43,14 +44,14 @@ BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三�
 - 增加弹幕速度设置
 - 快进快退自动播放，快退一次从5s改为10s，和快进保持一致
 - 播放设置中播放速度单独列出，并改为固定挡位
-![播放速度设置页](https://Frost819.github.io/picx-images-hosting/Screenshot_20250617_134100.6m45r67018.webp)
+![播放速度设置页](https://github.com/Frost819/picx-images-hosting/raw/master/PlaybackSpeed.2ksikn768v.webp)
 - 播放完成倒计时5秒再播放下一集
-- 视频详情页逻辑优化，不再优先显示合集
-![视频详情页](https://github.com/Frost819/picx-images-hosting/raw/master/Screenshot_20250630_162642.1lc3ib5h87.webp)
+- 视频详情页显示和逻辑优化
+![视频详情页](https://github.com/Frost819/picx-images-hosting/raw/master/VideoDetail.lwbubezz4.webp)
 - 主页、分区页、影视页内按菜单键可刷新视频列表（follow BBLL）
 - 优化视频中信息和进度条显示，增加快捷按钮，增加常显进度条
-![播放器内信息](https://github.com/Frost819/picx-images-hosting/raw/master/Screenshot_20250804_101224.7axh7j1i3i.webp)
-- 主页视频卡片支持长按快捷操作：添加到稍后再看、进入信息页、进入up页
+![播放器内信息](https://github.com/Frost819/picx-images-hosting/raw/master/Player.60uucqgtbt.webp)
+- 视频卡片支持长按快捷操作：添加到稍后再看、进入信息页、进入up页
 ![首页快捷操作](https://github.com/Frost819/picx-images-hosting/raw/master/Screenshot_20251028_144633.1zio0jmgw8.webp)
 - 播放器内视频列表可同时显示合集和分P
   ![播放器内视频列表](https://github.com/Frost819/picx-images-hosting/raw/master/Screenshot_20251203_150840.70as7kfxxm.webp)
@@ -219,11 +220,19 @@ BV ~~(Bug Video)~~ 是一款 [哔哩哔哩](https://www.bilibili.com) 的第三�
 - 修复番剧播放失败
 - merge pull requests from @wjz2001
 
+### 0.3.16 r898
+- 修复up主页加载失败
+- 更新影视区索引
+- 新增启动页面设置，新增个人页置顶设置
+- 优化日志管理页显示
+- 优化账号管理页显示
+- 优化播放进度条显示
+- 优化弹幕防遮挡性能
+
 </details>
 
 ## Todo
-- 播放器快捷操作增加显示相关视频和点赞投币收藏
-- 播放结束动作增加播放相关视频
+
 
 ## License
 
