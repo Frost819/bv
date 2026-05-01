@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -17,14 +18,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
@@ -37,10 +44,12 @@ import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import dev.aaa1115910.bv.component.settings.SettingsMenuSelectItem
 import dev.aaa1115910.bv.entity.PlayerCustomShortcut
-import dev.aaa1115910.bv.entity.PlayerCustomShortcutActionEntry
+import dev.aaa1115910.bv.entity.PlayerCustomShortcutAction
+import dev.aaa1115910.bv.entity.PlayerCustomShortcutActionGroup
 import dev.aaa1115910.bv.entity.PlayerCustomShortcutCatalog
 import dev.aaa1115910.bv.entity.PlayerCustomShortcutKeys
 import dev.aaa1115910.bv.entity.PlayerCustomShortcutsStore
+import dev.aaa1115910.bv.util.requestFocus
 import dev.aaa1115910.bv.util.toast
 
 @Composable
@@ -55,6 +64,13 @@ fun PlayerCustomShortcutsDialog(
     fun updateShortcuts(next: List<PlayerCustomShortcut>) {
         shortcuts = next
         onShortcutsChanged(next)
+    }
+
+    fun bindAction(keyCode: Int, action: PlayerCustomShortcutAction) {
+        val next = PlayerCustomShortcutsStore.upsert(keyCode, action)
+        updateShortcuts(next)
+        stage = PlayerCustomShortcutsDialogStage.Main
+        "已绑定 ${PlayerCustomShortcutKeys.getDisplayName(keyCode)}".toast(context)
     }
 
     when (val currentStage = stage) {
@@ -85,11 +101,14 @@ fun PlayerCustomShortcutsDialog(
                 keyCode = currentStage.keyCode,
                 currentShortcut = currentShortcut,
                 onDismiss = { stage = PlayerCustomShortcutsDialogStage.Main },
-                onSelect = { entry ->
-                    val next = PlayerCustomShortcutsStore.upsert(currentStage.keyCode, entry.action)
-                    updateShortcuts(next)
-                    stage = PlayerCustomShortcutsDialogStage.Main
-                    "已绑定 ${PlayerCustomShortcutKeys.getDisplayName(currentStage.keyCode)}".toast(context)
+                onSelectAction = { action ->
+                    bindAction(currentStage.keyCode, action)
+                },
+                onPickValues = { group ->
+                    stage = PlayerCustomShortcutsDialogStage.PickActionValue(
+                        keyCode = currentStage.keyCode,
+                        groupId = group.id
+                    )
                 },
                 onRemove = {
                     val next = PlayerCustomShortcutsStore.remove(currentStage.keyCode)
@@ -98,6 +117,27 @@ fun PlayerCustomShortcutsDialog(
                     "已删除绑定".toast(context)
                 }
             )
+        }
+
+        is PlayerCustomShortcutsDialogStage.PickActionValue -> {
+            val currentShortcut = shortcuts.firstOrNull { it.keyCode == currentStage.keyCode }
+            val group = PlayerCustomShortcutCatalog.groups(context)
+                .firstOrNull { it.id == currentStage.groupId }
+            if (group == null) {
+                stage = PlayerCustomShortcutsDialogStage.Main
+            } else {
+                PlayerCustomShortcutValuePickerDialog(
+                    keyCode = currentStage.keyCode,
+                    group = group,
+                    currentShortcut = currentShortcut,
+                    onDismiss = {
+                        stage = PlayerCustomShortcutsDialogStage.PickAction(currentStage.keyCode)
+                    },
+                    onSelect = { action ->
+                        bindAction(currentStage.keyCode, action)
+                    }
+                )
+            }
         }
 
         PlayerCustomShortcutsDialogStage.ConfirmClear -> {
@@ -242,17 +282,37 @@ private fun PlayerCustomShortcutActionPickerDialog(
     keyCode: Int,
     currentShortcut: PlayerCustomShortcut?,
     onDismiss: () -> Unit,
-    onSelect: (PlayerCustomShortcutActionEntry) -> Unit,
+    onSelectAction: (PlayerCustomShortcutAction) -> Unit,
+    onPickValues: (PlayerCustomShortcutActionGroup) -> Unit,
     onRemove: () -> Unit
 ) {
     val context = LocalContext.current
-    val actionEntries = remember(context) { PlayerCustomShortcutCatalog.entries(context) }
+    val actionGroups = remember(context) { PlayerCustomShortcutCatalog.groups(context) }
+    val firstActionFocusRequester = remember { FocusRequester() }
+    val focusScope = rememberCoroutineScope()
+    val deleteItemCount = if (currentShortcut != null) 1 else 0
+    val totalActionItemCount = actionGroups.size + deleteItemCount
+    val returnButtonIndex = totalActionItemCount
+    var focusedActionIndex by remember { mutableIntStateOf(deleteItemCount) }
+
+    LaunchedEffect(keyCode) {
+        firstActionFocusRequester.requestFocus(focusScope)
+    }
 
     PlayerCustomShortcutsDialogSurface(
         onDismiss = onDismiss
     ) { maxHeightModifier ->
         Column(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier
+                .padding(24.dp)
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when (event.key) {
+                        Key.DirectionUp -> focusedActionIndex <= 0
+                        Key.DirectionDown -> focusedActionIndex >= returnButtonIndex
+                        else -> false
+                    }
+                },
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
@@ -260,27 +320,125 @@ private fun PlayerCustomShortcutActionPickerDialog(
                 style = MaterialTheme.typography.titleLarge
             )
             LazyColumn(
-                modifier = maxHeightModifier,
+                modifier = maxHeightModifier
+                    .focusRestorer(firstActionFocusRequester),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (currentShortcut != null) {
                     item {
                         SettingsMenuSelectItem(
+                            modifier = Modifier.onFocusChanged {
+                                if (it.hasFocus) focusedActionIndex = 0
+                            },
                             text = "删除当前绑定",
                             selected = false,
                             onClick = onRemove
                         )
                     }
                 }
-                items(actionEntries, key = { it.displayName }) { entry ->
+                itemsIndexed(actionGroups, key = { _, item -> item.id }) { index, group ->
+                    val selected = group.action == currentShortcut?.action ||
+                        group.values.any { it.action == currentShortcut?.action }
+                    val itemIndex = index + deleteItemCount
                     SettingsMenuSelectItem(
-                        text = entry.displayName,
-                        selected = currentShortcut?.action == entry.action,
-                        onClick = { onSelect(entry) }
+                        modifier = Modifier
+                            .then(
+                                if (index == 0) {
+                                    Modifier.focusRequester(firstActionFocusRequester)
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .onFocusChanged {
+                                if (it.hasFocus) focusedActionIndex = itemIndex
+                            },
+                        text = group.displayName,
+                        selected = selected,
+                        onClick = {
+                            group.action?.let(onSelectAction) ?: onPickValues(group)
+                        }
                     )
                 }
             }
-            OutlinedButton(onClick = onDismiss) {
+            OutlinedButton(
+                modifier = Modifier.onFocusChanged {
+                    if (it.hasFocus) focusedActionIndex = returnButtonIndex
+                },
+                onClick = onDismiss
+            ) {
+                Text("返回")
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlayerCustomShortcutValuePickerDialog(
+    keyCode: Int,
+    group: PlayerCustomShortcutActionGroup,
+    currentShortcut: PlayerCustomShortcut?,
+    onDismiss: () -> Unit,
+    onSelect: (PlayerCustomShortcutAction) -> Unit
+) {
+    val firstValueFocusRequester = remember { FocusRequester() }
+    val focusScope = rememberCoroutineScope()
+    val returnButtonIndex = group.values.size
+    var focusedValueIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(keyCode, group.id) {
+        firstValueFocusRequester.requestFocus(focusScope)
+    }
+
+    PlayerCustomShortcutsDialogSurface(
+        onDismiss = onDismiss
+    ) { maxHeightModifier ->
+        Column(
+            modifier = Modifier
+                .padding(24.dp)
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when (event.key) {
+                        Key.DirectionUp -> focusedValueIndex <= 0
+                        Key.DirectionDown -> focusedValueIndex >= returnButtonIndex
+                        else -> false
+                    }
+                },
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "${group.displayName}：${PlayerCustomShortcutKeys.getDisplayName(keyCode)}",
+                style = MaterialTheme.typography.titleLarge
+            )
+            LazyColumn(
+                modifier = maxHeightModifier
+                    .focusRestorer(firstValueFocusRequester),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                itemsIndexed(group.values, key = { _, item -> item.displayName }) { index, entry ->
+                    SettingsMenuSelectItem(
+                        modifier = Modifier
+                            .then(
+                                if (index == 0) {
+                                    Modifier.focusRequester(firstValueFocusRequester)
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .onFocusChanged {
+                                if (it.hasFocus) focusedValueIndex = index
+                            },
+                        text = entry.valueDisplayName,
+                        selected = currentShortcut?.action == entry.action,
+                        onClick = { onSelect(entry.action) }
+                    )
+                }
+            }
+            OutlinedButton(
+                modifier = Modifier.onFocusChanged {
+                    if (it.hasFocus) focusedValueIndex = returnButtonIndex
+                },
+                onClick = onDismiss
+            ) {
                 Text("返回")
             }
         }
@@ -353,5 +511,9 @@ private sealed interface PlayerCustomShortcutsDialogStage {
     data object Main : PlayerCustomShortcutsDialogStage
     data object CaptureKey : PlayerCustomShortcutsDialogStage
     data class PickAction(val keyCode: Int) : PlayerCustomShortcutsDialogStage
+    data class PickActionValue(
+        val keyCode: Int,
+        val groupId: String
+    ) : PlayerCustomShortcutsDialogStage
     data object ConfirmClear : PlayerCustomShortcutsDialogStage
 }

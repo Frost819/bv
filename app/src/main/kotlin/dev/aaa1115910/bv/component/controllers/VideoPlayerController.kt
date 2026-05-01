@@ -393,7 +393,7 @@ fun VideoPlayerController(
         val shortcut = PlayerCustomShortcutsStore.getByKey()[keyCode] ?: return false
         if (event.type == KeyEventType.KeyUp) return true
         if (event.type != KeyEventType.KeyDown) return false
-        if (event.nativeKeyEvent.repeatCount != 0) return false
+        if (event.nativeKeyEvent.repeatCount != 0) return true
 
         return executeCustomShortcut(keyCode, shortcut.action)
     }
