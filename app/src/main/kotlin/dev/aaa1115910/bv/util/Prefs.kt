@@ -202,6 +202,7 @@ object Prefs {
     var showFps by pref(PrefKeys.prefShowFpsKey, false)
     var showVideoInfo by pref(PrefKeys.prefShowVideoInfoKey, true)
     var showPersistentSeek by pref(PrefKeys.prefShowPersistentSeekKey, false)
+    var playerCustomShortcuts by pref(PrefKeys.prefPlayerCustomShortcutsKey, "")
 
     // =========================================================================
     // 应用界面
@@ -372,6 +373,7 @@ private object PrefKeys {
     val prefShowFpsKey = booleanPreferencesKey("sf")
     val prefShowVideoInfoKey = booleanPreferencesKey("show_video_info")
     val prefShowPersistentSeekKey = booleanPreferencesKey("show_persistent_seek")
+    val prefPlayerCustomShortcutsKey = stringPreferencesKey("player_custom_shortcuts")
 
     // 应用界面
     val prefDensityKey = floatPreferencesKey("density")

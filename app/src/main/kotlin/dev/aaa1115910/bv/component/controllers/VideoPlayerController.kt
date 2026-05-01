@@ -26,13 +26,19 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.aaa1115910.biliapi.entity.video.Subtitle
 import dev.aaa1115910.bv.BuildConfig
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.activities.video.VideoInfoActivity
+import dev.aaa1115910.bv.entity.Audio
+import dev.aaa1115910.bv.entity.PlayerCustomShortcutAction
+import dev.aaa1115910.bv.entity.PlayerCustomShortcutKeys
+import dev.aaa1115910.bv.entity.PlayerCustomShortcutsStore
 import dev.aaa1115910.bv.entity.VideoAspectRatio
+import dev.aaa1115910.bv.entity.VideoCodec
 import dev.aaa1115910.bv.entity.VideoListItem
 import dev.aaa1115910.bv.entity.carddata.VideoCardData
 import dev.aaa1115910.bv.entity.proxy.ProxyArea
@@ -48,6 +54,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @Composable
 fun VideoPlayerController(
@@ -73,7 +80,11 @@ fun VideoPlayerController(
     onBackToStart: () -> Unit,
     onCancelSkipToNextEp: () -> Unit,
     onPlayNewVideo: (VideoListItem) -> Unit,
+    onPlayPrevious: () -> Unit,
+    onPlayNext: () -> Unit,
     onToggleLoop: () -> Unit,
+    onToggleSubtitle: () -> Unit,
+    onTogglePersistentSeek: () -> Unit,
     onGoToUpPage: () -> Unit,
 
     //menu events
@@ -106,6 +117,7 @@ fun VideoPlayerController(
 
     var seekCountdown: Job? by remember { mutableStateOf(null) }
     var hideInfoSeekControllerCountdown: Job? by remember { mutableStateOf(null) }
+    val customShortcutToggleMemory = remember { PlayerCustomShortcutToggleMemory() }
 
     fun calCoefficient(): Int {
         return if (System.currentTimeMillis() - lastSeekChangeTime < 200) {
@@ -172,6 +184,220 @@ fun VideoPlayerController(
         if (isPlaying) onPause() else onPlay()
     }
 
+    fun executeCustomShortcut(
+        keyCode: Int,
+        action: PlayerCustomShortcutAction
+    ): Boolean {
+        when (action) {
+            PlayerCustomShortcutAction.ShowInfo -> {
+                showInfoSeekController = true
+            }
+
+            PlayerCustomShortcutAction.OpenSettings -> {
+                showInfoSeekController = false
+                showMenuController = true
+            }
+
+            PlayerCustomShortcutAction.OpenVideoList -> {
+                showListController = true
+            }
+
+            PlayerCustomShortcutAction.OpenRelatedVideos -> {
+                if (isPlaying) onPause()
+                showInfoSeekController = false
+                showRelatedVideosController = true
+            }
+
+            PlayerCustomShortcutAction.TogglePlayPause -> {
+                onPlayPause()
+            }
+
+            PlayerCustomShortcutAction.PlayPrevious -> {
+                onPlayPrevious()
+            }
+
+            PlayerCustomShortcutAction.PlayNext -> {
+                onPlayNext()
+            }
+
+            PlayerCustomShortcutAction.OpenVideoDetail -> {
+                VideoInfoActivity.actionStart(
+                    context = context,
+                    aid = aid,
+                    fromSeason = fromSeason,
+                    fromController = true,
+                    proxyArea = proxyArea
+                )
+            }
+
+            PlayerCustomShortcutAction.OpenUpPage -> {
+                onGoToUpPage()
+            }
+
+            PlayerCustomShortcutAction.ToggleLoop -> {
+                onToggleLoop()
+            }
+
+            PlayerCustomShortcutAction.ToggleDanmaku -> {
+                if (uiState.danmakuState.enabledTypes.isEmpty()) {
+                    onDanmakuSettingChange(DanmakuSettingAction.SetEnabledTypes(DanmakuType.entries))
+                } else {
+                    onDanmakuSettingChange(DanmakuSettingAction.SetEnabledTypes(emptyList()))
+                }
+            }
+
+            PlayerCustomShortcutAction.ToggleSubtitle -> {
+                onToggleSubtitle()
+            }
+
+            PlayerCustomShortcutAction.TogglePersistentBottomProgress -> {
+                onTogglePersistentSeek()
+            }
+
+            is PlayerCustomShortcutAction.SetPlaybackSpeed -> {
+                val target = customShortcutToggleMemory.playSpeed.selectTarget(
+                    keyCode = keyCode,
+                    current = uiState.playSpeed,
+                    target = action.speed
+                )
+                onPlaySpeedChange(target)
+            }
+
+            is PlayerCustomShortcutAction.SetResolution -> {
+                val target = customShortcutToggleMemory.quality.selectTarget(
+                    keyCode = keyCode,
+                    current = uiState.mediaProfileState.qualityId,
+                    target = action.qualityId
+                )
+                if (!uiState.availableQuality.containsKey(target)) {
+                    return true
+                }
+                onMediaProfileSettingChange(MediaProfileSettingAction.SetQuality(target))
+            }
+
+            is PlayerCustomShortcutAction.SetAudio -> {
+                val target = customShortcutToggleMemory.audio.selectTarget(
+                    keyCode = keyCode,
+                    current = uiState.mediaProfileState.audio,
+                    target = action.audio
+                )
+                if (!uiState.availableAudio.contains(target)) {
+                    return true
+                }
+                onMediaProfileSettingChange(MediaProfileSettingAction.SetAudio(target))
+            }
+
+            is PlayerCustomShortcutAction.SetVideoCodec -> {
+                val target = customShortcutToggleMemory.videoCodec.selectTarget(
+                    keyCode = keyCode,
+                    current = uiState.mediaProfileState.videoCodec,
+                    target = action.codec
+                )
+                if (!uiState.availableVideoCodec.contains(target)) {
+                    return true
+                }
+                onMediaProfileSettingChange(MediaProfileSettingAction.SetVideoCodec(target))
+            }
+
+            is PlayerCustomShortcutAction.SetAspectRatio -> {
+                val target = customShortcutToggleMemory.aspectRatio.selectTarget(
+                    keyCode = keyCode,
+                    current = uiState.aspectRatio,
+                    target = action.aspectRatio
+                )
+                onAspectRatioChange(target)
+            }
+
+            is PlayerCustomShortcutAction.SetDanmakuScale -> {
+                val target = customShortcutToggleMemory.danmakuScale.selectTarget(
+                    keyCode = keyCode,
+                    current = uiState.danmakuState.scale,
+                    target = action.scale
+                )
+                onDanmakuSettingChange(DanmakuSettingAction.SetScale(target))
+            }
+
+            is PlayerCustomShortcutAction.SetDanmakuOpacity -> {
+                val target = customShortcutToggleMemory.danmakuOpacity.selectTarget(
+                    keyCode = keyCode,
+                    current = uiState.danmakuState.opacity,
+                    target = action.opacity
+                )
+                onDanmakuSettingChange(DanmakuSettingAction.SetOpacity(target))
+            }
+
+            is PlayerCustomShortcutAction.SetDanmakuSpeedFactor -> {
+                val target = customShortcutToggleMemory.danmakuSpeedFactor.selectTarget(
+                    keyCode = keyCode,
+                    current = uiState.danmakuState.speedFactor,
+                    target = action.factor
+                )
+                onDanmakuSettingChange(DanmakuSettingAction.SetSpeedFactor(target))
+            }
+
+            is PlayerCustomShortcutAction.SetDanmakuArea -> {
+                val target = customShortcutToggleMemory.danmakuArea.selectTarget(
+                    keyCode = keyCode,
+                    current = uiState.danmakuState.area,
+                    target = action.area
+                )
+                onDanmakuSettingChange(DanmakuSettingAction.SetArea(target))
+            }
+
+            is PlayerCustomShortcutAction.SetDanmakuMaskEnabled -> {
+                val target = customShortcutToggleMemory.danmakuMaskEnabled.selectTarget(
+                    keyCode = keyCode,
+                    current = uiState.danmakuState.maskEnabled,
+                    target = action.enabled
+                )
+                onDanmakuSettingChange(DanmakuSettingAction.SetMaskEnabled(target))
+            }
+
+            is PlayerCustomShortcutAction.SetSubtitleFontSize -> {
+                val target = customShortcutToggleMemory.subtitleFontSize.selectTarget(
+                    keyCode = keyCode,
+                    current = uiState.subtitleState.fontSize.value.roundToInt(),
+                    target = action.sp
+                )
+                onSubtitleSettingChange(SubtitleSettingAction.SetFontSize(target.sp))
+            }
+
+            is PlayerCustomShortcutAction.SetSubtitleBackgroundOpacity -> {
+                val target = customShortcutToggleMemory.subtitleOpacity.selectTarget(
+                    keyCode = keyCode,
+                    current = uiState.subtitleState.opacity,
+                    target = action.opacity
+                )
+                onSubtitleSettingChange(SubtitleSettingAction.SetOpacity(target))
+            }
+
+            is PlayerCustomShortcutAction.SetSubtitleBottomPadding -> {
+                val target = customShortcutToggleMemory.subtitleBottomPadding.selectTarget(
+                    keyCode = keyCode,
+                    current = uiState.subtitleState.bottomPadding.value.roundToInt(),
+                    target = action.dp
+                )
+                onSubtitleSettingChange(SubtitleSettingAction.SetBottomPadding(target.dp))
+            }
+        }
+
+        return true
+    }
+
+    fun handleCustomShortcut(event: KeyEvent): Boolean {
+        if (showClickableControllers) return false
+
+        val keyCode = event.nativeKeyEvent.keyCode
+        if (!PlayerCustomShortcutKeys.isAllowedKeyCode(keyCode)) return false
+
+        val shortcut = PlayerCustomShortcutsStore.getByKey()[keyCode] ?: return false
+        if (event.type == KeyEventType.KeyUp) return true
+        if (event.type != KeyEventType.KeyDown) return false
+        if (event.nativeKeyEvent.repeatCount != 0) return false
+
+        return executeCustomShortcut(keyCode, shortcut.action)
+    }
+
     fun handleKeyEvent(event: KeyEvent): Boolean {
         // 中键需要区分短按和长按
         val isConfirmKey =
@@ -182,6 +408,10 @@ fun VideoPlayerController(
         }
 
         logger.info { "[${event.key} press]" }
+
+        if (handleCustomShortcut(event)) {
+            return true
+        }
 
         when (event.key) {
             Key.Back -> {
@@ -449,5 +679,31 @@ fun VideoPlayerController(
     }
 }
 
+private class PlayerCustomShortcutToggleMemory {
+    val playSpeed = mutableMapOf<Int, Float>()
+    val quality = mutableMapOf<Int, Int>()
+    val audio = mutableMapOf<Int, Audio>()
+    val videoCodec = mutableMapOf<Int, VideoCodec>()
+    val aspectRatio = mutableMapOf<Int, VideoAspectRatio>()
+    val danmakuScale = mutableMapOf<Int, Float>()
+    val danmakuOpacity = mutableMapOf<Int, Float>()
+    val danmakuSpeedFactor = mutableMapOf<Int, Float>()
+    val danmakuArea = mutableMapOf<Int, Float>()
+    val danmakuMaskEnabled = mutableMapOf<Int, Boolean>()
+    val subtitleFontSize = mutableMapOf<Int, Int>()
+    val subtitleOpacity = mutableMapOf<Int, Float>()
+    val subtitleBottomPadding = mutableMapOf<Int, Int>()
+}
 
-
+private fun <T> MutableMap<Int, T>.selectTarget(
+    keyCode: Int,
+    current: T,
+    target: T
+): T {
+    return if (current == target) {
+        this[keyCode] ?: target
+    } else {
+        this[keyCode] = current
+        target
+    }
+}

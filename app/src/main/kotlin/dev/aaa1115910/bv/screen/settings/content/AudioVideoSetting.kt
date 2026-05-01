@@ -26,6 +26,7 @@ import dev.aaa1115910.bv.component.controllers.playermenu.PlaySpeedItem
 import dev.aaa1115910.bv.component.settings.SettingListItem
 import dev.aaa1115910.bv.component.settings.SettingSwitchListItem
 import dev.aaa1115910.bv.entity.Audio
+import dev.aaa1115910.bv.entity.PlayerCustomShortcutsStore
 import dev.aaa1115910.bv.entity.Resolution
 import dev.aaa1115910.bv.entity.VideoCodec
 import dev.aaa1115910.bv.screen.settings.SettingsMenuNavItem
@@ -43,12 +44,14 @@ fun AudioVideoSetting(
     var showVideoCodecDialog by remember { mutableStateOf(false) }
     var showPlaySpeedDialog by remember { mutableStateOf(false) }
     var showActionAfterPlayDialog by remember { mutableStateOf(false) }
+    var showPlayerCustomShortcutsDialog by remember { mutableStateOf(false) }
 
     var selectedResolution by remember { mutableStateOf(Prefs.defaultQuality) }
     var selectedVideoCodec by remember { mutableStateOf(Prefs.defaultVideoCodec) }
     var selectedAudioCodec by remember { mutableStateOf(Prefs.defaultAudio) }
     var selectedPlaySpeed by remember { mutableStateOf(Prefs.defaultPlaySpeed) }
     var selectedActionAfterPlay by remember { mutableStateOf(Prefs.actionAfterPlay) }
+    var playerCustomShortcuts by remember { mutableStateOf(PlayerCustomShortcutsStore.get()) }
 
     var enableFfmpegAudioRenderer by remember { mutableStateOf(Prefs.enableFfmpegAudioRenderer) }
     var enableSoftwareVideoRenderer by remember { mutableStateOf(Prefs.enableSoftwareVideoDecoder) }
@@ -90,6 +93,11 @@ fun AudioVideoSetting(
             title = "播放结束动作",
             supportText = "当前：${selectedActionAfterPlay.getDisplayName(context)}",
             onClick = { showActionAfterPlayDialog = true }
+        )
+        SettingListItem(
+            title = "自定义播放快捷键",
+            supportText = "当前：${playerCustomShortcuts.size} 个绑定",
+            onClick = { showPlayerCustomShortcutsDialog = true }
         )
         SettingSwitchListItem(
             title = stringResource(R.string.settings_media_software_video_renderer_title),
@@ -175,6 +183,13 @@ fun AudioVideoSetting(
             getDisplayName = { it.getDisplayName(context) }
         )
     }
+
+    if (showPlayerCustomShortcutsDialog) {
+        PlayerCustomShortcutsDialog(
+            onDismiss = { showPlayerCustomShortcutsDialog = false },
+            onShortcutsChanged = { playerCustomShortcuts = it }
+        )
+    }
 }
 
 enum class ActionAfterPlayItems (val code: Int, private val displayName: String){
@@ -194,5 +209,4 @@ enum class ActionAfterPlayItems (val code: Int, private val displayName: String)
         return displayName
     }
 }
-
 

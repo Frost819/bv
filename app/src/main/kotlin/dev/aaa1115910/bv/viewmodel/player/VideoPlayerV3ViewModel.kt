@@ -479,31 +479,7 @@ class VideoPlayerV3ViewModel(
             }
         }
 
-        val currentState = _uiState.value
-        val videoList = currentState.availableVideoList
-        val currentCid = currentState.cid
-
-        // 1. 查找当前视频在列表中的位置
-        val videoListIndex = videoList.indexOfFirst { it.aid == currentState.aid }
-        val currentVideoItem = videoList.getOrNull(videoListIndex)
-
-        // 2. 预计算下一个播放项 (NextTarget)
-        var nextTarget: NextPlayTarget? = null
-
-        // 逻辑 A: 检查是否有下一个分 P (UGC Page)
-        if (currentVideoItem?.ugcPages?.isNotEmpty() == true) {
-            val currentInnerIndex = currentVideoItem.ugcPages.indexOfFirst { it.cid == currentCid }
-            if (currentInnerIndex != -1 && currentInnerIndex + 1 < currentVideoItem.ugcPages.size) {
-                val nextPage = currentVideoItem.ugcPages[currentInnerIndex + 1]
-                nextTarget = NextPlayTarget.UgcPage(currentVideoItem, nextPage)
-            }
-        }
-
-        // 逻辑 B: 如果没有分 P，检查是否有下一个视频
-        if (nextTarget == null && videoListIndex + 1 < videoList.size) {
-            val nextVideo = videoList[videoListIndex + 1]
-            nextTarget = NextPlayTarget.VideoItem(nextVideo)
-        }
+        val nextTarget = findNextPlayTarget()
 
         // 3. 根据查找结果执行操作
         if (nextTarget != null) {
@@ -514,6 +490,34 @@ class VideoPlayerV3ViewModel(
                 _uiEffect.emit(PlayerUiEffect.FinishActivity)
             }
         }
+    }
+
+    fun playNextNow() {
+        playNextCountdownJob?.cancel()
+        _uiState.update { it.copy(showSkipToNextEp = false) }
+
+        findNextPlayTarget()?.let { playNextTarget(it) }
+    }
+
+    fun playPreviousNow() {
+        playNextCountdownJob?.cancel()
+        _uiState.update { it.copy(showSkipToNextEp = false) }
+
+        findPreviousPlayTarget()?.let { playNextTarget(it) }
+    }
+
+    fun toggleSubtitle() {
+        val state = _uiState.value
+        if (state.subtitleId != -1L) {
+            loadSubtitle(-1L)
+            return
+        }
+
+        val firstSubtitleId = state.subtitleList
+            .firstOrNull { it.id != -1L }
+            ?.id
+            ?: return
+        loadSubtitle(firstSubtitleId)
     }
 
     fun cancelPlayNext() {
@@ -1167,6 +1171,60 @@ class VideoPlayerV3ViewModel(
         _uiState.update { it.copy(danmakuState = it.danmakuState.copy(speedFactor = factor)) }
 
         danmakuPlayer?.setDanmakuRollingSpeed(factor)
+    }
+
+    private fun findNextPlayTarget(): NextPlayTarget? {
+        val currentState = _uiState.value
+        val videoList = currentState.availableVideoList
+        val currentCid = currentState.cid
+
+        val videoListIndex = videoList.indexOfFirst { it.aid == currentState.aid }
+        if (videoListIndex == -1) return null
+
+        val currentVideoItem = videoList.getOrNull(videoListIndex)
+        if (currentVideoItem?.ugcPages?.isNotEmpty() == true) {
+            val currentInnerIndex = currentVideoItem.ugcPages.indexOfFirst { it.cid == currentCid }
+            if (currentInnerIndex != -1 && currentInnerIndex + 1 < currentVideoItem.ugcPages.size) {
+                val nextPage = currentVideoItem.ugcPages[currentInnerIndex + 1]
+                return NextPlayTarget.UgcPage(currentVideoItem, nextPage)
+            }
+        }
+
+        if (videoListIndex + 1 < videoList.size) {
+            return NextPlayTarget.VideoItem(videoList[videoListIndex + 1])
+        }
+
+        return null
+    }
+
+    private fun findPreviousPlayTarget(): NextPlayTarget? {
+        val currentState = _uiState.value
+        val videoList = currentState.availableVideoList
+        val currentCid = currentState.cid
+
+        val videoListIndex = videoList.indexOfFirst { it.aid == currentState.aid }
+        if (videoListIndex == -1) return null
+
+        val currentVideoItem = videoList.getOrNull(videoListIndex)
+        if (currentVideoItem?.ugcPages?.isNotEmpty() == true) {
+            val currentInnerIndex = currentVideoItem.ugcPages.indexOfFirst { it.cid == currentCid }
+            if (currentInnerIndex > 0) {
+                val previousPage = currentVideoItem.ugcPages[currentInnerIndex - 1]
+                return NextPlayTarget.UgcPage(currentVideoItem, previousPage)
+            }
+        }
+
+        if (videoListIndex > 0) {
+            val previousVideo = videoList[videoListIndex - 1]
+            val previousLastPage = previousVideo.ugcPages?.lastOrNull()
+            return if (previousLastPage != null) {
+                NextPlayTarget.UgcPage(previousVideo, previousLastPage)
+            } else {
+                NextPlayTarget.VideoItem(previousVideo)
+            }
+        }
+
+        return null
     }
 
     private fun startNextEpisodeCountdown(target: NextPlayTarget) {
