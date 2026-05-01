@@ -231,7 +231,9 @@ fun VideoPlayerController(
             }
 
             PlayerCustomShortcutAction.OpenUpPage -> {
-                onGoToUpPage()
+                if (!fromSeason && uiState.authorMid != 0L) {
+                    onGoToUpPage()
+                }
             }
 
             PlayerCustomShortcutAction.ToggleLoop -> {
