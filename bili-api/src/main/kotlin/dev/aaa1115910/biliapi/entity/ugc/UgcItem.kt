@@ -46,7 +46,9 @@ data class UgcItem(
                         }
                     }.getOrDefault(-1)
                 },
-                duration = rcmdItem.coverRightText?.convertStringTimeToSeconds() ?: 0,
+                duration = rcmdItem.playerArgs?.duration
+                    ?: rcmdItem.coverRightText?.convertStringTimeToSeconds()
+                    ?: 0,
                 idx = rcmdItem.idx
             )
 
