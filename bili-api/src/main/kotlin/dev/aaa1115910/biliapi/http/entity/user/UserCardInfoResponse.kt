@@ -1,5 +1,6 @@
 package dev.aaa1115910.biliapi.http.entity.user
 
+import dev.aaa1115910.biliapi.http.util.BooleanAsIntSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -18,6 +19,7 @@ import kotlinx.serialization.Serializable
 data class UserCardData(
     val card: UserCardInfo,
     val space: Space? = null,
+    @Serializable(with = BooleanAsIntSerializer::class)
     val following: Boolean,
     @SerialName("archive_count")
     val archiveCount: Int,

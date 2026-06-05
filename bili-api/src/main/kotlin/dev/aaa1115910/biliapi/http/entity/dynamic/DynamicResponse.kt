@@ -2,6 +2,7 @@ package dev.aaa1115910.biliapi.http.entity.dynamic
 
 import dev.aaa1115910.biliapi.http.entity.user.Pendant
 import dev.aaa1115910.biliapi.http.entity.user.Vip
+import dev.aaa1115910.biliapi.http.util.BooleanAsIntSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -65,6 +66,7 @@ data class DynamicItem(
             val face: String,
             @SerialName("face_nft")
             val faceNft: Boolean,
+            @Serializable(with = BooleanAsIntSerializer::class)
             val following: Boolean = false,
             @SerialName("jump_url")
             val jumpUrl: String,
