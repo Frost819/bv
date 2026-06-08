@@ -183,7 +183,7 @@ object BiliHttpApi {
         av: Long? = null,
         bv: String? = null,
         sessData: String? = null
-    ): BiliResponse<VideoDetail> = client.get("/x/web-interface/view/detail") {
+    ): BiliResponse<VideoDetail> = client.get("/x/web-interface/wbi/view/detail") {
         parameter("aid", av)
         parameter("bvid", bv)
         sessData?.let { header("Cookie", "SESSDATA=$sessData;") }
