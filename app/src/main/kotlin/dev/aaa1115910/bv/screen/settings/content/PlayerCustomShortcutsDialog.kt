@@ -23,11 +23,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -39,6 +38,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
+import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
@@ -59,7 +59,11 @@ fun PlayerCustomShortcutsDialog(
 ) {
     val context = LocalContext.current
     var shortcuts by remember { mutableStateOf(PlayerCustomShortcutsStore.get()) }
-    var stage by remember { mutableStateOf<PlayerCustomShortcutsDialogStage>(PlayerCustomShortcutsDialogStage.Main) }
+    var stage by remember {
+        mutableStateOf<PlayerCustomShortcutsDialogStage>(
+            PlayerCustomShortcutsDialogStage.Main
+        )
+    }
 
     fun updateShortcuts(next: List<PlayerCustomShortcut>) {
         shortcuts = next
@@ -190,12 +194,20 @@ private fun PlayerCustomShortcutsMainDialog(
                     }
                 } else {
                     items(shortcuts, key = { it.keyCode }) { shortcut ->
-                        SettingsMenuSelectItem(
-                            text = "${PlayerCustomShortcutKeys.getDisplayName(shortcut.keyCode)}：${
-                                PlayerCustomShortcutCatalog.getActionDisplayName(context, shortcut.action)
-                            }",
-                            selected = false,
-                            onClick = { onEdit(shortcut) }
+                        ListItem(
+                            headlineContent = {
+                                Text(
+                                    text = "${PlayerCustomShortcutKeys.getDisplayName(shortcut.keyCode)}：${
+                                        PlayerCustomShortcutCatalog.getActionDisplayName(
+                                            context,
+                                            shortcut.action
+                                        )
+                                    }"
+                                )
+                            },
+                            trailingContent = {},
+                            onClick = { onEdit(shortcut) },
+                            selected = false
                         )
                     }
                 }
@@ -326,19 +338,22 @@ private fun PlayerCustomShortcutActionPickerDialog(
             ) {
                 if (currentShortcut != null) {
                     item {
-                        SettingsMenuSelectItem(
+                        ListItem(
                             modifier = Modifier.onFocusChanged {
                                 if (it.hasFocus) focusedActionIndex = 0
                             },
-                            text = "删除当前绑定",
-                            selected = false,
-                            onClick = onRemove
+                            headlineContent = { Text(text = "删除当前绑定") },
+                            trailingContent = {},
+                            onClick = onRemove,
+                            selected = false
                         )
                     }
                 }
                 itemsIndexed(actionGroups, key = { _, item -> item.id }) { index, group ->
-                    val selected = group.action == currentShortcut?.action ||
-                        group.values.any { it.action == currentShortcut?.action }
+                    val selected = currentShortcut?.action?.let { currentAction ->
+                        // 检查当前动作是否属于这个group
+                        group.action == currentAction || group.values.any { it.action == currentAction }
+                    } ?: false
                     val itemIndex = index + deleteItemCount
                     SettingsMenuSelectItem(
                         modifier = Modifier
@@ -515,5 +530,6 @@ private sealed interface PlayerCustomShortcutsDialogStage {
         val keyCode: Int,
         val groupId: String
     ) : PlayerCustomShortcutsDialogStage
+
     data object ConfirmClear : PlayerCustomShortcutsDialogStage
 }
