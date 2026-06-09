@@ -127,7 +127,7 @@ fun UpSpaceScreen(
             if (upInfoViewModel.spaceVideos.isNotEmpty()) {
                 itemsIndexed(
                     items = upInfoViewModel.spaceVideos,
-                    key = { index, _ -> index }
+                    key = { _, video -> video.avid }
                 ) { _, video ->
                     Box(
                         contentAlignment = Alignment.Center
