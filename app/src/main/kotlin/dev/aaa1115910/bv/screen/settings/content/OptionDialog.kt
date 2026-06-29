@@ -25,7 +25,7 @@ import dev.aaa1115910.bv.component.settings.SettingsMenuSelectItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun <T : Enum<T>> OptionDialog(
+fun <T> OptionDialog(
     modifier: Modifier = Modifier,
     options: Array<T>,
     selectedOption: T,
