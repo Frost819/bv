@@ -249,6 +249,12 @@
     <string name="settings_media_software_video_renderer_text">使用软件解码器播放硬解不兼容的视频</string>
     <string name="settings_network_enable_proxy_text">使用自定义代理服务器获取部分视频播放地址</string>
     <string name="settings_network_enable_proxy_title">启用代理</string>
+    <string name="settings_network_cdn_override_custom_title">自定义播放源</string>
+    <string name="settings_network_cdn_override_current">当前：%1$s</string>
+    <string name="settings_network_cdn_override_input_label">CDN 节点域名或 URL</string>
+    <string name="settings_network_cdn_override_node_title">播放源节点</string>
+    <string name="settings_network_cdn_override_region_title">播放源地区覆盖</string>
+    <string name="settings_network_cdn_override_text">启用上方“P(M)CDN 快走开”后生效，将播放地址切换到指定官方 CDN 地区或自定义节点</string>
     <string name="settings_network_prefer_official_cdn_text">优先使用获取到的官方 CDN</string>
     <string name="settings_network_prefer_official_cdn_title">P(M)CDN 快走开</string>
     <string name="settings_network_proxy_grpc_server_title">gRPC 接口代理服务器</string>

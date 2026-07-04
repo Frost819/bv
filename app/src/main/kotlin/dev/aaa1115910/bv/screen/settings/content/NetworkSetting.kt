@@ -37,6 +37,7 @@ import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.activities.settings.SpeedTestActivity
 import dev.aaa1115910.bv.component.settings.SettingListItem
 import dev.aaa1115910.bv.component.settings.SettingSwitchListItem
+import dev.aaa1115910.bv.entity.CdnOverrideCatalog
 import dev.aaa1115910.bv.screen.settings.SettingsMenuNavItem
 import dev.aaa1115910.bv.ui.theme.BVTheme
 import dev.aaa1115910.bv.util.Prefs
@@ -52,8 +53,28 @@ fun NetworkSetting(
     var proxyHttpServer by remember { mutableStateOf(Prefs.proxyHttpServer) }
     var proxyGRPCServer by remember { mutableStateOf(Prefs.proxyGRPCServer) }
     var preferOfficialCdn by remember { mutableStateOf(Prefs.preferOfficialCdn) }
+    var cdnOverrideHost by remember { mutableStateOf(Prefs.cdnOverrideHost) }
+    var customCdnOverrideSelected by remember {
+        mutableStateOf(
+            Prefs.cdnOverrideHost.isNotBlank() &&
+                CdnOverrideCatalog.regionForHost(Prefs.cdnOverrideHost) == CdnOverrideCatalog.customRegion
+        )
+    }
     var showProxyHttpServerEditDialog by remember { mutableStateOf(false) }
     var showProxyGRPCServerEditDialog by remember { mutableStateOf(false) }
+    var showCdnOverrideRegionDialog by remember { mutableStateOf(false) }
+    var showCdnOverrideNodeDialog by remember { mutableStateOf(false) }
+    var showCdnOverrideCustomDialog by remember { mutableStateOf(false) }
+    val cdnOverrideRegion = if (customCdnOverrideSelected) {
+        CdnOverrideCatalog.customRegion
+    } else {
+        CdnOverrideCatalog.regionForHost(cdnOverrideHost)
+    }
+    val usingCustomCdnOverride = cdnOverrideRegion == CdnOverrideCatalog.customRegion
+    val usingPresetCdnOverride = cdnOverrideRegion !in listOf(
+        CdnOverrideCatalog.defaultRegion,
+        CdnOverrideCatalog.customRegion
+    )
 
     Box(
         modifier = modifier
@@ -108,15 +129,49 @@ fun NetworkSetting(
                 }
 
                 item {
-                    SettingSwitchListItem(
-                        title = stringResource(R.string.settings_network_prefer_official_cdn_title),
-                        supportText = stringResource(R.string.settings_network_prefer_official_cdn_text),
-                        checked = Prefs.preferOfficialCdn,
-                        onCheckedChange = { enable ->
-                            preferOfficialCdn = enable
-                            Prefs.preferOfficialCdn = enable
+                    Column {
+                        SettingSwitchListItem(
+                            title = stringResource(R.string.settings_network_prefer_official_cdn_title),
+                            supportText = stringResource(R.string.settings_network_prefer_official_cdn_text),
+                            checked = preferOfficialCdn,
+                            onCheckedChange = { enable ->
+                                preferOfficialCdn = enable
+                                Prefs.preferOfficialCdn = enable
+                            }
+                        )
+                        Column {
+                            SettingListItem(
+                                modifier = Modifier.padding(top = 12.dp),
+                                title = stringResource(R.string.settings_network_cdn_override_region_title),
+                                supportText = stringResource(R.string.settings_network_cdn_override_text) +
+                                    "\n" + stringResource(
+                                        R.string.settings_network_cdn_override_current,
+                                        cdnOverrideRegion
+                                    ),
+                                onClick = { showCdnOverrideRegionDialog = true }
+                            )
+                            AnimatedVisibility(visible = usingPresetCdnOverride) {
+                                SettingListItem(
+                                    modifier = Modifier.padding(top = 12.dp),
+                                    title = stringResource(R.string.settings_network_cdn_override_node_title),
+                                    supportText = CdnOverrideCatalog.displayNameForHost(cdnOverrideHost),
+                                    onClick = { showCdnOverrideNodeDialog = true }
+                                )
+                            }
+                            AnimatedVisibility(visible = usingCustomCdnOverride) {
+                                SettingListItem(
+                                    modifier = Modifier.padding(top = 12.dp),
+                                    title = stringResource(R.string.settings_network_cdn_override_custom_title),
+                                    supportText = if (cdnOverrideHost.isBlank()) {
+                                        stringResource(R.string.settings_network_proxy_server_content_empty)
+                                    } else {
+                                        cdnOverrideHost
+                                    },
+                                    onClick = { showCdnOverrideCustomDialog = true }
+                                )
+                            }
                         }
-                    )
+                    }
                 }
 
                 item {
@@ -160,6 +215,107 @@ fun NetworkSetting(
             }
         }
     )
+
+    if (showCdnOverrideRegionDialog) {
+        OptionDialog(
+            options = CdnOverrideCatalog.regions.toTypedArray(),
+            selectedOption = cdnOverrideRegion,
+            onDismiss = { showCdnOverrideRegionDialog = false },
+            onSelect = { region ->
+                when (region) {
+                    CdnOverrideCatalog.defaultRegion -> {
+                        customCdnOverrideSelected = false
+                        cdnOverrideHost = ""
+                        Prefs.cdnOverrideHost = ""
+                    }
+
+                    CdnOverrideCatalog.customRegion -> {
+                        showCdnOverrideCustomDialog = true
+                    }
+
+                    else -> {
+                        val firstNode = CdnOverrideCatalog.nodesForRegion(region).firstOrNull().orEmpty()
+                        customCdnOverrideSelected = false
+                        cdnOverrideHost = firstNode
+                        Prefs.cdnOverrideHost = firstNode
+                    }
+                }
+                showCdnOverrideRegionDialog = false
+            },
+            getDisplayName = { it }
+        )
+    }
+
+    if (showCdnOverrideNodeDialog && CdnOverrideCatalog.nodesForRegion(cdnOverrideRegion).isNotEmpty()) {
+        val nodes = CdnOverrideCatalog.nodesForRegion(cdnOverrideRegion)
+        OptionDialog(
+            options = nodes.toTypedArray(),
+            selectedOption = cdnOverrideHost.takeIf { it in nodes } ?: nodes.first(),
+            onDismiss = { showCdnOverrideNodeDialog = false },
+            onSelect = {
+                cdnOverrideHost = it
+                Prefs.cdnOverrideHost = it
+                showCdnOverrideNodeDialog = false
+            },
+            getDisplayName = { it }
+        )
+    }
+
+    CdnOverrideHostEditDialog(
+        show = showCdnOverrideCustomDialog,
+        onHideDialog = { showCdnOverrideCustomDialog = false },
+        cdnHost = if (customCdnOverrideSelected) cdnOverrideHost else "",
+        onCdnHostChange = {
+            val normalizedHost = CdnOverrideCatalog.normalizeHost(it)
+            customCdnOverrideSelected = normalizedHost.isNotBlank()
+            cdnOverrideHost = normalizedHost
+            Prefs.cdnOverrideHost = normalizedHost
+        }
+    )
+}
+
+@Composable
+fun CdnOverrideHostEditDialog(
+    modifier: Modifier = Modifier,
+    show: Boolean,
+    onHideDialog: () -> Unit,
+    cdnHost: String,
+    onCdnHostChange: (String) -> Unit
+) {
+    var cdnHostString by remember(show) { mutableStateOf(cdnHost) }
+
+    if (show) {
+        AlertDialog(
+            modifier = modifier,
+            title = { Text(text = stringResource(R.string.settings_network_cdn_override_custom_title)) },
+            text = {
+                OutlinedTextField(
+                    value = cdnHostString,
+                    onValueChange = { cdnHostString = it },
+                    singleLine = true,
+                    maxLines = 1,
+                    shape = MaterialTheme.shapes.medium,
+                    placeholder = { Text(text = stringResource(R.string.settings_network_cdn_override_input_label)) }
+                )
+            },
+            onDismissRequest = onHideDialog,
+            confirmButton = {
+                Button(onClick = {
+                    CdnOverrideCatalog.normalizeHost(cdnHostString)
+                        .takeIf { it.isNotBlank() }
+                        ?.let(onCdnHostChange)
+                    onHideDialog()
+                }) {
+                    Text(text = stringResource(id = R.string.common_confirm))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = onHideDialog) {
+                    Text(text = stringResource(id = R.string.common_cancel))
+                }
+            }
+        )
+    }
 }
 
 @Composable

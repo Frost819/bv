@@ -100,6 +100,7 @@ object Prefs {
     var proxyHttpServer by pref(PrefKeys.prefProxyHttpServerKey, "")
     var proxyGRPCServer by pref(PrefKeys.prefProxyGRPCServerKey, "")
     var preferOfficialCdn by pref(PrefKeys.prefPreferOfficialCdn, false)
+    var cdnOverrideHost by pref(PrefKeys.prefCdnOverrideHost, "")
 
     // =========================================================================
     // 播放器 - 视频
@@ -343,6 +344,7 @@ private object PrefKeys {
     val prefProxyHttpServerKey = stringPreferencesKey("proxy_http_server")
     val prefProxyGRPCServerKey = stringPreferencesKey("proxy_grpc_server")
     val prefPreferOfficialCdn = booleanPreferencesKey("prefer_official_cdn")
+    val prefCdnOverrideHost = stringPreferencesKey("cdn_override_host")
 
     // 播放器 - 视频
     val prefDefaultQualityKey = intPreferencesKey("dq")

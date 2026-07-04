@@ -27,6 +27,7 @@ import dev.aaa1115910.bv.BVApp
 import dev.aaa1115910.bv.R
 import dev.aaa1115910.bv.component.controllers.DanmakuType
 import dev.aaa1115910.bv.entity.Audio
+import dev.aaa1115910.bv.entity.CdnOverrideCatalog
 import dev.aaa1115910.bv.entity.PlayerType
 import dev.aaa1115910.bv.entity.Resolution
 import dev.aaa1115910.bv.entity.VideoAspectRatio
@@ -891,6 +892,11 @@ class VideoPlayerV3ViewModel(
             // 如果未通过网络代理获得播放地址，才判断是否应该替换为官方 cdn
             videoUrl = selectOfficialCdnUrl(videoUrls.filterNotNull())
             audioUrl = if (audioUrls.isNotEmpty()) selectOfficialCdnUrl(audioUrls) else null
+
+            if (Prefs.preferOfficialCdn) {
+                videoUrl = videoUrl.replaceMediaUrlHostWithCdnOverride()
+                audioUrl = audioUrl?.replaceMediaUrlHostWithCdnOverride()
+            }
         }
 
         logger.fInfo { "Audio encoding：${(Audio.fromCode(audioItem?.codecId ?: 0))}" }
@@ -1375,6 +1381,33 @@ class VideoPlayerV3ViewModel(
             .authority("upos-sz-mirrorali.bilivideo.com")
             .build()
             .toString()
+    }
+
+    private fun String.replaceMediaUrlHostWithCdnOverride(): String {
+        val replacementHost = CdnOverrideCatalog.normalizeHost(Prefs.cdnOverrideHost)
+        if (replacementHost.isBlank()) return this
+
+        val parsedUri = Uri.parse(this)
+        val originalHost = parsedUri.host ?: return this
+        if (!originalHost.isReplaceableMediaHost()) return this
+
+        return parsedUri
+            .buildUpon()
+            .authority(replacementHost)
+            .build()
+            .toString()
+    }
+
+    private fun String.isReplaceableMediaHost(): Boolean {
+        val host = lowercase()
+        val ignoreHostRegex = Regex("^(?:bvc|data|pbp|api\\w*)\\.")
+        if (ignoreHostRegex.containsMatchIn(host)) return false
+        if (host.contains(".mcdn.bilivideo.")) return false
+
+        return host.contains("bilivideo.")
+            || host.contains("acgvideo.")
+            || host.contains("edge.mountaintoys.cn")
+            || host.contains("akamaized.net")
     }
 
     private sealed interface NextPlayTarget {
