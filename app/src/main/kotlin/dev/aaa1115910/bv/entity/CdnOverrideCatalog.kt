@@ -108,7 +108,6 @@ object CdnOverrideCatalog {
             "upos-sz-mirror08c.bilivideo.com",
             "upos-sz-mirror08h.bilivideo.com",
             "upos-sz-mirroralibstar1.bilivideo.com",
-            "upos-sz-mirroraliov.bilivideo.com",
             "upos-sz-mirrorbd.bilivideo.com",
             "upos-sz-mirrorcf1ov.bilivideo.com",
             "upos-sz-mirrorcosbstar.bilivideo.com",
@@ -163,5 +162,6 @@ object CdnOverrideCatalog {
             .substringBefore("/")
             .substringBefore("?")
             .substringBefore("#")
+            .lowercase()
     }
 }

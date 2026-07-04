@@ -301,7 +301,9 @@ fun CdnOverrideHostEditDialog(
             onDismissRequest = onHideDialog,
             confirmButton = {
                 Button(onClick = {
-                    onCdnHostChange(CdnOverrideCatalog.normalizeHost(cdnHostString))
+                    CdnOverrideCatalog.normalizeHost(cdnHostString)
+                        .takeIf { it.isNotBlank() }
+                        ?.let(onCdnHostChange)
                     onHideDialog()
                 }) {
                     Text(text = stringResource(id = R.string.common_confirm))

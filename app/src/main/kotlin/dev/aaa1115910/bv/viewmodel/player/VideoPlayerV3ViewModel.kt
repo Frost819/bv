@@ -892,11 +892,11 @@ class VideoPlayerV3ViewModel(
             // 如果未通过网络代理获得播放地址，才判断是否应该替换为官方 cdn
             videoUrl = selectOfficialCdnUrl(videoUrls.filterNotNull())
             audioUrl = if (audioUrls.isNotEmpty()) selectOfficialCdnUrl(audioUrls) else null
-        }
 
-        if (Prefs.preferOfficialCdn) {
-            videoUrl = videoUrl.replaceMediaUrlHostWithCdnOverride()
-            audioUrl = audioUrl?.replaceMediaUrlHostWithCdnOverride()
+            if (Prefs.preferOfficialCdn) {
+                videoUrl = videoUrl.replaceMediaUrlHostWithCdnOverride()
+                audioUrl = audioUrl?.replaceMediaUrlHostWithCdnOverride()
+            }
         }
 
         logger.fInfo { "Audio encoding：${(Audio.fromCode(audioItem?.codecId ?: 0))}" }
@@ -1402,6 +1402,7 @@ class VideoPlayerV3ViewModel(
         val host = lowercase()
         val ignoreHostRegex = Regex("^(?:bvc|data|pbp|api\\w*)\\.")
         if (ignoreHostRegex.containsMatchIn(host)) return false
+        if (host.contains(".mcdn.bilivideo.")) return false
 
         return host.contains("bilivideo.")
             || host.contains("acgvideo.")
