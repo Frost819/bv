@@ -55,6 +55,7 @@ fun AudioVideoSetting(
 
     var enableFfmpegAudioRenderer by remember { mutableStateOf(Prefs.enableFfmpegAudioRenderer) }
     var enableSoftwareVideoRenderer by remember { mutableStateOf(Prefs.enableSoftwareVideoDecoder) }
+    var enableFrameRateMatching by remember { mutableStateOf(Prefs.enableFrameRateMatching) }
 
     Column(
         modifier = modifier
@@ -98,6 +99,15 @@ fun AudioVideoSetting(
             title = "自定义播放快捷键",
             supportText = "当前：${playerCustomShortcuts.size} 个绑定",
             onClick = { showPlayerCustomShortcutsDialog = true }
+        )
+        SettingSwitchListItem(
+            title = "自动帧率匹配",
+            supportText = "使用 Media3 默认帧率匹配策略",
+            checked = enableFrameRateMatching,
+            onCheckedChange = {
+                enableFrameRateMatching = it
+                Prefs.enableFrameRateMatching = it
+            }
         )
         SettingSwitchListItem(
             title = stringResource(R.string.settings_media_software_video_renderer_title),
@@ -209,4 +219,3 @@ enum class ActionAfterPlayItems (val code: Int, private val displayName: String)
         return displayName
     }
 }
-

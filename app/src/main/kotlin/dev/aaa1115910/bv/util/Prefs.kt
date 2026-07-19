@@ -124,6 +124,7 @@ object Prefs {
         restore = { PlayerType.entries.getOrElse(it) { PlayerType.Media3 } }
     )
     var enableSoftwareVideoDecoder by pref(PrefKeys.prefEnableSoftwareVideoDecoder, false)
+    var enableFrameRateMatching by pref(PrefKeys.prefEnableFrameRateMatching, true)
     var actionAfterPlay by pref(
         PrefKeys.prefActionAfterPlayKey,
         ActionAfterPlayItems.PlayNext,
@@ -349,6 +350,7 @@ private object PrefKeys {
     val prefDefaultVideoCodecKey = intPreferencesKey("dvc")
     val prefPlayerTypeKey = intPreferencesKey("pt")
     val prefEnableSoftwareVideoDecoder = booleanPreferencesKey("enable_software_video_decoder")
+    val prefEnableFrameRateMatching = booleanPreferencesKey("enable_frame_rate_matching")
     val prefActionAfterPlayKey = intPreferencesKey("action_after_play")
 
     // 播放器 - 音频
