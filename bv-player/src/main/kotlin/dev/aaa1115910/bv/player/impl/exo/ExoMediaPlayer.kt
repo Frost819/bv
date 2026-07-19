@@ -74,6 +74,11 @@ class ExoMediaPlayer(
             .setRenderersFactory(renderersFactory)
             .setSeekForwardIncrementMs(1000 * 10)
             .setSeekBackIncrementMs(1000 * 5)
+            .apply {
+                if (!options.enableFrameRateMatching) {
+                    setVideoChangeFrameRateStrategy(C.VIDEO_CHANGE_FRAME_RATE_STRATEGY_OFF)
+                }
+            }
             .build()
 
         initListener()

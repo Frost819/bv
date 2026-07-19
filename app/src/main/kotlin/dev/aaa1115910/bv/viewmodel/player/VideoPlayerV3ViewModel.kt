@@ -265,7 +265,8 @@ class VideoPlayerV3ViewModel(
                 ApiType.App -> null
             },
             enableFfmpegAudioRenderer = Prefs.enableFfmpegAudioRenderer,
-            enableSoftwareVideoDecoder = Prefs.enableSoftwareVideoDecoder
+            enableSoftwareVideoDecoder = Prefs.enableSoftwareVideoDecoder,
+            enableFrameRateMatching = Prefs.enableFrameRateMatching
         )
 
         val newVideoPlayer = when (Prefs.playerType) {
