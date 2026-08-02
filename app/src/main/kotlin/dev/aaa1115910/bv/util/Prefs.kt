@@ -20,6 +20,7 @@ import dev.aaa1115910.bv.component.controllers.playermenu.PlaySpeedItem
 import dev.aaa1115910.bv.entity.Audio
 import dev.aaa1115910.bv.entity.PlayerType
 import dev.aaa1115910.bv.entity.Resolution
+import dev.aaa1115910.bv.entity.SubtitleLanguagePreference
 import dev.aaa1115910.bv.entity.VideoCodec
 import dev.aaa1115910.bv.screen.main.LeftNaviItem
 import dev.aaa1115910.bv.screen.settings.content.ActionAfterPlayItems
@@ -172,6 +173,13 @@ object Prefs {
     // 播放器 - 字幕
     // =========================================================================
 
+    var autoLoadSubtitle by pref(PrefKeys.prefAutoLoadSubtitleKey, false)
+    var defaultSubtitleLanguage by pref(
+        PrefKeys.prefDefaultSubtitleLanguageKey,
+        SubtitleLanguagePreference.FirstAvailable,
+        save = { it.code },
+        restore = { SubtitleLanguagePreference.fromCode(it) }
+    )
     var defaultSubtitleFontSize by pref(
         PrefKeys.prefDefaultSubtitleFontSizeKey,
         24.sp,
@@ -364,6 +372,8 @@ private object PrefKeys {
     val prefDefaultDanmakuMask = booleanPreferencesKey("prefer_enable_webmark")
 
     // 播放器 - 字幕
+    val prefAutoLoadSubtitleKey = booleanPreferencesKey("auto_load_subtitle")
+    val prefDefaultSubtitleLanguageKey = stringPreferencesKey("default_subtitle_language")
     val prefDefaultSubtitleFontSizeKey = intPreferencesKey("dsfs")
     val prefDefaultSubtitleBackgroundOpacityKey = floatPreferencesKey("dsbo")
     val prefDefaultSubtitleBottomPaddingKey = intPreferencesKey("dsbp")
