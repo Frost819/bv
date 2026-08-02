@@ -623,10 +623,11 @@ class VideoPlayerV3ViewModel(
 
                 launch {
                     updateSubtitle()
-                    val lastPlayEnabledSubtitle = _uiState.value.subtitleId != -1L
-                    if (lastPlayEnabledSubtitle) {
-                        logger.info { "Subtitle is enabled, auto-enabling first subtitle..." }
-                        enableFirstSubtitle()
+                    val shouldEnableSubtitle = Prefs.autoLoadSubtitle ||
+                        _uiState.value.subtitleId != -1L
+                    if (shouldEnableSubtitle) {
+                        logger.info { "Auto-enabling preferred subtitle..." }
+                        enablePreferredSubtitle()
                     }
                 }
                 launch { loadDanmaku(cid) }
@@ -970,18 +971,18 @@ class VideoPlayerV3ViewModel(
         }
     }
 
-    private fun enableFirstSubtitle() {
-        runCatching {
-            logger.info { "Load first subtitle" }
-            logger.info { "availableSubtitle: ${_uiState.value.subtitleList.toList()}" }
-            loadSubtitle(
-                _uiState.value.subtitleList
-                    .firstOrNull { it.id != -1L }?.id
-                    ?: throw IllegalStateException("No available subtitle")
-            )
-        }.onFailure {
-            logger.error { "Load first subtitle failed: ${it.stackTraceToString()}" }
+    private fun enablePreferredSubtitle() {
+        logger.info { "Load preferred subtitle: ${Prefs.defaultSubtitleLanguage.code}" }
+        logger.info { "availableSubtitle: ${_uiState.value.subtitleList.toList()}" }
+
+        val selectedSubtitle = Prefs.defaultSubtitleLanguage.select(_uiState.value.subtitleList)
+        if (selectedSubtitle == null) {
+            logger.info { "Preferred subtitle is unavailable, disabling subtitles" }
+            loadSubtitle(-1L)
+            return
         }
+
+        loadSubtitle(selectedSubtitle.id)
     }
 
     private fun syncProgress(

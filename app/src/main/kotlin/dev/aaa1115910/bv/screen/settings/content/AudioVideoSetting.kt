@@ -28,6 +28,7 @@ import dev.aaa1115910.bv.component.settings.SettingSwitchListItem
 import dev.aaa1115910.bv.entity.Audio
 import dev.aaa1115910.bv.entity.PlayerCustomShortcutsStore
 import dev.aaa1115910.bv.entity.Resolution
+import dev.aaa1115910.bv.entity.SubtitleLanguagePreference
 import dev.aaa1115910.bv.entity.VideoCodec
 import dev.aaa1115910.bv.screen.settings.SettingsMenuNavItem
 import dev.aaa1115910.bv.util.Prefs
@@ -43,6 +44,7 @@ fun AudioVideoSetting(
     var showAudioCodecDialog by remember { mutableStateOf(false) }
     var showVideoCodecDialog by remember { mutableStateOf(false) }
     var showPlaySpeedDialog by remember { mutableStateOf(false) }
+    var showSubtitleLanguageDialog by remember { mutableStateOf(false) }
     var showActionAfterPlayDialog by remember { mutableStateOf(false) }
     var showPlayerCustomShortcutsDialog by remember { mutableStateOf(false) }
 
@@ -50,11 +52,13 @@ fun AudioVideoSetting(
     var selectedVideoCodec by remember { mutableStateOf(Prefs.defaultVideoCodec) }
     var selectedAudioCodec by remember { mutableStateOf(Prefs.defaultAudio) }
     var selectedPlaySpeed by remember { mutableStateOf(Prefs.defaultPlaySpeed) }
+    var selectedSubtitleLanguage by remember { mutableStateOf(Prefs.defaultSubtitleLanguage) }
     var selectedActionAfterPlay by remember { mutableStateOf(Prefs.actionAfterPlay) }
     var playerCustomShortcuts by remember { mutableStateOf(PlayerCustomShortcutsStore.get()) }
 
     var enableFfmpegAudioRenderer by remember { mutableStateOf(Prefs.enableFfmpegAudioRenderer) }
     var enableSoftwareVideoRenderer by remember { mutableStateOf(Prefs.enableSoftwareVideoDecoder) }
+    var autoLoadSubtitle by remember { mutableStateOf(Prefs.autoLoadSubtitle) }
 
     Column(
         modifier = modifier
@@ -88,6 +92,20 @@ fun AudioVideoSetting(
             title = "默认播放速度",
             supportText = "当前：${selectedPlaySpeed.getDisplayName(context)}",
             onClick = { showPlaySpeedDialog = true }
+        )
+        SettingSwitchListItem(
+            title = "默认加载字幕",
+            supportText = "进入播放器时自动加载字幕",
+            checked = autoLoadSubtitle,
+            onCheckedChange = {
+                autoLoadSubtitle = it
+                Prefs.autoLoadSubtitle = it
+            }
+        )
+        SettingListItem(
+            title = "默认字幕语言",
+            supportText = "当前：${selectedSubtitleLanguage.getDisplayName()}；不可用时关闭字幕",
+            onClick = { showSubtitleLanguageDialog = true }
         )
         SettingListItem(
             title = "播放结束动作",
@@ -184,6 +202,19 @@ fun AudioVideoSetting(
         )
     }
 
+    if (showSubtitleLanguageDialog) {
+        OptionDialog(
+            options = SubtitleLanguagePreference.entries.toTypedArray(),
+            selectedOption = selectedSubtitleLanguage,
+            onDismiss = { showSubtitleLanguageDialog = false },
+            onSelect = {
+                Prefs.defaultSubtitleLanguage = it
+                selectedSubtitleLanguage = it
+            },
+            getDisplayName = { it.getDisplayName() }
+        )
+    }
+
     if (showPlayerCustomShortcutsDialog) {
         PlayerCustomShortcutsDialog(
             onDismiss = { showPlayerCustomShortcutsDialog = false },
@@ -209,4 +240,3 @@ enum class ActionAfterPlayItems (val code: Int, private val displayName: String)
         return displayName
     }
 }
-
